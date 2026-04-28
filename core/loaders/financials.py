@@ -35,6 +35,18 @@ _SHEET_NAME_RE = re.compile(
     r"^\s*(IS|CF|BS)(?:\s+Indirect)?\s*\(\s*(\w+)\s*\)\s*$"
 )
 
+# Strings treated as NULL when they appear in monthly cells. ``-`` and ``—``
+# are common Excel placeholders for "no value" in financial spreadsheets.
+_NULL_STRINGS = {"", "-", "—", "n/a", "N/A"}
+
+
+def _is_null_cell(raw: object) -> bool:
+    if raw is None:
+        return True
+    if isinstance(raw, str) and raw.strip() in _NULL_STRINGS:
+        return True
+    return False
+
 
 def _parse_sheet_name(name: str) -> tuple[str, str] | None:
     """Return ``(statement, scenario)`` if the sheet matches the taxonomy
@@ -148,7 +160,7 @@ def _iter_sheet(
         monthly = row[3:15]
         if data is None and grp is None and subgroup is None:
             continue
-        if all(v is None for v in monthly):
+        if all(_is_null_cell(v) for v in monthly):
             continue
         if data is None or grp is None or subgroup is None:
             # Spec: data/grp/subgroup always non-null on a data row.
@@ -167,7 +179,7 @@ def _iter_sheet(
 
     for order, data, grp, subgroup, monthly in eligible:
         for month_idx, raw in enumerate(monthly, start=1):
-            if raw is None:
+            if _is_null_cell(raw):
                 if not emit_null_cells:
                     continue
                 value: float | None = None

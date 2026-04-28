@@ -164,6 +164,36 @@ class TestNullCellHandling:
         nulls = [r for r in rows if r.value is None]
         assert len(nulls) == 9
 
+    def test_dash_string_treated_as_null(self, tmp_path: Path) -> None:
+        # Excel commonly displays zero as '-' via a custom number format,
+        # but typed-in '-' is a frequent financial-reporting convention for
+        # "no value" / "n/a". Treat as NULL, not as a parse error.
+        path = _write_xlsx(tmp_path / "f.xlsx", {
+            "IS (Actual)": [
+                HEADER,
+                _sales_row("d", "sg", 100.0, "-", "-", *([None] * 9)),
+            ],
+        })
+        rows = list(load_taxonomy_xlsx(path, year=2026, entity="cupffee"))
+        # Default skips nulls — only Jan emits a row.
+        assert len(rows) == 1
+        assert rows[0].period_date.month == 1
+        assert rows[0].value == 100.0
+
+    def test_row_with_only_dash_strings_skipped(self, tmp_path: Path) -> None:
+        # If every monthly cell is '-', the row should be treated as
+        # all-null and skipped — same as if every cell were empty.
+        path = _write_xlsx(tmp_path / "f.xlsx", {
+            "IS (Actual)": [
+                HEADER,
+                ["Sales", "Distributors", "X", 100.0, *([None] * 11)],
+                ["Sales", "Distributors", "Y", *(["-"] * 12)],
+            ],
+        })
+        rows = list(load_taxonomy_xlsx(path, year=2026, entity="cupffee"))
+        subgroups = {r.subgroup for r in rows}
+        assert subgroups == {"X"}
+
     def test_zero_is_not_treated_as_null(self, tmp_path: Path) -> None:
         # A real 0.0 value should be emitted, not skipped.
         path = _write_xlsx(tmp_path / "f.xlsx", {

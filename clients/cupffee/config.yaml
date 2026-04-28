@@ -1,0 +1,29 @@
+client_name: Cupffee
+fiscal_year_start_month: 1
+currency: EUR
+bgn_to_eur_rate: 1.95583    # fixed peg, used for any BGN sources
+as_of_date: 2026-03-01
+
+entities:
+  - cupffee
+
+# Files load in the order listed. On overlap, last loaded wins.
+# 2025 actuals are in BGN (pre-euro adoption); 2026 sources are in EUR.
+financial_sources:
+  - { file: raw/Taxonomy_Actuals_12.xlsx, year: 2025, entity: cupffee, currency: BGN }
+  - { file: raw/Taxonomy_Actuals_03.xlsx, year: 2026, entity: cupffee, currency: EUR }
+  - { file: raw/Taxonomy_budget_q2.xlsx,  year: 2026, entity: cupffee, currency: EUR }
+
+# Optional sources — wired in later tasks.
+operational_sources:
+  country_revenue_ltm: null
+  country_revenue_monthly: null
+  cup_volumes: null
+
+# Brand placeholder — used in Stage 2.
+brand:
+  primary: "#2A625E"
+  accent: "#E67D5A"
+  budget: "#D4A24C"
+  font_header: "Calibri"
+  font_body: "Calibri"
