@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# OS
+.DS_Store
+
+# Client data (raw inputs, generated DB, generated charts) — confidential
+clients/*/raw/
+clients/*/data/
+clients/*/charts/
+
+# Confidential source files anywhere under clients/ (the tree currently
+# holds files outside raw/ — Task 4/7 will move them, but until then
+# keep them out of version control by type)
+clients/**/*.xlsx
+clients/**/*.csv
+clients/**/*.pptx
+clients/**/*.db
