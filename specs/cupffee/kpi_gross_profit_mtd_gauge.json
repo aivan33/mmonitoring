@@ -11,8 +11,8 @@
       "label": "Actual",
       "query": {
         "kind": "trend",
-        "data": ["Sales", "Cost of Sales", "Production Costs"],
-        "signs": [1, -1, -1],
+        "data": ["Sales", "Cost of Sales"],
+        "signs": [1, -1],
         "scenario": "actual"
       }
     },
@@ -20,8 +20,8 @@
       "label": "Budget (Realistic)",
       "query": {
         "kind": "trend",
-        "data": ["Sales", "Cost of Sales", "Production Costs"],
-        "signs": [1, -1, -1],
+        "data": ["Sales", "Cost of Sales"],
+        "signs": [1, -1],
         "scenario": "realistic"
       }
     }
@@ -29,5 +29,5 @@
 
   "gauge": {"start": 0},
 
-  "notes": "Gross Profit = Sales − Cost of Sales − Production Costs (MTD). Gauge fills from 0 (start) toward Budget (target). Half-donut; center text shows actual MTD value."
+  "notes": "Gross Profit = Sales − Cost of Sales (MTD). Production Costs is opex, not COGS — verified Dec 2025: Sales 124K - CoS 44.5K = 79.5K matches deck."
 }

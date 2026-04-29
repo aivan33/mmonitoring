@@ -8,15 +8,40 @@
 
   "data": [
     {
-      "label": "Cash from Operating Activities",
+      "label": "Cash from Clients",
       "query": {
         "kind": "trend",
         "data": "Cash Flow from Operating Activities",
+        "grp": "Cash from Sales",
         "scenario": "actual"
       }
     },
     {
-      "label": "Cash from Investing Activities",
+      "label": "Materials",
+      "query": {
+        "kind": "trend",
+        "data": "Cash Flow from Operating Activities",
+        "grp": "Purchased direct material",
+        "scenario": "actual"
+      }
+    },
+    {
+      "label": "Other (Op)",
+      "query": {
+        "kind": "trend",
+        "data": "Cash Flow from Operating Activities",
+        "grp": [
+          "Cash paid to suppliers",
+          "Payments to personnel (excl. R&D cap)",
+          "VAT & Refunds",
+          "Taxes paid / redeemed, net",
+          "Other payments/proceeds, net (taxes, FX gains/losses)"
+        ],
+        "scenario": "actual"
+      }
+    },
+    {
+      "label": "PPE / Investing",
       "query": {
         "kind": "trend",
         "data": "Cash Flow from Investing Activities",
@@ -24,7 +49,7 @@
       }
     },
     {
-      "label": "Cash from Financing Activities",
+      "label": "Financial Inflows",
       "query": {
         "kind": "trend",
         "data": "Cash Flow from Financing Activities",
@@ -37,5 +62,5 @@
     "y": {"format": "EUR_thousands"}
   },
 
-  "notes": "Monthly stacked bar of CF Op / Inv / Fin (positive contributions stack up, negative stack down). Approximation of the deck slide-3 'Cash Breakdown' chart — deck breaks down at sub-category level (Cash from Clients, Materials, etc.); we stack at top-level CF activities for now."
+  "notes": "Five deck-style stacked categories: Cash from Clients (Op/Cash from Sales), Materials (Op/Purchased direct material), Other (remaining Op subgroups summed: suppliers, personnel, VAT, taxes, other), PPE/Investing (full CF Inv), Financial Inflows (full CF Fin)."
 }

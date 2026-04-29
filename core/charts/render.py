@@ -98,11 +98,15 @@ def resolve_query(
             raise ValueError(
                 f"trend query: signs length {len(signs)} != data length {len(data_list)}"
             )
-        grp = query.get("grp")
+        # grp / subgroup may be a single string or a list of strings
+        # (sum across all listed groups). None = no filter.
+        grp_arg = query.get("grp")
+        if isinstance(grp_arg, list):
+            grp_list = grp_arg
+        else:
+            grp_list = [grp_arg]
         subgroup = query.get("subgroup")
 
-        # `year` override: pin this series to a specific full year, ignoring
-        # the chart's start/end. Used for prior-period comparisons.
         year_override = query.get("year")
         if year_override is not None:
             q_start = dt.date(year_override, 1, 1)
@@ -112,16 +116,17 @@ def resolve_query(
 
         total: pd.Series | None = None
         for d, s in zip(data_list, signs):
-            series = get_trend(
-                d, grp=grp, subgroup=subgroup, scenario=scenario,
-                start_date=q_start, end_date=q_end,
-                client=client, entity=entity,
-            )
-            weighted = series * s
-            if total is None:
-                total = weighted
-            else:
-                total = total.add(weighted, fill_value=0)
+            for g in grp_list:
+                series = get_trend(
+                    d, grp=g, subgroup=subgroup, scenario=scenario,
+                    start_date=q_start, end_date=q_end,
+                    client=client, entity=entity,
+                )
+                weighted = series * s
+                if total is None:
+                    total = weighted
+                else:
+                    total = total.add(weighted, fill_value=0)
         return total if total is not None else pd.Series(dtype=float)
 
     if kind == "value":

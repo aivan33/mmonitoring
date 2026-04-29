@@ -70,7 +70,10 @@
                 {"type": "string"},
                 {"type": "array", "items": {"type": "string"}, "minItems": 1}
               ]},
-              "grp":      {"type": ["string", "null"]},
+              "grp":      {"oneOf": [
+                {"type": ["string", "null"]},
+                {"type": "array", "items": {"type": "string"}, "minItems": 1}
+              ]},
               "subgroup": {"type": ["string", "null"]},
               "scenario": {"enum": ["actual", "pessimistic", "realistic", "optimistic"]},
               "level":    {"enum": ["data", "grp", "subgroup"]},
