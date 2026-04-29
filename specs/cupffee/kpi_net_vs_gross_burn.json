@@ -1,0 +1,35 @@
+{
+  "chart_id": "kpi_net_vs_gross_burn",
+  "client": "cupffee",
+  "title": "Net Burn vs Gross Burn — Trend Analysis",
+  "chart_type": "line",
+  "source": "custom",
+  "period": {"kind": "ltm", "months": 12},
+
+  "data": [
+    {
+      "label": "Gross Burn",
+      "query": {
+        "kind": "trend",
+        "data": ["Cost of Sales", "Production Costs", "R&D", "S&M", "G&A"],
+        "scenario": "actual"
+      }
+    },
+    {
+      "label": "Net Burn",
+      "query": {
+        "kind": "trend",
+        "data": ["Cost of Sales", "Production Costs", "R&D", "S&M", "G&A", "Sales"],
+        "signs": [1, 1, 1, 1, 1, -1],
+        "scenario": "actual"
+      }
+    }
+  ],
+
+  "axes": {
+    "x": {"format": "month_short"},
+    "y": {"format": "EUR_thousands"}
+  },
+
+  "notes": "Per slide 2 deck note: 'Gross Burn takes into account all expenses as they are written on the IS MTD'. Net Burn = Gross Burn minus Sales (positive when burning). To revisit if the user has a different convention."
+}
