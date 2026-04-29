@@ -12,6 +12,7 @@
       "query": {
         "kind": "trend",
         "data": ["Cost of Sales", "Production Costs", "R&D", "S&M", "G&A"],
+        "signs": [-1, -1, -1, -1, -1],
         "scenario": "actual"
       }
     },
@@ -20,7 +21,7 @@
       "query": {
         "kind": "trend",
         "data": ["Cost of Sales", "Production Costs", "R&D", "S&M", "G&A", "Sales"],
-        "signs": [1, 1, 1, 1, 1, -1],
+        "signs": [-1, -1, -1, -1, -1, 1],
         "scenario": "actual"
       }
     }
@@ -31,5 +32,5 @@
     "y": {"format": "EUR_thousands"}
   },
 
-  "notes": "Per slide 2 deck note: 'Gross Burn takes into account all expenses as they are written on the IS MTD'. Net Burn = Gross Burn minus Sales (positive when burning). To revisit if the user has a different convention."
+  "notes": "Per slide 2 deck note: 'Gross Burn takes into account all expenses as they are written on the IS MTD'. Both lines plotted negative (outflow). Gross Burn = -(Cost of Sales + Production + R&D + S&M + G&A). Net Burn = Sales - opex_sum (negative when burning, positive in cash-positive months)."
 }

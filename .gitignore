@@ -15,6 +15,8 @@ __pycache__/
 clients/*/raw/
 clients/*/data/
 clients/*/charts/
+clients/*/reference/
+clients/*/_stale/
 
 # Confidential source files anywhere under clients/ (the tree currently
 # holds files outside raw/ — Task 4/7 will move them, but until then
