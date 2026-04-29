@@ -48,6 +48,7 @@ class ChartSpec:
     platform_export: str | None = None
     axes: dict[str, Any] = field(default_factory=dict)
     style: dict[str, Any] = field(default_factory=dict)
+    gauge: dict[str, Any] = field(default_factory=dict)
     notes: str = ""
 
     @property
@@ -83,5 +84,6 @@ def load_spec(path: str | Path) -> ChartSpec:
         platform_export=raw.get("platform_export"),
         axes=raw.get("axes", {}),
         style=raw.get("style", {}),
+        gauge=raw.get("gauge", {}),
         notes=raw.get("notes", ""),
     )

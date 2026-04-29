@@ -1,0 +1,35 @@
+{
+  "chart_id": "revenue_dynamics_2025_2026",
+  "client": "cupffee",
+  "title": "Revenue Dynamics — 2025 vs 2026",
+  "chart_type": "clustered_bar",
+  "source": "custom",
+  "period": {"kind": "full_year", "year": 2026},
+
+  "data": [
+    {
+      "label": "Revenue 2025",
+      "query": {
+        "kind": "trend",
+        "data": "Sales",
+        "scenario": "actual",
+        "year": 2025
+      }
+    },
+    {
+      "label": "Revenue 2026",
+      "query": {
+        "kind": "trend",
+        "data": "Sales",
+        "scenario": "actual",
+        "year": 2026
+      }
+    }
+  ],
+
+  "axes": {
+    "y": {"format": "EUR_thousands"}
+  },
+
+  "notes": "Per-month clustered bars for 2025 and 2026 actuals. Deck slide 5 also shows 2024 — not loaded yet (would need a Taxonomy_Actuals_24.xlsx source). Revenue 2026 bars are present only for Jan-Mar (Q1 actuals)."
+}

@@ -1,0 +1,27 @@
+{
+  "chart_id": "cash_balances_mtm",
+  "client": "cupffee",
+  "title": "Cash Balances EUR '000",
+  "chart_type": "bar",
+  "source": "custom",
+  "period": {"kind": "ltm", "months": 12},
+
+  "data": [
+    {
+      "label": "Cash and cash equivalents",
+      "query": {
+        "kind": "trend",
+        "data": "Cash and cash equivalents",
+        "grp": "Cash and cash equivalents",
+        "subgroup": "Cash and cash equivalents",
+        "scenario": "actual"
+      }
+    }
+  ],
+
+  "axes": {
+    "y": {"format": "EUR_thousands"}
+  },
+
+  "notes": "Single-series monthly bar of BS Cash and cash equivalents over the trailing 12 months ending at the anchor."
+}

@@ -1,0 +1,33 @@
+{
+  "chart_id": "kpi_ebitda_mtd_gauge",
+  "client": "cupffee",
+  "title": "EBITDA MTD",
+  "chart_type": "gauge",
+  "source": "custom",
+  "period": {"kind": "current_month"},
+
+  "data": [
+    {
+      "label": "Actual",
+      "query": {
+        "kind": "trend",
+        "data": ["Sales", "Cost of Sales", "Production Costs", "R&D", "S&M", "G&A"],
+        "signs": [1, -1, -1, -1, -1, -1],
+        "scenario": "actual"
+      }
+    },
+    {
+      "label": "Budget (Realistic)",
+      "query": {
+        "kind": "trend",
+        "data": ["Sales", "Cost of Sales", "Production Costs", "R&D", "S&M", "G&A"],
+        "signs": [1, -1, -1, -1, -1, -1],
+        "scenario": "realistic"
+      }
+    }
+  ],
+
+  "gauge": {"start": 0},
+
+  "notes": "EBITDA ≈ Sales − Cost of Sales − Production − R&D − S&M − G&A (excluding Finance, Depreciation, Income tax). Gauge starts at 0, fills toward realistic budget."
+}

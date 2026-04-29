@@ -1,0 +1,33 @@
+{
+  "chart_id": "sales_by_channel_donut_pair",
+  "client": "cupffee",
+  "title": "Sales by Channel",
+  "chart_type": "donut_pair",
+  "source": "custom",
+  "period": {"kind": "current_month"},
+
+  "data": [
+    {
+      "label": "YTD",
+      "query": {
+        "kind": "aggregation",
+        "data": "Sales",
+        "level": "grp",
+        "scenario": "actual",
+        "window": "ytd"
+      }
+    },
+    {
+      "label": "MTD",
+      "query": {
+        "kind": "aggregation",
+        "data": "Sales",
+        "level": "grp",
+        "scenario": "actual",
+        "window": "current"
+      }
+    }
+  ],
+
+  "notes": "Two donuts side by side: YTD (sum Jan-anchor) on the left, MTD (anchor month only) on the right. Both at level='grp'."
+}

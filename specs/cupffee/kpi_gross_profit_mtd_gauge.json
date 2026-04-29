@@ -1,0 +1,33 @@
+{
+  "chart_id": "kpi_gross_profit_mtd_gauge",
+  "client": "cupffee",
+  "title": "Gross Profit MTD",
+  "chart_type": "gauge",
+  "source": "custom",
+  "period": {"kind": "current_month"},
+
+  "data": [
+    {
+      "label": "Actual",
+      "query": {
+        "kind": "trend",
+        "data": ["Sales", "Cost of Sales", "Production Costs"],
+        "signs": [1, -1, -1],
+        "scenario": "actual"
+      }
+    },
+    {
+      "label": "Budget (Realistic)",
+      "query": {
+        "kind": "trend",
+        "data": ["Sales", "Cost of Sales", "Production Costs"],
+        "signs": [1, -1, -1],
+        "scenario": "realistic"
+      }
+    }
+  ],
+
+  "gauge": {"start": 0},
+
+  "notes": "Gross Profit = Sales − Cost of Sales − Production Costs (MTD). Gauge fills from 0 (start) toward Budget (target). Half-donut; center text shows actual MTD value."
+}

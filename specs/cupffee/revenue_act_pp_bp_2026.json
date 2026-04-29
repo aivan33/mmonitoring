@@ -1,0 +1,44 @@
+{
+  "chart_id": "revenue_act_pp_bp_2026",
+  "client": "cupffee",
+  "title": "Sales — Actual vs Previous Period vs Budget 2026",
+  "chart_type": "bar_with_line",
+  "source": "custom",
+  "period": {"kind": "full_year", "year": 2026},
+
+  "data": [
+    {
+      "label": "Sales 2025 (PP)",
+      "query": {
+        "kind": "trend",
+        "data": "Sales",
+        "scenario": "actual",
+        "year": 2025
+      }
+    },
+    {
+      "label": "Sales 2026 (Actual)",
+      "query": {
+        "kind": "trend",
+        "data": "Sales",
+        "scenario": "actual",
+        "year": 2026
+      }
+    },
+    {
+      "label": "Budget 2026 (Realistic)",
+      "query": {
+        "kind": "trend",
+        "data": "Sales",
+        "scenario": "realistic",
+        "year": 2026
+      }
+    }
+  ],
+
+  "axes": {
+    "y": {"format": "EUR_thousands"}
+  },
+
+  "notes": "Two clustered bars per month (Sales 2025 PP, Sales 2026 Act) overlaid with the realistic Budget 2026 line. Q2-Q4 2026 actual bars are absent (no actuals yet). x-axis aligned by month-of-year (Jan-Dec)."
+}

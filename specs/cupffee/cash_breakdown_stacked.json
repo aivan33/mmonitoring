@@ -1,0 +1,41 @@
+{
+  "chart_id": "cash_breakdown_stacked",
+  "client": "cupffee",
+  "title": "Cash Breakdown EUR '000",
+  "chart_type": "stacked_bar",
+  "source": "custom",
+  "period": {"kind": "ltm", "months": 12},
+
+  "data": [
+    {
+      "label": "Cash from Operating Activities",
+      "query": {
+        "kind": "trend",
+        "data": "Cash Flow from Operating Activities",
+        "scenario": "actual"
+      }
+    },
+    {
+      "label": "Cash from Investing Activities",
+      "query": {
+        "kind": "trend",
+        "data": "Cash Flow from Investing Activities",
+        "scenario": "actual"
+      }
+    },
+    {
+      "label": "Cash from Financing Activities",
+      "query": {
+        "kind": "trend",
+        "data": "Cash Flow from Financing Activities",
+        "scenario": "actual"
+      }
+    }
+  ],
+
+  "axes": {
+    "y": {"format": "EUR_thousands"}
+  },
+
+  "notes": "Monthly stacked bar of CF Op / Inv / Fin (positive contributions stack up, negative stack down). Approximation of the deck slide-3 'Cash Breakdown' chart — deck breaks down at sub-category level (Cash from Clients, Materials, etc.); we stack at top-level CF activities for now."
+}

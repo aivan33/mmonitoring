@@ -9,7 +9,16 @@
     "client":   {"type": "string", "minLength": 1},
     "title":    {"type": "string", "minLength": 1},
     "chart_type": {
-      "enum": ["line", "bar", "stacked_bar", "donut", "kpi_card", "waterfall", "table"]
+      "enum": ["line", "bar", "stacked_bar", "donut", "kpi_card", "waterfall", "table",
+               "gauge", "clustered_bar", "bar_with_line", "bar_projection",
+               "donut_pair"]
+    },
+    "gauge": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "start": {"oneOf": [{"type": "number"}, {"const": "previous_period"}]}
+      }
     },
     "source":   {"enum": ["custom", "platform"]},
     "platform_export": {"type": ["string", "null"]},
@@ -56,7 +65,7 @@
             "required": ["kind"],
             "additionalProperties": false,
             "properties": {
-              "kind":     {"enum": ["trend", "value", "aggregation"]},
+              "kind":     {"enum": ["trend", "value", "aggregation", "projection"]},
               "data":     {"oneOf": [
                 {"type": "string"},
                 {"type": "array", "items": {"type": "string"}, "minItems": 1}
@@ -65,7 +74,11 @@
               "subgroup": {"type": ["string", "null"]},
               "scenario": {"enum": ["actual", "pessimistic", "realistic", "optimistic"]},
               "level":    {"enum": ["data", "grp", "subgroup"]},
-              "signs":    {"type": "array", "items": {"type": "number"}}
+              "signs":    {"type": "array", "items": {"type": "number"}},
+              "actual":   {"type": "object"},
+              "projection_delta": {"type": "object"},
+              "year":     {"type": "integer"},
+              "window":   {"enum": ["current", "ytd"]}
             }
           }
         }

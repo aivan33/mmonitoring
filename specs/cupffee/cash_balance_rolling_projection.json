@@ -1,0 +1,39 @@
+{
+  "chart_id": "cash_balance_rolling_projection",
+  "client": "cupffee",
+  "title": "Cash Balance — Rolling Projection 2026",
+  "chart_type": "bar_projection",
+  "source": "custom",
+  "period": {"kind": "full_year", "year": 2026},
+
+  "data": [
+    {
+      "label": "Cash Balance",
+      "query": {
+        "kind": "projection",
+        "actual": {
+          "kind": "trend",
+          "data": "Cash and cash equivalents",
+          "grp": "Cash and cash equivalents",
+          "subgroup": "Cash and cash equivalents",
+          "scenario": "actual"
+        },
+        "projection_delta": {
+          "kind": "trend",
+          "data": [
+            "Cash Flow from Operating Activities",
+            "Cash Flow from Investing Activities",
+            "Cash Flow from Financing Activities"
+          ],
+          "scenario": "realistic"
+        }
+      }
+    }
+  ],
+
+  "axes": {
+    "y": {"format": "EUR_thousands"}
+  },
+
+  "notes": "Per-user note: 'simulate the amounts based on the inflows/outflows from the budget but with the actual cash balance for the last month'. Implementation: actual Cash and cash equivalents Jan-Mar 2026, then for Apr-Dec project = previous_cash + sum(realistic CF Op + Inv + Fin) for that month, starting baseline = March actual cash."
+}
