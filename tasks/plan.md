@@ -291,6 +291,7 @@ Slices A and B are the primary risk-reducers — they prove the design end-to-en
 7. **MTD country-revenue currency** for Cupffee — *deferred to sanity stage* (Task 15). Will be confirmed against the LTM-prefixed BGN values for the same countries.
 8. **Period selection for charts** — **resolved.** Each chart spec declares its own period semantics (`current_month`, `ytd`, `ltm`, `month_offset`, `full_year`, `explicit`). `build_charts.py <client> [<input_month>]` takes an optional anchor month and each chart resolves its window from it. Pie charts → `current_month`. Country bar → `current_month`. Most P&L analysis → `ytd` or `ltm`. Yearly statement appendices → `full_year`.
 9. **PowerPoint assembly** — **deferred to Stage 3.** Stage 2 ships PNG + JSON sidecar + `index.html`. Auto-assembled decks come later.
+10. **Almacena `taxonomi_act_q1.xlsx` vs `taxonomi_act_1.xlsx`** — **resolved.** The two files are NOT identical: IS sheets match, but `_1` carries full-year-shaped BS/CF data with values that *differ* from `_q1`'s Jan-Mar (e.g., BS row 2: 391,680/373,723/355,766 in `_q1` vs 607,164/589,207/571,250 in `_1`). `_q1` was modified one minute later and is the canonical Q1 2026 actuals; `_1` is a stale draft. `_1` moved to `clients/almacena/_stale/` (kept on disk for reference, gitignored) and dropped from `config.yaml`. Currency sanity-checked separately: AP Foundation Net Interest Revenue YTD 2025 sums to -149,511.53 in the loaded DB, matching the deck narrative "≈ -149K" → confirms EUR (would be ~-292K if BGN).
 
 ## Stage 3 (deferred)
 
