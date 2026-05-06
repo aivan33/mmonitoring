@@ -40,5 +40,9 @@
     "y": {"format": "EUR_thousands"}
   },
 
-  "notes": "Two clustered bars per month (Sales 2025 PP, Sales 2026 Act) overlaid with the realistic Budget 2026 line. Q2-Q4 2026 actual bars are absent (no actuals yet). x-axis aligned by month-of-year (Jan-Dec)."
+  "style": {
+    "colors": ["#2A625E", "#E67D5A", "#D4A24C"]
+  },
+
+  "notes": "Two clustered bars per month (Sales 2025 PP teal, Sales 2026 Act orange) overlaid with the realistic Budget 2026 line in the brand's gold (#D4A24C, the colour the brand reserves for budget series). Q2-Q4 2026 actual bars are absent (no actuals yet). x-axis aligned by month-of-year (Jan-Dec)."
 }

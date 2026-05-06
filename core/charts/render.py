@@ -26,6 +26,7 @@ import matplotlib
 
 # Use Agg backend so rendering works without a display server (CI, headless).
 matplotlib.use("Agg")
+import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import pandas as pd
 from dateutil.relativedelta import relativedelta
@@ -114,12 +115,14 @@ def resolve_query(
         else:
             q_start, q_end = start, end
 
+        fallback_scenario = query.get("fallback_scenario")
         total: pd.Series | None = None
         for d, s in zip(data_list, signs):
             for g in grp_list:
                 series = get_trend(
                     d, grp=g, subgroup=subgroup, scenario=scenario,
                     start_date=q_start, end_date=q_end,
+                    fallback_scenario=fallback_scenario,
                     client=client, entity=entity,
                 )
                 weighted = series * s
@@ -242,20 +245,35 @@ def _font_installed(name: str) -> bool:
     return name in available
 
 
+# Visual constants — single source of truth for the "premium" look.
+TEXT_INK = "#2D2D2D"
+TEXT_MUTED = "#6E6E6E"
+GRID_INK = "#E5DBD5"
+LABEL_FONTSIZE_TICK = 10.5
+LABEL_FONTSIZE_DATA = 9.0
+LABEL_FONTSIZE_LEGEND = 10.5
+LABEL_FONTSIZE_DONUT_CENTER = 26
+
+
 def apply_brand(brand: dict[str, Any]) -> list[str]:
     """Apply matplotlib rcParams from the brand dict and return the palette
     that drawing routines should iterate over for series colors."""
-    fallbacks = ["Helvetica", "Arial", "DejaVu Sans"]
+    fallbacks = ["Helvetica Neue", "Helvetica", "Arial", "DejaVu Sans"]
     fonts: list[str] = []
     requested = brand.get("font_body")
     if requested and _font_installed(requested):
         fonts.append(requested)
     fonts.extend(fallbacks)
     plt.rcParams["font.family"] = fonts
+    plt.rcParams["text.color"] = TEXT_INK
+    plt.rcParams["axes.labelcolor"] = TEXT_INK
+    plt.rcParams["xtick.color"] = TEXT_MUTED
+    plt.rcParams["ytick.color"] = TEXT_MUTED
     plt.rcParams["axes.spines.top"] = False
     plt.rcParams["axes.spines.right"] = False
-    plt.rcParams["axes.grid"] = True
-    plt.rcParams["grid.alpha"] = 0.3
+    plt.rcParams["axes.spines.left"] = False
+    plt.rcParams["axes.spines.bottom"] = False
+    plt.rcParams["axes.grid"] = False  # we draw the grid explicitly per-axes
 
     palette = [
         brand.get("primary"),
@@ -266,23 +284,132 @@ def apply_brand(brand: dict[str, Any]) -> list[str]:
     return palette + _DEFAULT_PALETTE
 
 
+def _resolve_palette(spec: ChartSpec, brand_palette: list[str]) -> list[str]:
+    """Per-spec colour override via spec.style.colors; else brand palette."""
+    overrides = (spec.style or {}).get("colors")
+    if overrides:
+        return list(overrides) + brand_palette
+    return brand_palette
+
+
+def _style_axes(ax) -> None:
+    """Apply the deck-style axis chrome: light dotted y-grid, no spines,
+    horizontal tick labels, capped tick density."""
+    from matplotlib.ticker import MaxNLocator
+    ax.grid(True, axis="y", linestyle=":", color=GRID_INK,
+            linewidth=0.8, alpha=1.0, zorder=0)
+    ax.set_axisbelow(True)
+    ax.tick_params(axis="x", labelsize=LABEL_FONTSIZE_TICK, length=0, pad=8)
+    ax.tick_params(axis="y", labelsize=LABEL_FONTSIZE_TICK, length=0, pad=6)
+    ax.yaxis.set_major_locator(MaxNLocator(nbins=6, prune="upper"))
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+    # Modest headroom above the data so labels aren't clipped.
+    ax.margins(y=0.10)
+
+
+def _dot_legend(ax, labels: list[str], colors: list[str]) -> None:
+    """Bottom-centred legend with coloured dots before each label, outside
+    the plotting area. Matches the Dec 2025 deck legend style."""
+    from matplotlib.lines import Line2D
+    handles = [
+        Line2D([0], [0], marker="o", linestyle="None",
+               markersize=9, markerfacecolor=c, markeredgecolor=c, label=l)
+        for l, c in zip(labels, colors)
+    ]
+    ax.legend(
+        handles=handles,
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.09),
+        ncol=min(len(handles), 6),
+        frameon=False,
+        handletextpad=0.5,
+        columnspacing=2.2,
+        fontsize=LABEL_FONTSIZE_LEGEND,
+        labelcolor=TEXT_INK,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Drawing routines per chart_type
 # ---------------------------------------------------------------------------
 
 def _draw_line(ax, spec: ChartSpec, resolved: list[dict], palette: list[str]) -> None:
+    labels: list[str] = []
+    colors: list[str] = []
+    plotted: list[tuple[pd.Series, str]] = []
     for i, series in enumerate(resolved):
         s = series["raw"]
-        if isinstance(s, pd.Series) and not s.empty:
+        if not (isinstance(s, pd.Series) and not s.empty):
+            continue
+        c = palette[i % len(palette)]
+        # Smoothed line via Catmull-Rom spline through the data points.
+        # Dates are converted to ordinal numbers for splining; matplotlib
+        # renders them along the date axis once the formatter is set below.
+        x_nums = (
+            [mdates.date2num(d) for d in s.index]
+            if any(isinstance(d, dt.date) for d in s.index)
+            else list(range(len(s.index)))
+        )
+        smooth_x, smooth_y = _catmull_rom_smooth(x_nums, list(s.values))
+        if smooth_x:
             ax.plot(
-                s.index, s.values,
-                marker="o", linewidth=2,
-                color=palette[i % len(palette)],
-                label=series["label"],
+                smooth_x, smooth_y, linewidth=1.8, color=c,
+                solid_capstyle="round", solid_joinstyle="round", zorder=3,
             )
-    ax.set_title(spec.title, loc="left", fontsize=12, fontweight="bold")
-    ax.legend(loc="best", frameon=False)
+        ax.plot(
+            s.index, s.values,
+            linestyle="None", marker="o", markersize=4.0,
+            color=c, label=series["label"],
+            markerfacecolor=c, markeredgecolor=c,
+            zorder=4,
+        )
+        plotted.append((s, c))
+        labels.append(series["label"])
+        colors.append(c)
+
+    # Per-x label placement: when multiple series have a value at the same x,
+    # the highest-value series' label goes above and the lowest goes below
+    # so the labels don't stack on top of each other.
+    for s, c in plotted:
+        for x, y in zip(s.index, s.values):
+            if y is None or pd.isna(y):
+                continue
+            others = []
+            for other_s, _ in plotted:
+                if other_s is s:
+                    continue
+                ov = other_s.get(x) if x in other_s.index else None
+                if ov is not None and not pd.isna(ov):
+                    others.append(float(ov))
+            above = True
+            if others:
+                if y < min(others):
+                    above = False
+                elif y > max(others):
+                    above = True
+                else:
+                    above = y >= 0
+            else:
+                above = y >= 0
+            ax.annotate(
+                _format_eur(y), xy=(x, y),
+                xytext=(0, 10 if above else -10),
+                textcoords="offset points",
+                ha="center", va="bottom" if above else "top",
+                fontsize=LABEL_FONTSIZE_DATA,
+                color=c, fontweight="medium",
+            )
+
+    _style_axes(ax)
     _apply_axis_format(ax, spec)
+    if plotted and any(
+        len(s) > 0 and isinstance(s.index[0], dt.date) for s, _ in plotted
+    ):
+        ax.xaxis.set_major_locator(mdates.AutoDateLocator(maxticks=8))
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%b-%y"))
+    if labels:
+        _dot_legend(ax, labels, colors)
 
 
 def _draw_bar(ax, spec: ChartSpec, resolved: list[dict], palette: list[str]) -> None:
@@ -290,10 +417,18 @@ def _draw_bar(ax, spec: ChartSpec, resolved: list[dict], palette: list[str]) -> 
         return
     s = resolved[0]["raw"]
     if isinstance(s, pd.Series):
-        ax.bar(range(len(s)), s.values, color=palette[0])
+        bars = ax.bar(range(len(s)), s.values, color=palette[0],
+                      width=0.62, zorder=3, linewidth=0)
         ax.set_xticks(range(len(s)))
-        ax.set_xticklabels(_month_labels(list(s.index)), rotation=45, ha="right")
-    ax.set_title(spec.title, loc="left", fontsize=12, fontweight="bold")
+        ax.set_xticklabels(_month_labels(list(s.index)), rotation=0, ha="center")
+        ax.bar_label(
+            bars,
+            labels=[_format_eur(v) if v is not None and not pd.isna(v) else ""
+                    for v in s.values],
+            padding=4, fontsize=LABEL_FONTSIZE_DATA, color=TEXT_INK,
+            fontweight="medium",
+        )
+    _style_axes(ax)
     _apply_axis_format(ax, spec)
 
 
@@ -304,14 +439,75 @@ def _draw_donut(ax, spec: ChartSpec, resolved: list[dict], palette: list[str]) -
     if not isinstance(s, pd.Series):
         return
     s = s.dropna()
-    s = s[s != 0]  # exclude zero/null slices
-    colors = [palette[i % len(palette)] for i in range(len(s))]
-    ax.pie(
-        s.values, labels=s.index.astype(str), colors=colors,
-        autopct="%1.1f%%", pctdistance=0.78,
-        wedgeprops=dict(width=0.4, edgecolor="white"),
+    s = s[s != 0]
+    color_map = (spec.style or {}).get("color_map") or {}
+    labels = list(s.index.astype(str))
+    colors = _slice_colors(labels, color_map, palette)
+    wedges, _ = ax.pie(
+        s.values, labels=None, colors=colors,
+        wedgeprops=dict(width=0.36, edgecolor="white", linewidth=2.5),
+        startangle=90, counterclock=False,
     )
-    ax.set_title(spec.title, loc="left", fontsize=12, fontweight="bold")
+    _annotate_donut_slices(ax, wedges, s.values, labels, s.sum(), colors)
+    total = s.sum()
+    center_color = color_map.get("__center__", palette[0])
+    ax.text(0, 0, _format_eur(total), ha="center", va="center",
+            fontsize=LABEL_FONTSIZE_DONUT_CENTER,
+            fontweight="bold", color=center_color)
+    # Generous radial limits so external labels never get clipped.
+    ax.set_xlim(-1.7, 1.7)
+    ax.set_ylim(-1.4, 1.4)
+
+
+def _annotate_donut_slices(ax, wedges, values, labels, total, colors) -> None:
+    """Donut labelling: each slice gets an outside label of the form
+    ``name\\n€XK (YY%)`` with a subtle gray leader. Slices below 2%
+    are skipped to avoid leader-line clutter (their share still counts
+    in the centre total). Same-side labels are nudged apart vertically
+    to avoid overlap.
+    """
+    import math
+    OUTSIDE_PCT_THRESHOLD = 2.0
+    LEADER_GRAY = "#9A8F88"
+
+    placed: list[tuple[float, float]] = []
+    for wedge, value, label, _color in zip(wedges, values, labels, colors):
+        pct = (value / total) * 100 if total else 0
+        if pct < OUTSIDE_PCT_THRESHOLD:
+            continue
+        ang = (wedge.theta1 + wedge.theta2) / 2
+        rad = math.radians(ang)
+        x, y = math.cos(rad), math.sin(rad)
+
+        outside_text = f"{label}\n{_format_eur(value)} ({pct:.0f}%)"
+
+        x_outer, y_outer = x * 1.02, y * 1.02
+        x_text, y_text = x * 1.30, y * 1.30
+        for prev_x, prev_y in placed:
+            if (prev_x >= 0) == (x_text >= 0) and abs(prev_y - y_text) < 0.20:
+                y_text = prev_y + (0.20 if y_text >= prev_y else -0.20)
+        placed.append((x_text, y_text))
+        ha = "left" if x_text >= 0 else "right"
+        ax.annotate(
+            outside_text,
+            xy=(x_outer, y_outer), xytext=(x_text, y_text),
+            ha=ha, va="center",
+            fontsize=LABEL_FONTSIZE_DATA + 0.5,
+            color=TEXT_INK, fontweight="medium", linespacing=1.45,
+            arrowprops=dict(arrowstyle="-", color=LEADER_GRAY,
+                            lw=0.7, connectionstyle="arc3,rad=0",
+                            shrinkA=0, shrinkB=4),
+        )
+
+
+def _slice_colors(
+    labels: list[str], color_map: dict[str, str], palette: list[str],
+) -> list[str]:
+    """Resolve per-slice colours: prefer label→colour map, else positional."""
+    out: list[str] = []
+    for i, lbl in enumerate(labels):
+        out.append(color_map.get(lbl) or palette[i % len(palette)])
+    return out
 
 
 def _draw_kpi_card(ax, spec: ChartSpec, resolved: list[dict], palette: list[str]) -> None:
@@ -331,48 +527,175 @@ def _draw_kpi_card(ax, spec: ChartSpec, resolved: list[dict], palette: list[str]
 def _draw_stacked_bar(
     ax, spec: ChartSpec, resolved: list[dict], palette: list[str],
 ) -> None:
+    """Stacked bars with positive segments going up and negative going down.
+    EUR labels are placed inside each segment, but suppressed for segments
+    smaller than 7% of the total y-axis span to avoid overlap."""
     if not resolved:
         return
-    bottom = None
-    x_dates: list | None = None
+    # Build the union x-axis from all series so misaligned periods stack correctly.
+    all_dates: list = []
+    seen = set()
+    for series in resolved:
+        s = series["raw"]
+        if not isinstance(s, pd.Series):
+            continue
+        for d in s.index:
+            if d not in seen:
+                seen.add(d)
+                all_dates.append(d)
+    all_dates = sorted(all_dates)
+    if not all_dates:
+        return
+    x = list(range(len(all_dates)))
+    n_dates = len(x)
+
+    # Estimate a visual-significance threshold: any segment smaller than
+    # this is dropped entirely (no draw, no stack advance) so it doesn't
+    # appear as a thin "ghost" sliver splitting the visible segments.
+    # Use the largest single absolute value across all series as the
+    # reference span — gives a stable threshold even when one column has
+    # an outlier.
+    max_abs = 0.0
+    for series in resolved:
+        s = series["raw"]
+        if isinstance(s, pd.Series):
+            for v in s.dropna().values:
+                if abs(float(v)) > max_abs:
+                    max_abs = abs(float(v))
+    skip_threshold = max(max_abs * 0.06, 10000.0)
+
+    # In matplotlib, ax.bar(height, bottom) draws from y=bottom to
+    # y=bottom+height. For NEGATIVE height the bar extends downward, so
+    # `bottom` is the UPPER edge of the visible rectangle. For each
+    # negative segment we therefore pass the current cumulative
+    # neg_bottom (the upper edge for this segment) as bottom, then the
+    # negative height extends the bar down to neg_bottom + v.
+    pos_bottom = [0.0] * n_dates
+    neg_bottom = [0.0] * n_dates
+    labels: list[str] = []
+    colors: list[str] = []
+    drawn: list[tuple[Any, list[float]]] = []  # (BarContainer, values)
+
     for i, series in enumerate(resolved):
         s = series["raw"]
         if not isinstance(s, pd.Series):
             continue
-        if x_dates is None:
-            x_dates = list(s.index)
-        ax.bar(
-            range(len(s)), s.values,
-            bottom=bottom,
-            color=palette[i % len(palette)],
-            label=series["label"],
+        c = palette[i % len(palette)]
+        values = []
+        bottoms = []
+        for j, d in enumerate(all_dates):
+            v = s.get(d) if d in s.index else None
+            if v is None or pd.isna(v) or abs(float(v)) < skip_threshold:
+                values.append(0.0)
+                bottoms.append(0.0)
+                continue
+            v = float(v)
+            if v >= 0:
+                bottoms.append(pos_bottom[j])
+                pos_bottom[j] += v
+            else:
+                bottoms.append(neg_bottom[j])
+                neg_bottom[j] += v
+            values.append(v)
+        bars = ax.bar(x, values, bottom=bottoms, color=c, width=0.68,
+                      zorder=3, linewidth=0)
+        drawn.append((bars, values))
+        labels.append(series["label"])
+        colors.append(c)
+
+    # Label suppression: a segment is labelled only if its absolute value
+    # would fit a label visibly. Use the median (not max) of stack tops/
+    # bottoms so a single outlier month doesn't strip labels from
+    # everything else. Floor at €8K so trivial slices stay clean.
+    pos_for_span = sorted(pos_bottom)
+    neg_for_span = sorted(neg_bottom)
+    typical_pos = pos_for_span[len(pos_for_span) // 2] if pos_for_span else 0.0
+    typical_neg = neg_for_span[len(neg_for_span) // 2] if neg_for_span else 0.0
+    typical_span = max(typical_pos - typical_neg, 1.0)
+    threshold = max(typical_span * 0.08, 8000.0)
+
+    for bars, values in drawn:
+        ax.bar_label(
+            bars,
+            labels=[
+                _format_eur(v) if abs(v) >= threshold and v != 0 else ""
+                for v in values
+            ],
+            label_type="center", fontsize=LABEL_FONTSIZE_DATA - 1,
+            color="white", fontweight="bold",
         )
-        bottom = s.values if bottom is None else bottom + s.values
-    if x_dates:
-        ax.set_xticks(range(len(x_dates)))
-        ax.set_xticklabels(_month_labels(x_dates), rotation=45, ha="right")
-    ax.set_title(spec.title, loc="left", fontsize=12, fontweight="bold")
-    ax.legend(loc="best", frameon=False)
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(_month_labels(all_dates), rotation=0, ha="center")
+    _style_axes(ax)
     _apply_axis_format(ax, spec)
+    if labels:
+        _dot_legend(ax, labels, colors)
 
 
 def _month_labels(dates: list) -> list[str]:
-    """Render dates as 'Mon YY' (e.g., 'Jan 25')."""
-    return [d.strftime("%b %y") if isinstance(d, dt.date) else str(d) for d in dates]
+    """Render dates as 'Mon-YY' (e.g., 'Jan-25')."""
+    return [d.strftime("%b-%y") if isinstance(d, dt.date) else str(d) for d in dates]
 
 
 _MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
                 "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 
+def _label_clustered_bars(
+    ax, bars, values: list, label_inside_top: bool,
+) -> None:
+    formatted = [
+        _format_eur(v) if v is not None and not pd.isna(v) else ""
+        for v in values
+    ]
+    if not label_inside_top:
+        ax.bar_label(
+            bars, labels=formatted,
+            padding=4, fontsize=LABEL_FONTSIZE_DATA - 1.5, color=TEXT_INK,
+            fontweight="medium",
+        )
+        return
+
+    max_v = max(
+        (abs(float(v)) for v in values if v is not None and not pd.isna(v)),
+        default=0.0,
+    )
+    inside_threshold = max_v * 0.18
+    inside_labels = [
+        lbl if (v is not None and not pd.isna(v) and abs(float(v)) >= inside_threshold) else ""
+        for lbl, v in zip(formatted, values)
+    ]
+    outside_labels = [
+        lbl if (v is not None and not pd.isna(v) and abs(float(v)) < inside_threshold) else ""
+        for lbl, v in zip(formatted, values)
+    ]
+    ax.bar_label(
+        bars, labels=inside_labels,
+        padding=-13, fontsize=LABEL_FONTSIZE_DATA - 1.5, color="white",
+        fontweight="bold",
+    )
+    ax.bar_label(
+        bars, labels=outside_labels,
+        padding=4, fontsize=LABEL_FONTSIZE_DATA - 1.5, color=TEXT_INK,
+        fontweight="medium",
+    )
+
+
 def _draw_clustered_bar(
     ax, spec: ChartSpec, resolved: list[dict], palette: list[str],
+    label_inside_top: bool = False,
 ) -> None:
     """Multiple bar series side-by-side per x category.
 
     If series span multiple years, x = month-of-year (1..12) so series
     align by month for prior-period / multi-year comparisons. Otherwise
     x = the union of date indices in chronological order.
+
+    When ``label_inside_top`` is True, value labels are drawn inside the
+    bar near the top edge in white (used by ``_draw_bar_with_line`` so
+    the line overlay does not cross outside-above labels). Bars too
+    short to legibly fit an inside label fall back to outside-above.
     """
     if not resolved:
         return
@@ -390,6 +713,9 @@ def _draw_clustered_bar(
                 all_years.add(d.year)
     multi_year = len(all_years) > 1
 
+    labels_legend: list[str] = []
+    colors_legend: list[str] = []
+
     if multi_year:
         x_labels = list(_MONTH_NAMES)
         x = list(range(12))
@@ -404,13 +730,14 @@ def _draw_clustered_bar(
                 ]
                 values.append(float(sum(cells)) if cells else float("nan"))
             offsets = [xi + (i - (n - 1) / 2) * bar_width for xi in x]
-            ax.bar(
-                offsets, values, width=bar_width,
-                color=palette[i % len(palette)],
-                label=entry["label"],
-            )
+            c = palette[i % len(palette)]
+            bars = ax.bar(offsets, values, width=bar_width, color=c,
+                          zorder=3, linewidth=0)
+            _label_clustered_bars(ax, bars, values, label_inside_top)
+            labels_legend.append(entry["label"])
+            colors_legend.append(c)
         ax.set_xticks(x)
-        ax.set_xticklabels(x_labels, rotation=45, ha="right")
+        ax.set_xticklabels(x_labels, rotation=0, ha="center")
     else:
         all_idx: list = []
         seen = set()
@@ -425,17 +752,19 @@ def _draw_clustered_bar(
         for i, (entry, s) in enumerate(zip(resolved, series_list)):
             values = [s.get(d, float("nan")) for d in all_idx]
             offsets = [xi + (i - (n - 1) / 2) * bar_width for xi in x]
-            ax.bar(
-                offsets, values, width=bar_width,
-                color=palette[i % len(palette)],
-                label=entry["label"],
-            )
+            c = palette[i % len(palette)]
+            bars = ax.bar(offsets, values, width=bar_width, color=c,
+                          zorder=3, linewidth=0)
+            _label_clustered_bars(ax, bars, values, label_inside_top)
+            labels_legend.append(entry["label"])
+            colors_legend.append(c)
         ax.set_xticks(x)
-        ax.set_xticklabels(_month_labels(all_idx), rotation=45, ha="right")
+        ax.set_xticklabels(_month_labels(all_idx), rotation=0, ha="center")
 
-    ax.set_title(spec.title, loc="left", fontsize=12, fontweight="bold")
-    ax.legend(loc="best", frameon=False, ncol=min(n, 4))
+    _style_axes(ax)
     _apply_axis_format(ax, spec)
+    if labels_legend:
+        _dot_legend(ax, labels_legend, colors_legend)
 
 
 def _draw_bar_with_line(
@@ -451,13 +780,12 @@ def _draw_bar_with_line(
     bar_resolved = resolved[:-1]
     line_entry = resolved[-1]
 
-    _draw_clustered_bar(ax, spec, bar_resolved, palette)
+    _draw_clustered_bar(ax, spec, bar_resolved, palette, label_inside_top=True)
 
     s = line_entry["raw"]
     if not isinstance(s, pd.Series):
         return
 
-    # Decide whether to align by month-of-year (multi-year) or by date.
     bar_series = [b["raw"] for b in bar_resolved if isinstance(b["raw"], pd.Series)]
     all_years: set[int] = set()
     for bs in bar_series + [s]:
@@ -489,9 +817,59 @@ def _draw_bar_with_line(
         values = [s.get(d, float("nan")) for d in all_idx]
 
     line_color = palette[len(bar_resolved) % len(palette)]
-    ax.plot(x, values, marker="o", linewidth=2, color=line_color,
-            label=line_entry["label"])
-    ax.legend(loc="best", frameon=False, ncol=min(len(resolved), 4))
+    smooth_x, smooth_y = _catmull_rom_smooth(x, values)
+    ax.plot(smooth_x, smooth_y, linewidth=1.8,
+            color=line_color, zorder=4,
+            solid_capstyle="round", solid_joinstyle="round")
+    ax.plot(x, values, linestyle="None", marker="o", markersize=4.0,
+            color=line_color, zorder=5,
+            markerfacecolor=line_color, markeredgecolor=line_color)
+    # Decide above/below per point: if the line value is below the max bar
+    # at that x, place the line label below the marker (avoids overlapping
+    # the bar value label sitting just above the bar top).
+    bar_max_per_x: list[float | None] = []
+    for xi in range(len(values)):
+        bar_vals_at_x: list[float] = []
+        for bs in bar_series:
+            if multi_year:
+                m = xi + 1
+                cells = [
+                    bv for bd, bv in bs.items()
+                    if isinstance(bd, dt.date) and bd.month == m
+                       and bv is not None and not pd.isna(bv)
+                ]
+                if cells:
+                    bar_vals_at_x.append(float(sum(cells)))
+            else:
+                d = all_idx[xi]
+                bv = bs.get(d) if d in bs.index else None
+                if bv is not None and not pd.isna(bv):
+                    bar_vals_at_x.append(float(bv))
+        bar_max_per_x.append(max(bar_vals_at_x) if bar_vals_at_x else None)
+
+    for xi, v in zip(x, values):
+        if v is None or pd.isna(v):
+            continue
+        bar_max = bar_max_per_x[xi]
+        below = bar_max is not None and v < bar_max
+        ax.annotate(
+            _format_eur(v), xy=(xi, v),
+            xytext=(0, -14 if below else 11),
+            textcoords="offset points", ha="center",
+            va="top" if below else "bottom",
+            fontsize=LABEL_FONTSIZE_DATA, color=line_color, fontweight="bold",
+            bbox=dict(facecolor="white", edgecolor="none",
+                      pad=1.5, alpha=0.85),
+        )
+
+    # Re-issue the legend including the line entry.
+    bar_labels = [r["label"] for r in bar_resolved]
+    bar_colors = [palette[i % len(palette)] for i in range(len(bar_resolved))]
+    _dot_legend(
+        ax,
+        bar_labels + [line_entry["label"]],
+        bar_colors + [line_color],
+    )
 
 
 def _draw_gauge(
@@ -528,8 +906,8 @@ def _draw_gauge(
 
     # Half-circle gauge (180° from left to right, drawn upper half).
     ax.set_axis_off()
-    ax.set_xlim(-1.2, 1.2)
-    ax.set_ylim(-0.3, 1.2)
+    ax.set_xlim(-1.15, 1.15)
+    ax.set_ylim(-0.18, 1.05)
     ax.set_aspect("equal")
 
     # Background arc.
@@ -546,15 +924,18 @@ def _draw_gauge(
         )
         ax.add_patch(fg)
 
-    # Center text — actual value.
-    ax.text(0, 0.15, _format_eur(actual), ha="center", va="center",
-            fontsize=22, fontweight="bold", color=fill_color)
-    # Title above the arc.
-    ax.text(0, 1.1, spec.title, ha="center", va="center",
-            fontsize=12, fontweight="bold")
-    # Start / target labels under the gauge.
-    ax.text(-1.0, -0.15, _format_eur(start), ha="center", va="top", fontsize=9)
-    ax.text(1.0, -0.15, _format_eur(target), ha="center", va="top", fontsize=9)
+    # Actual value sits at the centroid of the open half-disk inside the
+    # arc (≈ y = 4·r_inner / 3π ≈ 0.29 for r_inner = 0.68) so it reads as
+    # centred within the donut rather than tucked under the apex.
+    ax.text(0, 0.30, _format_eur(actual), ha="center", va="center",
+            fontsize=24, fontweight="bold", color=fill_color)
+    # Start / target labels right under the arc endpoints, top-aligned so
+    # they sit immediately below the diameter line. ha="left"/"right" keeps
+    # them inside x=[-1, +1] so bbox-tight crops symmetrically.
+    ax.text(-1.0, -0.04, _format_eur(start), ha="left", va="top",
+            fontsize=10, color=TEXT_MUTED)
+    ax.text(1.0, -0.04, _format_eur(target), ha="right", va="top",
+            fontsize=10, color=TEXT_MUTED)
 
 
 def _scalar_from(raw: Any) -> float | None:
@@ -632,19 +1013,24 @@ def _draw_bar_projection(
         return
 
     x = list(range(len(values)))
-    ax.bar(x, values, color=colors, width=0.7)
+    bars = ax.bar(x, values, color=colors, width=0.62, zorder=3, linewidth=0)
     ax.set_xticks(x)
-    ax.set_xticklabels(_month_labels(labels), rotation=45, ha="right")
-    ax.set_title(spec.title, loc="left", fontsize=12, fontweight="bold")
+    ax.set_xticklabels(_month_labels(labels), rotation=0, ha="center")
+    ax.bar_label(
+        bars,
+        labels=[_format_eur(v) if v is not None and not pd.isna(v) else ""
+                for v in values],
+        padding=4, fontsize=LABEL_FONTSIZE_DATA, color=TEXT_INK,
+        fontweight="medium",
+    )
 
-    import matplotlib.patches as mpatches
-    handles = [
-        mpatches.Patch(color=actual_color, label=resolved[0]["label"] if resolved else "Actual"),
-        mpatches.Patch(color=projected_color,
-                       label=resolved[1]["label"] if len(resolved) > 1 else "Rolling budget"),
+    legend_labels = [
+        resolved[0]["label"] if resolved else "Actual",
+        resolved[1]["label"] if len(resolved) > 1 else "Rolling budget",
     ]
-    ax.legend(handles=handles, loc="best", frameon=False)
+    _style_axes(ax)
     _apply_axis_format(ax, spec)
+    _dot_legend(ax, legend_labels, [actual_color, projected_color])
 
 
 def _draw_donut_pair(
@@ -660,6 +1046,7 @@ def _draw_donut_pair(
     axL = fig.add_subplot(1, 2, 1)
     axR = fig.add_subplot(1, 2, 2)
 
+    color_map = (spec.style or {}).get("color_map") or {}
     for sub_ax, entry in [(axL, resolved[0]), (axR, resolved[1])]:
         s = entry["raw"]
         if not isinstance(s, pd.Series):
@@ -668,18 +1055,20 @@ def _draw_donut_pair(
         s = s[s != 0]
         if s.empty:
             continue
-        colors = [palette[i % len(palette)] for i in range(len(s))]
-        sub_ax.pie(
-            s.values, labels=s.index.astype(str), colors=colors,
-            autopct="%1.1f%%", pctdistance=0.78,
-            wedgeprops=dict(width=0.4, edgecolor="white"),
+        colors = _slice_colors(list(s.index.astype(str)), color_map, palette)
+        labels = list(s.index.astype(str))
+        wedges, _ = sub_ax.pie(
+            s.values, labels=None, colors=colors,
+            wedgeprops=dict(width=0.36, edgecolor="white", linewidth=2.5),
+            startangle=90, counterclock=False,
         )
-        sub_ax.set_title(entry["label"], fontsize=11, fontweight="bold")
+        _annotate_donut_slices(sub_ax, wedges, s.values, labels, s.sum(), colors)
+        center_color = color_map.get("__center__", palette[0])
         sub_ax.text(0, 0, _format_eur(s.sum()), ha="center", va="center",
-                    fontsize=18, fontweight="bold", color=palette[0])
-
-    fig.suptitle(spec.title, x=0.05, y=0.98, ha="left",
-                 fontsize=12, fontweight="bold")
+                    fontsize=LABEL_FONTSIZE_DONUT_CENTER - 4,
+                    fontweight="bold", color=center_color)
+        sub_ax.set_xlim(-1.7, 1.7)
+        sub_ax.set_ylim(-1.4, 1.4)
 
 
 _DRAW: dict[str, Any] = {
@@ -696,13 +1085,72 @@ _DRAW: dict[str, Any] = {
 }
 
 
+_FIGSIZE_BY_TYPE: dict[str, tuple[float, float]] = {
+    "line": (13, 4.6),
+    "bar": (13, 4.2),
+    "stacked_bar": (13, 4.6),
+    "clustered_bar": (13, 4.6),
+    "bar_with_line": (13, 4.6),
+    "bar_projection": (13, 4.2),
+    "donut": (8.5, 6.0),
+    "donut_pair": (13, 6.0),
+    "kpi_card": (4, 2.5),
+    "gauge": (4, 3),
+    "table": (12, 6),
+    "waterfall": (13, 4.6),
+}
+
+
+def _figsize_for(chart_type: str) -> tuple[float, float]:
+    return _FIGSIZE_BY_TYPE.get(chart_type, (10, 4.5))
+
+
 def _apply_axis_format(ax, spec: ChartSpec) -> None:
     yfmt = spec.axes.get("y", {}).get("format") if spec.axes else None
     if yfmt == "EUR_thousands":
         ax.yaxis.set_major_formatter(
-            plt.FuncFormatter(lambda v, _: f"{v / 1000:,.0f}")
+            plt.FuncFormatter(
+                lambda v, _: f"€{v / 1000:,.0f}K" if v != 0 else "€0"
+            )
         )
-        ax.set_ylabel("EUR ’000")
+        ax.set_ylabel("")
+
+
+def _catmull_rom_smooth(
+    xs: list, ys: list, samples_per_segment: int = 24,
+) -> tuple[list[float], list[float]]:
+    """Smooth a polyline through (xs, ys) with a Catmull-Rom spline.
+
+    Drops NaN points before splining. Falls back to the raw polyline
+    if there are fewer than 3 valid points.
+    """
+    import numpy as np
+    pts = [
+        (float(x), float(y)) for x, y in zip(xs, ys)
+        if y is not None and not pd.isna(y)
+    ]
+    if len(pts) < 3:
+        return [p[0] for p in pts], [p[1] for p in pts]
+    arr = np.array(pts, dtype=float)
+    extended = np.vstack([arr[0:1], arr, arr[-1:]])
+    out_x: list[float] = []
+    out_y: list[float] = []
+    n_seg = len(arr) - 1
+    for i in range(n_seg):
+        p0, p1, p2, p3 = extended[i], extended[i+1], extended[i+2], extended[i+3]
+        ts = np.linspace(0.0, 1.0, samples_per_segment,
+                         endpoint=(i == n_seg - 1))
+        for t in ts:
+            t2, t3 = t * t, t * t * t
+            point = 0.5 * (
+                (2 * p1)
+                + (-p0 + p2) * t
+                + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2
+                + (-p0 + 3 * p1 - 3 * p2 + p3) * t3
+            )
+            out_x.append(float(point[0]))
+            out_y.append(float(point[1]))
+    return out_x, out_y
 
 
 def _format_eur(v: float) -> str:
@@ -756,11 +1204,14 @@ def render(
         )
         resolved.append({"label": d.label, "raw": raw})
 
-    palette = apply_brand(brand)
-    fig, ax = plt.subplots(figsize=(8, 4.5), dpi=120)
+    brand_palette = apply_brand(brand)
+    palette = _resolve_palette(spec, brand_palette)
+    figsize = _figsize_for(spec.chart_type)
+    fig, ax = plt.subplots(figsize=figsize, dpi=200)
     _DRAW[spec.chart_type](ax, spec, resolved, palette)
-    fig.tight_layout()
-    fig.savefig(png_path, bbox_inches="tight")
+    fig.tight_layout(pad=0.4)
+    fig.savefig(png_path, bbox_inches="tight", facecolor="white",
+                pad_inches=0.08)
     plt.close(fig)
 
     _write_sidecar(spec, anchor, start, end, resolved, json_path)

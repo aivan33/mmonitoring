@@ -1,0 +1,35 @@
+{
+  "chart_id": "sales_by_channel_ytd",
+  "client": "cupffee",
+  "title": "Sales by Channel — YTD",
+  "chart_type": "donut",
+  "source": "custom",
+  "period": {"kind": "current_month"},
+
+  "data": [
+    {
+      "label": "YTD",
+      "query": {
+        "kind": "aggregation",
+        "data": "Sales",
+        "level": "grp",
+        "scenario": "actual",
+        "window": "ytd"
+      }
+    }
+  ],
+
+  "style": {
+    "color_map": {
+      "Distributors":   "#E67D5A",
+      "Direct Sales":   "#E8A48E",
+      "Retail":         "#D4799F",
+      "Other":          "#0E2E2C",
+      "Other Revenue":  "#2A625E",
+      "Stirrers":       "#5A8AB8",
+      "__center__":     "#E67D5A"
+    }
+  },
+
+  "notes": "YTD sales by channel as a single donut. Per-channel colours kept consistent with the MTD donut so identical labels render in identical colours regardless of slice ordering."
+}

@@ -76,6 +76,7 @@
               ]},
               "subgroup": {"type": ["string", "null"]},
               "scenario": {"enum": ["actual", "pessimistic", "realistic", "optimistic"]},
+              "fallback_scenario": {"enum": ["actual", "pessimistic", "realistic", "optimistic"]},
               "level":    {"enum": ["data", "grp", "subgroup"]},
               "signs":    {"type": "array", "items": {"type": "number"}},
               "actual":   {"type": "object"},
@@ -98,6 +99,13 @@
       }
     },
 
-    "style": {"type": "object"}
+    "style": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "colors":    {"type": "array", "items": {"type": "string"}},
+        "color_map": {"type": "object", "additionalProperties": {"type": "string"}}
+      }
+    }
   }
 }

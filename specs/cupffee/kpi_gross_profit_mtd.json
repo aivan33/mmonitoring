@@ -1,5 +1,5 @@
 {
-  "chart_id": "kpi_gross_profit_mtd_gauge",
+  "chart_id": "kpi_gross_profit_mtd",
   "client": "cupffee",
   "title": "Gross Profit MTD",
   "chart_type": "gauge",
@@ -29,5 +29,5 @@
 
   "gauge": {"start": 0},
 
-  "notes": "Gross Profit = Sales − Cost of Sales (MTD). Production Costs is opex, not COGS — verified Dec 2025: Sales 124K - CoS 44.5K = 79.5K matches deck."
+  "notes": "Half-donut gauge: actual MTD gross profit vs realistic budget. Gross Profit = Sales − Cost of Sales (matches the slide-4 definition; Production Costs are reported separately under Direct Production)."
 }

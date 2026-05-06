@@ -1,0 +1,35 @@
+{
+  "chart_id": "sales_by_channel_mtd",
+  "client": "cupffee",
+  "title": "Sales by Channel — MTD",
+  "chart_type": "donut",
+  "source": "custom",
+  "period": {"kind": "current_month"},
+
+  "data": [
+    {
+      "label": "MTD",
+      "query": {
+        "kind": "aggregation",
+        "data": "Sales",
+        "level": "grp",
+        "scenario": "actual",
+        "window": "current"
+      }
+    }
+  ],
+
+  "style": {
+    "color_map": {
+      "Distributors":   "#E67D5A",
+      "Direct Sales":   "#E8A48E",
+      "Retail":         "#D4799F",
+      "Other":          "#0E2E2C",
+      "Other Revenue":  "#2A625E",
+      "Stirrers":       "#5A8AB8",
+      "__center__":     "#E67D5A"
+    }
+  },
+
+  "notes": "Current-month sales by channel as a single donut. Per-channel colours match the YTD donut for visual consistency."
+}

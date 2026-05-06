@@ -1,0 +1,39 @@
+{
+  "chart_id": "kpi_cash_balance_mtd",
+  "client": "cupffee",
+  "title": "Cash Balance MTD",
+  "chart_type": "gauge",
+  "source": "custom",
+  "period": {"kind": "current_month"},
+
+  "data": [
+    {
+      "label": "Actual",
+      "query": {
+        "kind": "value",
+        "data": "Cash and cash equivalents",
+        "grp": "Cash and cash equivalents",
+        "subgroup": "Cash and cash equivalents",
+        "scenario": "actual"
+      }
+    },
+    {
+      "label": "Budget (Realistic)",
+      "query": {
+        "kind": "value",
+        "data": "Cash and cash equivalents",
+        "grp": "Cash and cash equivalents",
+        "subgroup": "Cash and cash equivalents",
+        "scenario": "realistic"
+      }
+    }
+  ],
+
+  "gauge": {"start": 0},
+
+  "style": {
+    "colors": ["#3D8266", "#3D8266"]
+  },
+
+  "notes": "Half-donut gauge: end-of-month cash balance vs realistic-budget plan for the same period. Fill colour overridden to a muted green (matches the EBITDA gauge styling in the source deck) — palette[1] is the slot the gauge renderer reads."
+}
