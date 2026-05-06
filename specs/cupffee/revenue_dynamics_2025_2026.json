@@ -31,5 +31,9 @@
     "y": {"format": "EUR_thousands"}
   },
 
-  "notes": "Per-month clustered bars for 2025 and 2026 actuals. Deck slide 5 also shows 2024 — not loaded yet (would need a Taxonomy_Actuals_24.xlsx source). Revenue 2026 bars are present only for Jan-Mar (Q1 actuals)."
+  "style": {
+    "colors": ["#D4A24C", "#1F3D3A"]
+  },
+
+  "notes": "Per-month clustered bars for 2025 (mustard) and 2026 (dark teal) actuals. Revenue 2026 bars are present only for Jan-Mar (Q1 actuals)."
 }

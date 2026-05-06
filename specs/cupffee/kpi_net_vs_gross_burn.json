@@ -32,5 +32,9 @@
     "y": {"format": "EUR_thousands"}
   },
 
-  "notes": "Per slide 2 deck note: 'Gross Burn takes into account all expenses as they are written on the IS MTD'. Both lines plotted negative (outflow). Gross Burn = -(Cost of Sales + Production + R&D + S&M + G&A + Finance costs). Net Burn = Sales - opex_sum (negative when burning). Excludes Depreciation and Income tax (non-cash / below-the-line)."
+  "style": {
+    "colors": ["#1F3D3A", "#E67D5A"]
+  },
+
+  "notes": "Per slide 2 deck note: 'Gross Burn takes into account all expenses as they are written on the IS MTD'. Both lines plotted negative (outflow). Gross Burn (dark teal) = -(Cost of Sales + Production + R&D + S&M + G&A + Finance costs). Net Burn (orange) = Sales - opex_sum (negative when burning). Excludes Depreciation and Income tax (non-cash / below-the-line)."
 }

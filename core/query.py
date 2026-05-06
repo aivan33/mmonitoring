@@ -179,37 +179,55 @@ def get_trend(
     scenario: str = "actual",
     start_date: dt.date | str | None = None,
     end_date: dt.date | str | None = None,
+    fallback_scenario: str | None = None,
     *,
     client: str,
     entity: str | None = None,
 ) -> pd.Series:
     entity = _resolve_entity(client, entity)
-    where = ["data=?", "scenario=?", "entity=?"]
-    args: list[Any] = [data, scenario, entity]
-    if grp is not None:
-        where.append("grp=?")
-        args.append(grp)
-    if subgroup is not None:
-        where.append("subgroup=?")
-        args.append(subgroup)
-    if start_date is not None:
-        where.append("period_date>=?")
-        args.append(_to_iso(start_date))
-    if end_date is not None:
-        where.append("period_date<=?")
-        args.append(_to_iso(end_date))
 
-    sql = (
-        "SELECT period_date, SUM(value) FROM financials "
-        f"WHERE {' AND '.join(where)} "
-        "GROUP BY period_date ORDER BY period_date"
-    )
-    with _connect(client) as conn:
-        rows = conn.execute(sql, args).fetchall()
+    def _query(sc: str) -> pd.Series:
+        where = ["data=?", "scenario=?", "entity=?"]
+        args: list[Any] = [data, sc, entity]
+        if grp is not None:
+            where.append("grp=?")
+            args.append(grp)
+        if subgroup is not None:
+            where.append("subgroup=?")
+            args.append(subgroup)
+        if start_date is not None:
+            where.append("period_date>=?")
+            args.append(_to_iso(start_date))
+        if end_date is not None:
+            where.append("period_date<=?")
+            args.append(_to_iso(end_date))
 
-    idx = [dt.date.fromisoformat(d) for d, _ in rows]
-    vals = [v for _, v in rows]
-    return pd.Series(vals, index=idx, name=data)
+        sql = (
+            "SELECT period_date, SUM(value) FROM financials "
+            f"WHERE {' AND '.join(where)} "
+            "GROUP BY period_date ORDER BY period_date"
+        )
+        with _connect(client) as conn:
+            rows = conn.execute(sql, args).fetchall()
+        idx = [dt.date.fromisoformat(d) for d, _ in rows]
+        vals = [v for _, v in rows]
+        return pd.Series(vals, index=idx, name=data)
+
+    primary = _query(scenario)
+    if fallback_scenario is None:
+        return primary
+
+    fallback = _query(fallback_scenario)
+    combined_idx = sorted(set(primary.index) | set(fallback.index))
+    out: list[float | None] = []
+    for d in combined_idx:
+        pv = primary.get(d) if d in primary.index else None
+        if pv is not None and not pd.isna(pv):
+            out.append(pv)
+            continue
+        fv = fallback.get(d) if d in fallback.index else None
+        out.append(fv)
+    return pd.Series(out, index=combined_idx, name=data)
 
 
 # ---------------------------------------------------------------------------

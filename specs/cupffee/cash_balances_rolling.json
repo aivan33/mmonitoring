@@ -1,14 +1,14 @@
 {
-  "chart_id": "cash_balance_rolling_projection",
+  "chart_id": "cash_balances_rolling",
   "client": "cupffee",
-  "title": "Cash Balance — Rolling Projection 2026",
+  "title": "Cash Balances — Rolling 2026",
   "chart_type": "bar_projection",
   "source": "custom",
   "period": {"kind": "full_year", "year": 2026},
 
   "data": [
     {
-      "label": "Cash Balance",
+      "label": "Actual",
       "query": {
         "kind": "projection",
         "actual": {
@@ -35,5 +35,9 @@
     "y": {"format": "EUR_thousands"}
   },
 
-  "notes": "Per-user note: 'simulate the amounts based on the inflows/outflows from the budget but with the actual cash balance for the last month'. Implementation: actual Cash and cash equivalents Jan-Mar 2026, then for Apr-Dec project = previous_cash + sum(realistic CF Op + Inv + Fin) for that month, starting baseline = March actual cash."
+  "style": {
+    "colors": ["#E67D5A", "#2A625E"]
+  },
+
+  "notes": "Rolling cash projection: actual closing cash for Jan-Mar 2026 (orange), then projected forward Apr-Dec by adding the realistic-scenario monthly net cash change (operating + investing + financing) to the last actual baseline. Projected months render in dark teal."
 }
