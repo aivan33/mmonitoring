@@ -144,9 +144,65 @@ def almacena_assertions() -> list[Assertion]:
     ]
 
 
+def farada_assertions() -> list[Assertion]:
+    """Cells picked by reading the FaradaIC source files directly. Spans
+    IS / BS / CF Indirect, both ``actual`` (Jan/Feb 2026) and ``realistic``
+    (March 2026 budget). PY columns are not yet asserted — 2025 actuals
+    aren't in the source set."""
+    cli = "farada"
+
+    def agg(data: str, period: str, scenario: str = "actual") -> float:
+        return get_aggregation(data, period, scenario=scenario,
+                               client=cli, level="data").iloc[0]
+
+    return [
+        # IS actual (Feb 2026)
+        Assertion("IS Sales/Consumer Electronics/Eval-Kits 2026-02 actual",
+                  lambda: get_value("Sales", "Consumer Electronics",
+                                    "Eval-Kits", "2026-02-01", client=cli),
+                  2000.0),
+        Assertion("IS Sales total 2026-02 actual",
+                  lambda: agg("Sales", "2026-02-01"), 2500.0),
+        # BS actual (Feb 2026)
+        Assertion("BS Cash and cash equivalents 2026-02 actual",
+                  lambda: get_value("Cash and cash equivalents",
+                                    "Cash and cash equivalents",
+                                    "Cash and cash equivalents",
+                                    "2026-02-01", client=cli),
+                  1382641.0),
+        Assertion("BS Equity/Share capital 2026-02 actual",
+                  lambda: get_value("Equity", "Share capital", "Share capital",
+                                    "2026-02-01", client=cli),
+                  5436593.0),
+        # CF Indirect actual
+        Assertion("CF Op/Cash paid to suppliers 2026-02 actual",
+                  lambda: get_value("Cash Flow from Operating Activities",
+                                    "Cash paid to suppliers",
+                                    "Cash paid to suppliers",
+                                    "2026-02-01", client=cli),
+                  -219844.0),
+        Assertion("CF Op/Payment for personnel 2026-01 actual",
+                  lambda: get_value("Cash Flow from Operating Activities",
+                                    "Payment for personnel and social security",
+                                    "Payment for personnel and social security",
+                                    "2026-01-01", client=cli),
+                  -125859.0),
+        # IS realistic (Mar 2026 budget)
+        Assertion("IS Sales/Food Logistics/Eval-Kits 2026-03 realistic",
+                  lambda: get_value("Sales", "Food Logistics", "Eval-Kits",
+                                    "2026-03-01", scenario="realistic",
+                                    client=cli),
+                  1500.0),
+        Assertion("IS Sales total 2026-03 realistic",
+                  lambda: agg("Sales", "2026-03-01", scenario="realistic"),
+                  31500.0),
+    ]
+
+
 CLIENT_ASSERTIONS = {
     "cupffee":  cupffee_assertions,
     "almacena": almacena_assertions,
+    "farada":   farada_assertions,
 }
 
 

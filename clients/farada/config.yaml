@@ -1,0 +1,30 @@
+client_name: FaradaIC
+fiscal_year_start_month: 1
+currency: EUR
+as_of_date: 2026-03-01
+
+entities:
+  - farada
+
+# Files load in the order listed. On overlap, last loaded wins.
+# 2026 budget contains all three scenarios (Pessimistic / Realistic / Optimistic).
+# 2025 actuals are not yet available as a taxonomi file — PY columns in
+# variance reports will be NaN until that source lands.
+financial_sources:
+  - { file: raw/taxonomi_act_2026-02.xlsx, year: 2026, entity: farada, currency: EUR }
+  - { file: raw/taxonomi_bp_2026.xlsx,     year: 2026, entity: farada, currency: EUR }
+
+# Reporting pipeline configuration (Phase F2+).
+reporting:
+  mr_source: raw/mr_2026-03.xlsx
+  mapping: mapping.yaml
+  reference_pdf: reference/mm-fd-feb26.pdf
+  carryover_topics:
+    - Capitalization policy
+    - Intercompany agreement / transfer pricing
+    - KPI dashboard implementation
+    - Food Logistics deal progress
+  variance_thresholds:
+    flag_pct: 20        # |variance %| > flag_pct → flag for discussion
+    flag_eur: 10000     # OR |variance €| > flag_eur
+    reconcile_eur: 5    # MR-vs-taxonomi delta > reconcile_eur → list in reconcile.md

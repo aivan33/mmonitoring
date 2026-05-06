@@ -1,0 +1,195 @@
+# MR → Taxonomi mapping for FaradaIC.
+#
+# Each entry maps a taxonomi (data, grp, subgroup) key to a row in the
+# MR workbook. The loader (core/loaders/mr.py) reads the configured
+# month's column from `mr_row` of the named MR sheet and writes it into
+# the taxonomi at the keyed cell.
+#
+# Conventions:
+#   - mr_row is 1-indexed (matches openpyxl).
+#   - mr_label is the exact label at that MR row, INCLUDING any trailing
+#     whitespace. Used for the label-vs-row-index fallback: if mr_row's
+#     label doesn't match mr_label, the loader searches for mr_label in
+#     the sheet and warns. Catches accountant-side row reorders.
+#   - mr_row: null means there is no MR source for this taxonomi row —
+#     either it's a computed/derived figure (e.g. Working Capital), or
+#     it's a budget-only row never populated in actuals. The new month's
+#     cell stays empty; existing values in the taxonomi are preserved.
+#   - The taxonomi row order (and labels) is locked by the existing
+#     `taxonomi_act_2026-02.xlsx`. Do not reorder.
+#
+# Verified MR row numbers from clients/farada/MR_LAYOUT.md by inspection
+# on 2026-04-30. The downstream prompt's row numbers are off-by-one for
+# the P&L sheet — labels here are authoritative.
+#
+# **Sign-off pending from user before locking.**
+
+# ---------------------------------------------------------------------------
+# IS — taxonomi 'IS (Actual)' rows 2-56 ↔ MR sheet 'P&L' rows 4-82
+# ---------------------------------------------------------------------------
+mapping_is:
+  # Sales — Food Logistics (taxonomi rows 2-5 ↔ MR rows 6-9)
+  - { mr_row: 6,  mr_label: "Faraday-Ox Sensors",         data: "Sales", grp: "Food Logistics",       subgroup: "Faraday-Ox Sensors" }
+  - { mr_row: 7,  mr_label: "Eval-Kits",                  data: "Sales", grp: "Food Logistics",       subgroup: "Eval-Kits" }
+  - { mr_row: 8,  mr_label: "Integrated Sensors",         data: "Sales", grp: "Food Logistics",       subgroup: "Integrated Sensors" }
+  - { mr_row: 9,  mr_label: "Services/Subscriptions revenue", data: "Sales", grp: "Food Logistics",   subgroup: "Services/Subscriptions revenue" }
+  # Sales — Industrial IoT (taxonomi 6-9 ↔ MR 11-14)
+  - { mr_row: 11, mr_label: "Faraday-Ox Sensors",         data: "Sales", grp: "Industrial IoT",       subgroup: "Faraday-Ox Sensors" }
+  - { mr_row: 12, mr_label: "Eval-Kits",                  data: "Sales", grp: "Industrial IoT",       subgroup: "Eval-Kits" }
+  - { mr_row: 13, mr_label: "Integrated Sensors",         data: "Sales", grp: "Industrial IoT",       subgroup: "Integrated Sensors" }
+  - { mr_row: 14, mr_label: "Services/Subscriptions revenue", data: "Sales", grp: "Industrial IoT",   subgroup: "Services/Subscriptions revenue" }
+  # Sales — Consumer Electronics (taxonomi 10-13 ↔ MR 16-19)
+  - { mr_row: 16, mr_label: "Faraday-Ox Sensors",         data: "Sales", grp: "Consumer Electronics", subgroup: "Faraday-Ox Sensors" }
+  - { mr_row: 17, mr_label: "Eval-Kits",                  data: "Sales", grp: "Consumer Electronics", subgroup: "Eval-Kits" }
+  - { mr_row: 18, mr_label: "Integrated Sensors",         data: "Sales", grp: "Consumer Electronics", subgroup: "Integrated Sensors" }
+  - { mr_row: 19, mr_label: "Services/Subscriptions revenue", data: "Sales", grp: "Consumer Electronics", subgroup: "Services/Subscriptions revenue" }
+  # Sales — Medical Devices (taxonomi 14-17 ↔ MR 21-24)
+  - { mr_row: 21, mr_label: "Faraday-Ox Sensors",         data: "Sales", grp: "Medical Devices",      subgroup: "Faraday-Ox Sensors" }
+  - { mr_row: 22, mr_label: "Eval-Kits",                  data: "Sales", grp: "Medical Devices",      subgroup: "Eval-Kits" }
+  - { mr_row: 23, mr_label: "Integrated Sensors",         data: "Sales", grp: "Medical Devices",      subgroup: "Integrated Sensors" }
+  - { mr_row: 24, mr_label: "Services/Subscriptions revenue", data: "Sales", grp: "Medical Devices",  subgroup: "Services/Subscriptions revenue" }
+  # Sales — Other (taxonomi 18 ↔ MR 25)
+  - { mr_row: 25, mr_label: "Other",                       data: "Sales", grp: "Other",               subgroup: "Other" }
+  # Cost of Sales (taxonomi 19-25 ↔ MR 27-33; "DIRECT COSTS" header at MR r26 is skipped)
+  - { mr_row: 27, mr_label: "COGS",                        data: "Cost of Sales", grp: "COGS",                subgroup: "COGS" }
+  - { mr_row: 28, mr_label: "Maintenance",                 data: "Cost of Sales", grp: "Maintenance",         subgroup: "Maintenance" }
+  - { mr_row: 29, mr_label: "Rent",                        data: "Cost of Sales", grp: "Rent",                subgroup: "Rent" }
+  - { mr_row: 30, mr_label: "Logistics",                   data: "Cost of Sales", grp: "Logistics",           subgroup: "Logistics" }
+  - { mr_row: 31, mr_label: "Direct Amortization",         data: "Cost of Sales", grp: "Direct Amortization", subgroup: "Direct Amortization" }
+  - { mr_row: 32, mr_label: "Other",                       data: "Cost of Sales", grp: "Other",               subgroup: "Other" }
+  - { mr_row: 33, mr_label: "Total Payroll",               data: "Cost of Sales", grp: "Total Payroll",       subgroup: "Total Payroll" }
+  # R&D (taxonomi 26-31 ↔ MR 60-65; "R&D" header r58, "Total Payroll" header r59 are skipped)
+  - { mr_row: 60, mr_label: "Germany",                     data: "R&D", grp: "Total Payroll",      subgroup: "Germany" }
+  - { mr_row: 61, mr_label: "Serbia",                      data: "R&D", grp: "Total Payroll",      subgroup: "Serbia" }
+  - { mr_row: 62, mr_label: "Software and Tools",          data: "R&D", grp: "Software and Tools", subgroup: "Software and Tools" }
+  - { mr_row: 63, mr_label: "R&D Sensors",                 data: "R&D", grp: "R&D Sensors",        subgroup: "R&D Sensors" }
+  - { mr_row: 64, mr_label: "R&D Rent",                    data: "R&D", grp: "R&D Rent",           subgroup: "R&D Rent" }
+  - { mr_row: 65, mr_label: "Other R&D expenses",          data: "R&D", grp: "Other R&D expenses", subgroup: "Other R&D expenses" }
+  # S&M (taxonomi 32-39 ↔ MR 38-45; "S&M" header r37 is skipped)
+  - { mr_row: 38, mr_label: "Total Payroll",               data: "S&M", grp: "Total Payroll",          subgroup: "Total Payroll" }
+  - { mr_row: 39, mr_label: "Events/Exhibitions",          data: "S&M", grp: "Events/Exhibitions",     subgroup: "Events/Exhibitions" }
+  - { mr_row: 40, mr_label: "Travel (Hotels, Food, flights)", data: "S&M", grp: "Travel (Hotels, Food, Flights)", subgroup: "Travel (Hotels, Food, flights)" }
+  - { mr_row: 41, mr_label: "Digital Marketing",           data: "S&M", grp: "Digital Marketing",      subgroup: "Digital Marketing" }
+  - { mr_row: 42, mr_label: "Outsourced Marketing",        data: "S&M", grp: "Outsourced Marketing",   subgroup: "Outsourced Marketing" }
+  - { mr_row: 43, mr_label: "Content Marketing",           data: "S&M", grp: "Content Marketing",      subgroup: "Content Marketing" }
+  - { mr_row: 44, mr_label: "Sales Commissions",           data: "S&M", grp: "Sales Commissions",      subgroup: "Sales Commissions" }
+  - { mr_row: 45, mr_label: "Other marketing expenses",    data: "S&M", grp: "Other marketing expenses", subgroup: "Other marketing expenses" }
+  # G&A (taxonomi 40-49 ↔ MR 47-57; "G&A" header r46, "External Professional Services" header r53 are skipped)
+  - { mr_row: 47, mr_label: "Total Payroll",               data: "G&A", grp: "Total Payroll",     subgroup: "Total Payroll" }
+  - { mr_row: 48, mr_label: "Office Expenses",             data: "G&A", grp: "Office Expenses",   subgroup: "Office Expenses" }
+  - { mr_row: 49, mr_label: "Travel and Representative ",  data: "G&A", grp: "Travel and Representative", subgroup: "Travel and Representative" }
+  - { mr_row: 50, mr_label: "Software and Tools",          data: "G&A", grp: "Software and Tools", subgroup: "Software and Tools" }
+  - { mr_row: 51, mr_label: "Team Developments",           data: "G&A", grp: "Team Developments",  subgroup: "Team Developments" }
+  - { mr_row: 52, mr_label: "Insurance",                   data: "G&A", grp: "Insurance",          subgroup: "Insurance" }
+  - { mr_row: 54, mr_label: "Legal ",                      data: "G&A", grp: "External Professional Services", subgroup: "Legal" }
+  - { mr_row: 55, mr_label: "Accounting",                  data: "G&A", grp: "External Professional Services", subgroup: "Accounting" }
+  - { mr_row: 56, mr_label: "Other/ Consulting Services",  data: "G&A", grp: "External Professional Services", subgroup: "Other/ Consulting Services" }
+  - { mr_row: 57, mr_label: "Miscellaneous expenses",      data: "G&A", grp: "Miscellaneous expenses", subgroup: "Miscellaneous expenses" }
+  # Direct Amortization (adjustment) — taxonomi r50 ↔ MR r66.
+  # Sign convention differs between sources: MR stores it positive (D&A adds
+  # back into operating result); taxonomi stores it negative (subtracts from
+  # operating result). Flip sign on extraction so taxonomi sign convention
+  # is preserved for the new month.
+  - { mr_row: 66, mr_label: "Direct Amortization (adjustment)", sign: -1, data: "Direct Amortization (adjustment)", grp: "Direct Amortization (adjustment)", subgroup: "Direct Amortization (adjustment)" }
+  # Finance (taxonomi r51-52 ↔ MR r76-77)
+  - { mr_row: 76, mr_label: "Finance income",              data: "Finance income", grp: "Finance income", subgroup: "Finance income" }
+  - { mr_row: 77, mr_label: "Finance costs",               data: "Finance costs",  grp: "Finance costs",  subgroup: "Finance costs" }
+  # Depreciation and amortization (taxonomi r53-54 ↔ MR r72-73; "Depreciation and amortization" header r71 is skipped)
+  - { mr_row: 72, mr_label: " - Direct Amortization",      data: "Depreciation and amortization", grp: "Direct Amortization",   subgroup: "Direct Amortization" }
+  - { mr_row: 73, mr_label: " - Indirect Amortization",    data: "Depreciation and amortization", grp: "Indirect Amortization", subgroup: "Indirect Amortization" }
+  # Other non operational revenues — Grant financing (taxonomi r55 ↔ MR r68)
+  - { mr_row: 68, mr_label: "Grant financing",             data: "Other non operational revenues", grp: "Grant financing", subgroup: "Grant financing" }
+  # Income tax (taxonomi r56 ↔ MR r80)
+  - { mr_row: 80, mr_label: "Income tax (expense)",        data: "Income tax (expense)", grp: "Income tax (expense)", subgroup: "Income tax (expense)" }
+
+# ---------------------------------------------------------------------------
+# CF Indirect — taxonomi 'CF Indirect (Actual)' rows 2-22 ↔ MR sheet 'CF' rows 4-27
+# ---------------------------------------------------------------------------
+mapping_cf:
+  # Operating (taxonomi 2-8 ↔ MR 4-10)
+  - { mr_row: 4,  mr_label: "Cash received from customers ",           data: "Cash Flow from Operating Activities", grp: "Cash received from customers",         subgroup: "Cash received from customers" }
+  - { mr_row: 5,  mr_label: "Cash paid to suppliers",                  data: "Cash Flow from Operating Activities", grp: "Cash paid to suppliers",               subgroup: "Cash paid to suppliers" }
+  - { mr_row: 6,  mr_label: "Payment for personnel and social security ", data: "Cash Flow from Operating Activities", grp: "Payment for personnel and social security", subgroup: "Payment for personnel and social security" }
+  - { mr_row: 7,  mr_label: "Bank charges paid",                       data: "Cash Flow from Operating Activities", grp: "Bank charges paid",                    subgroup: "Bank charges paid" }
+  - { mr_row: 8,  mr_label: "Recovery/(repayment) of VAT",             data: "Cash Flow from Operating Activities", grp: "Recovery/(repayment) of VAT",          subgroup: "Recovery/(repayment) of VAT" }
+  - { mr_row: 9,  mr_label: "Corporate and other taxes, net",          data: "Cash Flow from Operating Activities", grp: "Corporate and other taxes, net",       subgroup: "Corporate and other taxes, net" }
+  - { mr_row: 10, mr_label: "Other",                                   data: "Cash Flow from Operating Activities", grp: "Other",                                subgroup: "Other" }
+  # Investing (taxonomi 9-11 ↔ MR 12-14; "Cash Flow from Operating Activities" subtotal at r11 is skipped)
+  - { mr_row: 12, mr_label: "CAPEX",                                   data: "Cash Flow from Investing Activities", grp: "CAPEX",                                subgroup: "CAPEX" }
+  - { mr_row: 13, mr_label: "Research and Development",                data: "Cash Flow from Investing Activities", grp: "Research and Development",             subgroup: "Research and Development" }
+  - { mr_row: 14, mr_label: "Other",                                   data: "Cash Flow from Investing Activities", grp: "Other",                                subgroup: "Other" }
+  # Financing (taxonomi 12-18 ↔ MR 16-22)
+  - { mr_row: 16, mr_label: "Capital Increase",                        data: "Cash Flow from Financing Activities", grp: "Capital Increase",                     subgroup: "Capital Increase" }
+  - { mr_row: 17, mr_label: "Grants",                                  data: "Cash Flow from Financing Activities", grp: "Grants",                               subgroup: "Grants" }
+  - { mr_row: 18, mr_label: "Loan Facility Financing",                 data: "Cash Flow from Financing Activities", grp: "Loan Facility Financing",              subgroup: "Loan Facility Financing" }
+  - { mr_row: 19, mr_label: "Repayment of Principal",                  data: "Cash Flow from Financing Activities", grp: "Repayment of Principal",               subgroup: "Repayment of Principal" }
+  - { mr_row: 20, mr_label: "Repayment of Interest",                   data: "Cash Flow from Financing Activities", grp: "Repayment of Interest",                subgroup: "Repayment of Interest" }
+  - { mr_row: 21, mr_label: "Other payments/ proceeds, net",           data: "Cash Flow from Financing Activities", grp: "Other payments/ proceeds, net",        subgroup: "Other payments/ proceeds, net" }
+  - { mr_row: 22, mr_label: "Distribution of dividends",               data: "Cash Flow from Financing Activities", grp: "Distribution of dividends",            subgroup: "Distribution of dividends" }
+  # Trailing taxonomi rows 19-22 — informational metrics at the bottom of CF Indirect.
+  - { mr_row: 25, mr_label: "Beginning Cash Balance",                  data: "Beginning Cash Balance", grp: "Beginning Cash Balance", subgroup: "Beginning Cash Balance" }
+  - { mr_row: 27, mr_label: "% Change in cash",                        data: "% Change in cash",       grp: "% Change in cash",       subgroup: "% Change in cash" }
+  # Capex (taxonomi r21) is a duplicate of CFI/CAPEX (r9) — same MR cell.
+  - { mr_row: 12, mr_label: "CAPEX",                                   data: "Capex",                  grp: "Capex",                  subgroup: "Capex" }
+  # Gross Fixed assets (taxonomi r22) is BS-derived (PP&E + Business Equipment + R&D Asset).
+  # No direct MR cell; the BS-derive logic lives in the loader (or stays null until then).
+  - { mr_row: null, mr_label: null, data: "Gross Fixed assets",  grp: "Gross Fixed assets",  subgroup: "Gross Fixed assets",
+      note: "Computed from BS: Non-tangible/R&D Asset + Tangible/PP&E + Tangible/Business Equipment. NEEDS USER CONFIRMATION." }
+
+# ---------------------------------------------------------------------------
+# BS — taxonomi 'BS (Actual)' rows 2-21 ↔ MR sheet 'BS' rows 4-33
+# ---------------------------------------------------------------------------
+mapping_bs:
+  # Non-current assets (taxonomi 2-4 ↔ MR 6, 8, 9)
+  - { mr_row: 6,  mr_label: "Research and Development Asset",          data: "Non-current assets", grp: "Non-tangible fixed assets",  subgroup: "Research and Development Asset" }
+  - { mr_row: 8,  mr_label: "PP&E",                                    data: "Non-current assets", grp: "Tangible fixed assets",      subgroup: "PP&E" }
+  - { mr_row: 9,  mr_label: "Business equipment",                      data: "Non-current assets", grp: "Tangible fixed assets",      subgroup: "Business Equipment" }
+  # Current assets (taxonomi 5-8 ↔ MR 13, 14, 15, 16)
+  - { mr_row: 13, mr_label: "Prepaid expenses",                        data: "Current assets", grp: "Prepaid expenses",                       subgroup: "Prepaid expenses" }
+  - { mr_row: 14, mr_label: "Loans (other negotiable instruments)",    data: "Current assets", grp: "Loans (other negotiable instruments)",   subgroup: "Loans (other negotiable instruments)" }
+  - { mr_row: 15, mr_label: "Other receivables ",                      data: "Current assets", grp: "Other receivables",                      subgroup: "Other receivables" }
+  - { mr_row: 16, mr_label: "Inventory",                               data: "Current assets", grp: "Inventory",                              subgroup: "Inventory" }
+  # Cash (taxonomi 9 ↔ MR 11; note MR label uses "Cash& Cash equivalents", taxonomi uses "Cash and cash equivalents")
+  - { mr_row: 11, mr_label: "Cash& Cash equivalents",                  data: "Cash and cash equivalents", grp: "Cash and cash equivalents", subgroup: "Cash and cash equivalents" }
+  # Trade receivables (taxonomi 10 ↔ MR 12)
+  - { mr_row: 12, mr_label: "Trade receivables",                       data: "Trade receivables", grp: "Trade receivables", subgroup: "Trade receivables" }
+  # Equity (taxonomi 11-12 ↔ MR 21-22; "EQUITY" subtotal at r20 is skipped)
+  - { mr_row: 21, mr_label: "Share capital",                           data: "Equity", grp: "Share capital",     subgroup: "Share capital" }
+  - { mr_row: 22, mr_label: "Retained earnings",                       data: "Equity", grp: "Retained earnings", subgroup: "Retained earnings" }
+  # Non-Current Liabilities (taxonomi 13-14 ↔ MR 24-25; "Long-term liabilities" subtotal at r23 is skipped)
+  - { mr_row: 24, mr_label: "Loan facility financing",                 data: "Non-Current Liabilities", grp: "Loan facility financing", subgroup: "Loan facility financing" }
+  - { mr_row: 25, mr_label: "Grants",                                  data: "Non-Current Liabilities", grp: "Grants",                  subgroup: "Grants" }
+  # Current Liabilities (taxonomi 15-17 ↔ MR 28, 29, 30; "Current liabilities" subtotal at r26 is skipped, "Trade payables" at r27 is mapped to taxonomi r18 below)
+  - { mr_row: 28, mr_label: "Payables to personnel",                   data: "Current Liabilities", grp: "Payables to personnel", subgroup: "Payables to personnel" }
+  - { mr_row: 29, mr_label: "Other payables ",                         data: "Current Liabilities", grp: "Other payables",        subgroup: "Other payables" }
+  - { mr_row: 30, mr_label: "Loans (other negotiable instruments)",    data: "Current Liabilities", grp: "Loans (other negotiable instruments)", subgroup: "Loans (other negotiable instruments)" }
+  # Trade payables (taxonomi 18 ↔ MR 27 — note MR has it inside Current liabilities section but taxonomi places it as its own data class)
+  - { mr_row: 27, mr_label: "Trade payables",                          data: "Trade payables", grp: "Trade payables", subgroup: "Trade payables" }
+  # Computed/derived KPI rows — no MR source.
+  - { mr_row: null, mr_label: null, data: "Accounts payable turnover", grp: "Accounts payable turnover", subgroup: "Accounts payable turnover",
+      note: "KPI ratio. Not in MR; computed if/when needed." }
+  - { mr_row: null, mr_label: null, data: "Account receivable turnover", grp: "Account receivable turnover", subgroup: "Account receivable turnover",
+      note: "KPI ratio. Not in MR; computed if/when needed." }
+  - { mr_row: null, mr_label: null, data: "Working Capital",           grp: "Working Capital",           subgroup: "Working Capital",
+      note: "Computed: Current assets − Current liabilities. Not in MR." }
+
+# ---------------------------------------------------------------------------
+# Known good prior-month discrepancies between MR and Taxonomi.
+# Reconcile (Phase F2 Task 8) groups these under "Known" so they don't
+# trip the alert each month.
+# ---------------------------------------------------------------------------
+known_discrepancies:
+  - period: 2026-01-01
+    statement: IS
+    taxonomi_key: ["Cost of Sales", "COGS", "COGS"]
+    reason: |
+      MR P&L COGS Jan = €2,403; taxonomi shows €52,403. Confirmed accounting-side as
+      a known intentional difference — taxonomi aggregates additional accounts that
+      MR booked elsewhere. Updated from accounting; do NOT flag as new deviation.
+  - period: 2026-02-01
+    statement: BS
+    taxonomi_key: ["Current assets", "Other receivables", "Other receivables"]
+    reason: |
+      MR BS Other receivables Feb = €83,072; taxonomi shows €33,072. Confirmed
+      accounting-side as a known intentional difference (€50K reclassification).
+      Updated from accounting; do NOT flag as new deviation.
