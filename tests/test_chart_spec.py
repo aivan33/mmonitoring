@@ -130,7 +130,7 @@ class TestChartSpec:
 
 class TestRealCupffeeSpec:
     def test_first_cupffee_spec_loads(self) -> None:
-        spec = load_spec("specs/cupffee/kpi_net_vs_gross_burn.json")
+        spec = load_spec("clients/cupffee/chart_specs/kpi_net_vs_gross_burn.json")
         assert spec.client == "cupffee"
         assert spec.chart_type == "line"
         assert spec.source == "custom"

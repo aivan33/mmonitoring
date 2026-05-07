@@ -1,4 +1,4 @@
-"""CLI: render every spec in ``specs/<client>/`` for a given anchor month.
+"""CLI: render every spec in ``clients/<client>/chart_specs/`` for a given anchor month.
 
 Usage:
     python scripts/build_charts.py <client> <YYYY-MM> [--only chart_id]
@@ -68,9 +68,9 @@ def main() -> int:
     cfg = _load_client_config(args.client)
     _require_use_case(cfg, args.client, "charts")
 
-    spec_dir = _REPO / "specs" / args.client
+    spec_dir = _REPO / "clients" / args.client / "chart_specs"
     if not spec_dir.exists():
-        print(f"error: no specs directory for client {args.client!r}",
+        print(f"error: no chart_specs directory at {spec_dir.relative_to(_REPO)}",
               file=sys.stderr)
         return 1
 

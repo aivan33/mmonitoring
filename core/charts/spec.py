@@ -1,6 +1,6 @@
 """Chart spec loader + JSON-schema validator.
 
-A chart spec is a small JSON document under ``specs/<client>/<chart_id>.json``
+A chart spec is a small JSON document under ``clients/<client>/chart_specs/<chart_id>.json``
 that describes one chart: title, type, data queries, period semantics, and
 brand overrides. The renderer reads the spec, calls ``core.query`` to resolve
 each data series, and emits PNG + a sidecar JSON snapshot.
