@@ -1,4 +1,4 @@
-"""CLI: render every spec in ``specs/<client>/`` for a given anchor month.
+"""CLI: render every spec in ``clients/<client>/chart_specs/`` for a given anchor month.
 
 Usage:
     python scripts/build_charts.py <client> <YYYY-MM> [--only chart_id]
@@ -34,12 +34,21 @@ def _parse_anchor(s: str) -> dt.date:
     return dt.date(year, month, 1)
 
 
-def _client_brand(client: str) -> dict:
+def _load_client_config(client: str) -> dict:
     config_path = _REPO / "clients" / client / "config.yaml"
     if not config_path.exists():
-        return {}
-    cfg = yaml.safe_load(config_path.read_text())
-    return cfg.get("brand", {}) or {}
+        raise SystemExit(f"error: no config.yaml for client {client!r}")
+    return yaml.safe_load(config_path.read_text()) or {}
+
+
+def _require_use_case(cfg: dict, client: str, required: str) -> None:
+    use_cases = cfg.get("use_cases") or []
+    if required not in use_cases:
+        raise SystemExit(
+            f"error: client {client!r} doesn't subscribe to use_case "
+            f"{required!r} (use_cases={use_cases}). Add it to "
+            f"clients/{client}/config.yaml or run a different script."
+        )
 
 
 def main() -> int:
@@ -56,9 +65,12 @@ def main() -> int:
         print(f"error: {exc}", file=sys.stderr)
         return 2
 
-    spec_dir = _REPO / "specs" / args.client
+    cfg = _load_client_config(args.client)
+    _require_use_case(cfg, args.client, "charts")
+
+    spec_dir = _REPO / "clients" / args.client / "chart_specs"
     if not spec_dir.exists():
-        print(f"error: no specs directory for client {args.client!r}",
+        print(f"error: no chart_specs directory at {spec_dir.relative_to(_REPO)}",
               file=sys.stderr)
         return 1
 
@@ -71,7 +83,7 @@ def main() -> int:
             return 1
 
     out_dir = _REPO / "clients" / args.client / "charts" / args.period
-    brand = _client_brand(args.client)
+    brand = cfg.get("brand", {}) or {}
 
     rendered = 0
     failed = 0
