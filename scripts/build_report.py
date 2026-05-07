@@ -22,8 +22,8 @@ import yaml
 # Make the repo root importable when run as a script.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from core.loaders.mr import extract_month
-from core.mr_to_taxonomi import populate_taxonomi
+from core.report.mr import extract_month
+from core.report.mr_to_taxonomi import populate_taxonomi
 
 
 _REPO = Path(__file__).resolve().parent.parent

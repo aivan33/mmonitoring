@@ -1,4 +1,4 @@
-"""Tests for core.query — the public surface that Stage 2 will import."""
+"""Tests for core.data.query — the public surface that Stage 2 will import."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from core.query import (
+from core.data.query import (
     get_aggregation, get_line, get_statement, get_trend,
     get_value, to_csv, ytd,
 )

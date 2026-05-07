@@ -1,4 +1,4 @@
-"""Tests for core.build.build_db — the orchestrator behind scripts/build_db.py."""
+"""Tests for core.data.build.build_db — the orchestrator behind scripts/build_db.py."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ import pytest
 import yaml
 from openpyxl import Workbook
 
-from core.build import build_db
+from core.data.build import build_db
 
 
 HEADER = ["Data", "Group", "Subgroup", "Jan", "Feb", "Mar", "Apr", "May",

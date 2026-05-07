@@ -1,4 +1,4 @@
-"""Tests for ``core/loaders/mr.py`` — extract_month."""
+"""Tests for ``core/report/mr.py`` — extract_month."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import pytest
 import yaml
 from openpyxl import Workbook
 
-from core.loaders.mr import extract_month
+from core.report.mr import extract_month
 
 
 _REPO = Path(__file__).resolve().parent.parent

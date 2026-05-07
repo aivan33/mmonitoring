@@ -1,4 +1,4 @@
-"""Tests for core.loaders.financials.load_taxonomy_xlsx.
+"""Tests for core.data.loaders.financials.load_taxonomy_xlsx.
 
 Synthetic xlsx fixtures are built per-test via openpyxl so each test stays
 self-contained (DAMP) and we don't need binary fixture files in the repo.
@@ -13,7 +13,7 @@ from typing import Iterable
 import pytest
 from openpyxl import Workbook
 
-from core.loaders.financials import FinancialRow, load_taxonomy_xlsx
+from core.data.loaders.financials import FinancialRow, load_taxonomy_xlsx
 
 
 HEADER = ["Data", "Group", "Subgroup", "Jan", "Feb", "Mar", "Apr", "May",

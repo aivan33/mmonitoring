@@ -14,8 +14,8 @@ from typing import Any
 
 import yaml
 
-from core.loaders.financials import FinancialRow, load_taxonomy_xlsx
-from core.schema import wipe_and_create
+from core.data.loaders.financials import FinancialRow, load_taxonomy_xlsx
+from core.data.schema import wipe_and_create
 
 # Python 3.12+ deprecated the default date adapter. Register an explicit
 # ISO-format adapter so date values insert cleanly.

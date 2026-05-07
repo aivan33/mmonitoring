@@ -13,8 +13,8 @@ from pathlib import Path
 # Make the repo root importable when run as a script.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from core.query import get_aggregation, get_trend, get_value, ytd
-from core.validation import Assertion, Result, run_assertions
+from core.data.query import get_aggregation, get_trend, get_value, ytd
+from core.data.validation import Assertion, Result, run_assertions
 
 
 def cupffee_assertions() -> list[Assertion]:

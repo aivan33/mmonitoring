@@ -32,7 +32,7 @@ import pandas as pd
 from dateutil.relativedelta import relativedelta
 
 from core.charts.spec import ChartSpec, DataSeries
-from core.query import get_aggregation, get_trend, get_value
+from core.data.query import get_aggregation, get_trend, get_value
 
 
 # ---------------------------------------------------------------------------
