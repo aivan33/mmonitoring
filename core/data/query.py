@@ -24,7 +24,8 @@ _ROOT: Path | None = None
 
 
 def _root() -> Path:
-    return _ROOT if _ROOT is not None else Path(__file__).resolve().parent.parent
+    # __file__ is core/data/query.py — go up 3 levels to repo root.
+    return _ROOT if _ROOT is not None else Path(__file__).resolve().parents[2]
 
 
 def _client_dir(client: str) -> Path:

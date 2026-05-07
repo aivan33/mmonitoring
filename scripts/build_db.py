@@ -11,7 +11,7 @@ from pathlib import Path
 # Make the repo root importable when run as a script.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from core.build import build_db
+from core.data.build import build_db
 
 
 def main() -> int:

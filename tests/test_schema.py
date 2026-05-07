@@ -1,4 +1,4 @@
-"""Tests for core.schema."""
+"""Tests for core.data.schema."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from core.schema import apply, wipe_and_create
+from core.data.schema import apply, wipe_and_create
 
 
 @pytest.fixture

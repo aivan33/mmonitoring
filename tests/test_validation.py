@@ -1,4 +1,4 @@
-"""Tests for core.validation.run_assertions."""
+"""Tests for core.data.validation.run_assertions."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from core.validation import Assertion, Result, run_assertions
+from core.data.validation import Assertion, Result, run_assertions
 
 
 class TestRunAssertions:

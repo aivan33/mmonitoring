@@ -25,14 +25,14 @@ def _write_xlsx(path: Path, sheets: dict[str, list[list]]) -> None:
 
 @pytest.fixture
 def make_test_client(tmp_path: Path, monkeypatch):
-    """Factory: build a synthetic client DB and point core.query at tmp_path.
+    """Factory: build a synthetic client DB and point core.data.query at tmp_path.
 
     Usage:
         make_test_client(name='demo', config={...}, files={'a.xlsx': {sheet: rows}})
         # → returns tmp_path with clients/demo/{config.yaml, raw/, data/demo.db}
     """
-    from core.build import build_db
-    from core import query as query_module
+    from core.data.build import build_db
+    from core.data import query as query_module
 
     def _factory(
         *,
