@@ -44,6 +44,16 @@ def _load_client_config(client: str) -> tuple[Path, dict]:
     return client_dir, yaml.safe_load(cfg_path.read_text())
 
 
+def _require_use_case(cfg: dict, client: str, required: str) -> None:
+    use_cases = cfg.get("use_cases") or []
+    if required not in use_cases:
+        raise SystemExit(
+            f"error: client {client!r} doesn't subscribe to use_case "
+            f"{required!r} (use_cases={use_cases}). Add it to "
+            f"clients/{client}/config.yaml or run a different script."
+        )
+
+
 def _phase_extract(
     client_dir: Path, config: dict, period: dt.date,
 ) -> Path:
@@ -122,6 +132,8 @@ def main() -> int:
     except FileNotFoundError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
+
+    _require_use_case(config, args.client, "report")
 
     run_all = args.all or not (args.extract_only or args.variance_only
                                 or args.commentary_only)
