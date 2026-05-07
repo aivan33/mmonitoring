@@ -1,4 +1,4 @@
-"""Tests for ``core/mr_to_taxonomi.py``."""
+"""Tests for ``core/report/mr_to_taxonomi.py``."""
 
 from __future__ import annotations
 
@@ -10,8 +10,8 @@ import pytest
 import yaml
 from openpyxl import Workbook, load_workbook
 
-from core.mr_to_taxonomi import populate_taxonomi
-from core.loaders.mr import extract_month
+from core.report.mr_to_taxonomi import populate_taxonomi
+from core.report.mr import extract_month
 
 
 HEADER = ["Data", "Group", "Subgroup", "Jan", "Feb", "Mar", "Apr", "May",
