@@ -70,6 +70,7 @@ def check_integrity(
     findings: list[Finding] = []
     findings.extend(_run_r4(conn, registry, tolerance))
     findings.extend(_run_r3(conn, registry))
+    findings.extend(_run_r6(conn, tolerance))
     if workbook_paths is not None:
         findings.extend(_run_r5(registry, list(workbook_paths)))
     return IntegrityReport(findings=tuple(findings))
@@ -169,6 +170,86 @@ def _run_r3(
                     ),
                 )
                 break  # one finding per row, even if both grp+subgroup match
+
+
+# ---------------------------------------------------------------------------
+# R6 — three-statement cash coherence
+# ---------------------------------------------------------------------------
+
+# Standard taxonomi names. If a client uses different labels for these rows
+# the check silently skips — better than false positives.
+_CASH_DATA = "Cash and cash equivalents"
+_CFO_DATA = "Cash Flow from Operating Activities"
+_CFI_DATA = "Cash Flow from Investing Activities"
+_CFF_DATA = "Cash Flow from Financing Activities"
+
+
+def _run_r6(
+    conn: sqlite3.Connection,
+    tolerance: float,
+) -> Iterable[Finding]:
+    """For every (scenario, entity) pair, walk consecutive periods and
+    verify ΔCash[t] ≈ CFO[t] + CFI[t] + CFF[t]. Skipped where the
+    statements/rows aren't present."""
+    combos = conn.execute(
+        "SELECT DISTINCT scenario, entity FROM financials WHERE statement='BS'"
+    ).fetchall()
+    for scenario, entity in combos:
+        periods = [
+            row[0] for row in conn.execute(
+                "SELECT DISTINCT period_date FROM financials "
+                "WHERE statement='BS' AND scenario=? AND entity=? "
+                "AND data=? "
+                "ORDER BY period_date",
+                (scenario, entity, _CASH_DATA),
+            ).fetchall()
+        ]
+        if len(periods) < 2:
+            continue
+        for prev, curr in zip(periods, periods[1:]):
+            cash_prev = _scalar(conn,
+                "SELECT SUM(value) FROM financials "
+                "WHERE statement='BS' AND scenario=? AND entity=? "
+                "AND data=? AND period_date=? AND is_aggregate=0",
+                (scenario, entity, _CASH_DATA, prev),
+            )
+            cash_curr = _scalar(conn,
+                "SELECT SUM(value) FROM financials "
+                "WHERE statement='BS' AND scenario=? AND entity=? "
+                "AND data=? AND period_date=? AND is_aggregate=0",
+                (scenario, entity, _CASH_DATA, curr),
+            )
+            if cash_prev is None or cash_curr is None:
+                continue
+            cf_total = sum(
+                _scalar(conn,
+                    "SELECT SUM(value) FROM financials "
+                    "WHERE statement='CF' AND scenario=? AND entity=? "
+                    "AND data=? AND period_date=? AND is_aggregate=0",
+                    (scenario, entity, data, curr),
+                ) or 0.0
+                for data in (_CFO_DATA, _CFI_DATA, _CFF_DATA)
+            )
+            delta_cash = cash_curr - cash_prev
+            mismatch = delta_cash - cf_total
+            if abs(mismatch) > tolerance:
+                yield Finding(
+                    rule="R6",
+                    severity="fail",
+                    name=f"cash-flow-coherence/{scenario}/{entity}",
+                    message=(
+                        f"{curr} ({scenario}/{entity}): ΔCash {delta_cash:+.2f} "
+                        f"vs CFO+CFI+CFF {cf_total:+.2f}, "
+                        f"mismatch {mismatch:+.2f} (tolerance {tolerance:.2f})"
+                    ),
+                )
+
+
+def _scalar(
+    conn: sqlite3.Connection, sql: str, args: tuple,
+) -> float | None:
+    row = conn.execute(sql, args).fetchone()
+    return None if row is None or row[0] is None else float(row[0])
 
 
 # ---------------------------------------------------------------------------

@@ -274,6 +274,80 @@ class TestR5CellTypeAudit:
 # IntegrityReport surface
 # ---------------------------------------------------------------------------
 
+class TestR6CashCoherence:
+    """BS Cash[t] − BS Cash[t−1] ≈ CFO[t] + CFI[t] + CFF[t] within tolerance.
+    Skipped silently if any of the required statements/rows are absent."""
+
+    def _seed_cash(
+        self, db: sqlite3.Connection, *, jan: float, feb: float,
+        cfo_feb: float, cfi_feb: float = 0.0, cff_feb: float = 0.0,
+    ) -> None:
+        # BS Cash for two consecutive months.
+        for period, value in (("2025-01-01", jan), ("2025-02-01", feb)):
+            _insert(db, statement="BS",
+                    data="Cash and cash equivalents",
+                    grp="Cash and cash equivalents",
+                    subgroup="Cash and cash equivalents",
+                    period=period, value=value)
+        # CF in Feb only (Jan has no flow data; Feb measures Jan→Feb movement).
+        _insert(db, statement="CF",
+                data="Cash Flow from Operating Activities",
+                grp="x", subgroup="y",
+                period="2025-02-01", value=cfo_feb)
+        if cfi_feb:
+            _insert(db, statement="CF",
+                    data="Cash Flow from Investing Activities",
+                    grp="x", subgroup="y",
+                    period="2025-02-01", value=cfi_feb)
+        if cff_feb:
+            _insert(db, statement="CF",
+                    data="Cash Flow from Financing Activities",
+                    grp="x", subgroup="y",
+                    period="2025-02-01", value=cff_feb)
+        db.commit()
+
+    def test_balanced_no_finding(self, db: sqlite3.Connection) -> None:
+        # Cash 1000 → 1100 (delta +100); CFO +100, CFI/CFF 0. Balances.
+        self._seed_cash(db, jan=1000, feb=1100, cfo_feb=100)
+        report = check_integrity(db, registry={})
+        assert [f for f in report.findings if f.rule == "R6"] == []
+
+    def test_unbalanced_fails(self, db: sqlite3.Connection) -> None:
+        # Cash delta +100; CF sum +50. €50 mismatch — way above €1 tolerance.
+        self._seed_cash(db, jan=1000, feb=1100, cfo_feb=50)
+        report = check_integrity(db, registry={})
+        r6 = [f for f in report.findings if f.rule == "R6"]
+        assert len(r6) == 1
+        assert r6[0].severity == "fail"
+        assert "2025-02-01" in r6[0].message
+
+    def test_within_tolerance_no_fail(self, db: sqlite3.Connection) -> None:
+        # 50 cents off (rounding) → under €1 tolerance.
+        self._seed_cash(db, jan=1000, feb=1100, cfo_feb=100.5)
+        report = check_integrity(db, registry={})
+        assert [f for f in report.findings if f.rule == "R6"] == []
+
+    def test_no_bs_silent_skip(self, db: sqlite3.Connection) -> None:
+        # Only CF data → R6 has no t-1/t pair to compare. Skip.
+        _insert(db, statement="CF",
+                data="Cash Flow from Operating Activities",
+                grp="x", subgroup="y",
+                period="2025-02-01", value=100)
+        db.commit()
+        report = check_integrity(db, registry={})
+        assert [f for f in report.findings if f.rule == "R6"] == []
+
+    def test_single_period_silent_skip(self, db: sqlite3.Connection) -> None:
+        _insert(db, statement="BS",
+                data="Cash and cash equivalents",
+                grp="Cash and cash equivalents",
+                subgroup="Cash and cash equivalents",
+                period="2025-01-01", value=1000)
+        db.commit()
+        report = check_integrity(db, registry={})
+        assert [f for f in report.findings if f.rule == "R6"] == []
+
+
 class TestReportSurface:
     def test_failures_warnings_partition(self) -> None:
         rep = IntegrityReport(findings=(
