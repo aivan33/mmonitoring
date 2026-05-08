@@ -25,9 +25,9 @@ from core.data.schema import wipe_and_create
 def _insert(
     conn: sqlite3.Connection,
     *,
-    data: str,
-    grp: str,
-    subgroup: str,
+    data: str = "Sales",
+    grp: str = "g",
+    subgroup: str = "x",
     value: float,
     period: str = "2025-01-01",
     scenario: str = "actual",
@@ -346,6 +346,66 @@ class TestR6CashCoherence:
         db.commit()
         report = check_integrity(db, registry={})
         assert [f for f in report.findings if f.rule == "R6"] == []
+
+
+class TestR7PeriodContinuity:
+    """No missing months mid-range. Range start ≠ Jan 1 is fine; gaps inside
+    the loaded range are not."""
+
+    def test_continuous_range_no_finding(self, db: sqlite3.Connection) -> None:
+        for m in range(1, 13):
+            _insert(db, period=f"2025-{m:02d}-01", value=100, subgroup=f"x{m}")
+        db.commit()
+        report = check_integrity(db, registry={})
+        assert [f for f in report.findings if f.rule == "R7"] == []
+
+    def test_gap_mid_range_fails(self, db: sqlite3.Connection) -> None:
+        # Jan, Feb, Apr — March missing.
+        for period in ("2025-01-01", "2025-02-01", "2025-04-01"):
+            _insert(db, period=period, value=100, subgroup=period)
+        db.commit()
+        report = check_integrity(db, registry={})
+        r7 = [f for f in report.findings if f.rule == "R7"]
+        assert len(r7) == 1
+        assert r7[0].severity == "fail"
+        assert "2025-03" in r7[0].message
+
+    def test_starts_mid_year_no_finding(self, db: sqlite3.Connection) -> None:
+        # Mar onward — fine; gap detection is only for INSIDE the range.
+        for m in range(3, 13):
+            _insert(db, period=f"2025-{m:02d}-01", value=100, subgroup=f"x{m}")
+        db.commit()
+        report = check_integrity(db, registry={})
+        assert [f for f in report.findings if f.rule == "R7"] == []
+
+
+class TestR9ScenarioCoverage:
+    """Warn (not fail) when one scenario has materially fewer periods than
+    another for the same (entity, statement)."""
+
+    def test_equal_coverage_no_finding(self, db: sqlite3.Connection) -> None:
+        for sc in ("actual", "realistic"):
+            for m in (1, 2):
+                _insert(db, period=f"2025-{m:02d}-01", value=100,
+                        scenario=sc, subgroup=f"{sc}{m}")
+        db.commit()
+        report = check_integrity(db, registry={})
+        assert [f for f in report.findings if f.rule == "R9"] == []
+
+    def test_scenario_with_fewer_periods_warns(
+        self, db: sqlite3.Connection,
+    ) -> None:
+        # Actual covers Jan-Mar 2025; realistic only Mar 2025.
+        for m in (1, 2, 3):
+            _insert(db, period=f"2025-{m:02d}-01", value=100,
+                    scenario="actual", subgroup=f"a{m}")
+        _insert(db, period="2025-03-01", value=100,
+                scenario="realistic", subgroup="r")
+        db.commit()
+        report = check_integrity(db, registry={})
+        r9 = [f for f in report.findings if f.rule == "R9"]
+        assert len(r9) >= 1
+        assert all(f.severity == "warn" for f in r9)
 
 
 class TestReportSurface:

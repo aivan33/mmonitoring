@@ -71,6 +71,8 @@ def check_integrity(
     findings.extend(_run_r4(conn, registry, tolerance))
     findings.extend(_run_r3(conn, registry))
     findings.extend(_run_r6(conn, tolerance))
+    findings.extend(_run_r7(conn))
+    findings.extend(_run_r9(conn))
     if workbook_paths is not None:
         findings.extend(_run_r5(registry, list(workbook_paths)))
     return IntegrityReport(findings=tuple(findings))
@@ -250,6 +252,93 @@ def _scalar(
 ) -> float | None:
     row = conn.execute(sql, args).fetchone()
     return None if row is None or row[0] is None else float(row[0])
+
+
+# ---------------------------------------------------------------------------
+# R7 — period continuity
+# ---------------------------------------------------------------------------
+
+def _run_r7(conn: sqlite3.Connection) -> Iterable[Finding]:
+    """For each (scenario, entity, statement), every month between the
+    earliest and latest loaded period must be present. Range start ≠ Jan 1
+    is fine; gaps inside the range are not."""
+    combos = conn.execute(
+        "SELECT DISTINCT scenario, entity, statement FROM financials"
+    ).fetchall()
+    for scenario, entity, statement in combos:
+        periods = sorted(
+            row[0] for row in conn.execute(
+                "SELECT DISTINCT period_date FROM financials "
+                "WHERE scenario=? AND entity=? AND statement=?",
+                (scenario, entity, statement),
+            ).fetchall()
+        )
+        if len(periods) < 2:
+            continue
+        present = set(periods)
+        expected = _months_between(periods[0], periods[-1])
+        missing = sorted(expected - present)
+        if missing:
+            yield Finding(
+                rule="R7",
+                severity="fail",
+                name=f"period-continuity/{scenario}/{entity}/{statement}",
+                message=(
+                    f"{scenario}/{entity}/{statement}: missing months in range "
+                    f"{periods[0]}..{periods[-1]}: {missing}"
+                ),
+            )
+
+
+def _months_between(start: str, end: str) -> set[str]:
+    """All YYYY-MM-01 ISO dates from ``start`` through ``end`` inclusive."""
+    import datetime as dt
+    s = dt.date.fromisoformat(start)
+    e = dt.date.fromisoformat(end)
+    out: set[str] = set()
+    cur = s
+    while cur <= e:
+        out.add(cur.isoformat())
+        # Step to next first-of-month.
+        if cur.month == 12:
+            cur = dt.date(cur.year + 1, 1, 1)
+        else:
+            cur = dt.date(cur.year, cur.month + 1, 1)
+    return out
+
+
+# ---------------------------------------------------------------------------
+# R9 — scenario coverage parity
+# ---------------------------------------------------------------------------
+
+def _run_r9(conn: sqlite3.Connection) -> Iterable[Finding]:
+    """For each (entity, statement), warn if scenarios cover materially
+    different period ranges. Common case: 'realistic' budget shorter than
+    'actual' history — useful to know but not necessarily wrong."""
+    combos = conn.execute(
+        "SELECT DISTINCT entity, statement FROM financials"
+    ).fetchall()
+    for entity, statement in combos:
+        rows = conn.execute(
+            "SELECT scenario, COUNT(DISTINCT period_date) "
+            "FROM financials WHERE entity=? AND statement=? "
+            "GROUP BY scenario",
+            (entity, statement),
+        ).fetchall()
+        if len(rows) < 2:
+            continue
+        max_count = max(c for _, c in rows)
+        for scenario, count in rows:
+            if count < max_count:
+                yield Finding(
+                    rule="R9",
+                    severity="warn",
+                    name=f"scenario-coverage/{entity}/{statement}/{scenario}",
+                    message=(
+                        f"{scenario}/{entity}/{statement}: covers {count} "
+                        f"period(s); other scenarios cover up to {max_count}"
+                    ),
+                )
 
 
 # ---------------------------------------------------------------------------
