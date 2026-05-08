@@ -20,7 +20,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from core.charts.render import render
-from core.charts.spec import SpecValidationError, load_spec
+from core.charts.spec import SpecValidationError, lint_spec, load_spec
 
 
 _REPO = Path(__file__).resolve().parent.parent
@@ -87,7 +87,14 @@ def main() -> int:
 
     rendered = 0
     failed = 0
+    lint_warnings = 0
     for spec_path in spec_files:
+        for finding in lint_spec(spec_path):
+            print(
+                f"  ! {finding.spec_id} [{finding.rule}]: {finding.message}",
+                file=sys.stderr,
+            )
+            lint_warnings += 1
         try:
             spec = load_spec(spec_path)
         except SpecValidationError as exc:
@@ -106,7 +113,10 @@ def main() -> int:
                   file=sys.stderr)
             failed += 1
 
-    print(f"\n{args.client} {args.period}: rendered {rendered}, failed {failed}")
+    print(
+        f"\n{args.client} {args.period}: rendered {rendered}, "
+        f"failed {failed}, lint warnings {lint_warnings}"
+    )
 
     # Build index.html browsing the rendered charts.
     if rendered:

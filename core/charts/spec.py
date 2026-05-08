@@ -56,6 +56,42 @@ class ChartSpec:
         return self.source == "platform"
 
 
+@dataclass(frozen=True)
+class SpecLintFinding:
+    rule: str
+    spec_id: str
+    message: str
+
+
+def lint_spec(path: str | Path) -> list[SpecLintFinding]:
+    """Soft checks beyond JSON-schema validation. R10: flag inline
+    ``data + signs`` arrays of >1 elements — those should reference a
+    registered aggregate so the formula is named once and verified by R4.
+
+    Returns warnings; does not raise. Use ``load_spec`` for hard schema
+    validation.
+    """
+    path = Path(path)
+    raw = json.loads(path.read_text())
+    spec_id = raw.get("chart_id", path.stem)
+    findings: list[SpecLintFinding] = []
+    for series in raw.get("data", []):
+        query = series.get("query") or {}
+        data = query.get("data")
+        if isinstance(data, list) and len(data) > 1:
+            findings.append(SpecLintFinding(
+                rule="R10",
+                spec_id=spec_id,
+                message=(
+                    f"data series {series.get('label', '?')!r} uses an "
+                    f"inline data+signs array ({len(data)} elements); "
+                    f"register the formula as an aggregate and reference "
+                    f"it by name so R4 can verify it."
+                ),
+            ))
+    return findings
+
+
 def load_spec(path: str | Path) -> ChartSpec:
     """Read ``path``, validate against the JSON schema, return ChartSpec.
 
