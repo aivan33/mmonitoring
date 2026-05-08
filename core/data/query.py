@@ -309,6 +309,97 @@ def get_line(
 
 
 # ---------------------------------------------------------------------------
+# runway_months
+# ---------------------------------------------------------------------------
+
+# Standard taxonomi paths. Override via the ``cash_path`` / ``burn_path``
+# parameters if a client uses different labels.
+_DEFAULT_CASH_PATH = (
+    "Cash and cash equivalents",
+    "Cash and cash equivalents",
+    "Cash and cash equivalents",
+)
+_DEFAULT_BURN_PATHS = {
+    "gross": ("KPI", "Burn", "Gross"),
+    "net":   ("KPI", "Burn", "Net"),
+}
+
+
+def runway_months(
+    client: str,
+    period: dt.date | str,
+    burn_kind: str,
+    *,
+    window: int = 1,
+    cash_path: tuple[str, str, str] = _DEFAULT_CASH_PATH,
+    burn_path: tuple[str, str, str] | None = None,
+    scenario: str = "actual",
+    entity: str | None = None,
+) -> float | None:
+    """Return cash[period] / |burn| in months, or None if either is missing.
+
+    Args:
+        burn_kind: ``"gross"`` or ``"net"``. Picks a default ``burn_path``
+            of ``("KPI", "Burn", "Gross"|"Net")``. Pass ``burn_path``
+            explicitly to override.
+        window: ``1`` = spot-month burn (default). ``N>1`` = trailing
+            N-month average ending at ``period``.
+    """
+    if burn_kind not in _DEFAULT_BURN_PATHS:
+        raise ValueError(
+            f"burn_kind must be 'gross' or 'net', got {burn_kind!r}"
+        )
+    if burn_path is None:
+        burn_path = _DEFAULT_BURN_PATHS[burn_kind]
+    if window < 1:
+        raise ValueError(f"window must be >= 1, got {window}")
+
+    cash = get_value(*cash_path, period, scenario=scenario,
+                     client=client, entity=entity)
+    if cash is None:
+        return None
+
+    burn = _resolve_burn(client, period, burn_path, window, scenario, entity)
+    if burn is None or burn == 0:
+        return None
+
+    return cash / abs(burn)
+
+
+def _resolve_burn(
+    client: str,
+    period: dt.date | str,
+    burn_path: tuple[str, str, str],
+    window: int,
+    scenario: str,
+    entity: str | None,
+) -> float | None:
+    if window == 1:
+        return get_value(*burn_path, period, scenario=scenario,
+                         client=client, entity=entity)
+
+    # Trailing N-month average ending at ``period`` (inclusive).
+    end = period if isinstance(period, dt.date) else dt.date.fromisoformat(period)
+    months_back = window - 1
+    year = end.year
+    month = end.month - months_back
+    while month <= 0:
+        month += 12
+        year -= 1
+    start = dt.date(year, month, 1)
+
+    series = get_trend(
+        burn_path[0], grp=burn_path[1], subgroup=burn_path[2],
+        scenario=scenario, start_date=start, end_date=end,
+        client=client, entity=entity,
+    )
+    series = series.dropna()
+    if series.empty:
+        return None
+    return float(series.mean())
+
+
+# ---------------------------------------------------------------------------
 # to_csv
 # ---------------------------------------------------------------------------
 
