@@ -7,6 +7,7 @@ unit-testable without a CLI shell.
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
 import sqlite3
 import time
 from pathlib import Path
@@ -94,7 +95,11 @@ def build_db(client: str, base_dir: str | Path) -> dict[str, Any]:
                 "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 rows,
             )
-            summary["sources"].append({"file": src["file"], "rows": len(rows)})
+            summary["sources"].append({
+                "file": src["file"],
+                "rows": len(rows),
+                **_provenance(file_path),
+            })
         _tag_aggregates(conn, client_dir)
         conn.commit()
         summary["financials_rows"] = conn.execute(
@@ -103,6 +108,16 @@ def build_db(client: str, base_dir: str | Path) -> dict[str, Any]:
 
     summary["duration_s"] = round(time.perf_counter() - started, 3)
     return summary
+
+
+def _provenance(path: Path) -> dict[str, Any]:
+    """File fingerprint for the build report — staleness is visible at a glance."""
+    stat = path.stat()
+    return {
+        "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        "mtime": dt.datetime.fromtimestamp(stat.st_mtime).isoformat(timespec="seconds"),
+        "size_bytes": stat.st_size,
+    }
 
 
 def _tag_aggregates(conn: sqlite3.Connection, client_dir: Path) -> None:

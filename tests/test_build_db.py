@@ -178,6 +178,24 @@ class TestBuildDb:
             ).fetchone()[0]
         assert value == 999.0
 
+    def test_summary_records_provenance_per_source(self, tmp_path: Path) -> None:
+        _setup_client(tmp_path, "demo",
+            config={
+                "entities": ["demo"],
+                "financial_sources": [
+                    {"file": "raw/a.xlsx", "year": 2025, "entity": "demo"},
+                ],
+            },
+            files={"a.xlsx": {"IS (Actual)": [HEADER,
+                ["Sales", "g", "x", *([10.0] * 12)]]}},
+        )
+        summary = build_db("demo", tmp_path)
+        src = summary["sources"][0]
+        assert src["file"] == "raw/a.xlsx"
+        assert "sha256" in src and len(src["sha256"]) == 64
+        assert "mtime" in src and "T" in src["mtime"]   # ISO datetime
+        assert "size_bytes" in src and src["size_bytes"] > 0
+
     def test_summary_lists_per_source_rows(self, tmp_path: Path) -> None:
         _setup_client(tmp_path, "demo",
             config={
