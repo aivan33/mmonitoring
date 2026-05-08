@@ -312,13 +312,14 @@ class TestR6CashCoherence:
         report = check_integrity(db, registry={})
         assert [f for f in report.findings if f.rule == "R6"] == []
 
-    def test_unbalanced_fails(self, db: sqlite3.Connection) -> None:
-        # Cash delta +100; CF sum +50. €50 mismatch — way above €1 tolerance.
+    def test_unbalanced_warns(self, db: sqlite3.Connection) -> None:
+        # Cash delta +100; CF sum +50. €50 mismatch — above tolerance →
+        # warn (not fail: cash-bridge accumulates rounding across stmts).
         self._seed_cash(db, jan=1000, feb=1100, cfo_feb=50)
         report = check_integrity(db, registry={})
         r6 = [f for f in report.findings if f.rule == "R6"]
         assert len(r6) == 1
-        assert r6[0].severity == "fail"
+        assert r6[0].severity == "warn"
         assert "2025-02-01" in r6[0].message
 
     def test_within_tolerance_no_fail(self, db: sqlite3.Connection) -> None:

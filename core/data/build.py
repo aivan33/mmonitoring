@@ -16,8 +16,17 @@ from typing import Any
 import yaml
 
 from core.data.aggregate_formulas import aggregate_keys, load_registry
+from core.data.integrity import IntegrityReport, check_integrity
 from core.data.loaders.financials import FinancialRow, load_taxonomy_xlsx
 from core.data.schema import wipe_and_create
+
+
+class IntegrityError(RuntimeError):
+    """Raised when build_db detects integrity failures.
+
+    The build still emits the load report so the user can inspect the
+    findings — read the .load_report.md alongside the DB.
+    """
 
 # Python 3.12+ deprecated the default date adapter. Register an explicit
 # ISO-format adapter so date values insert cleanly.
@@ -71,9 +80,11 @@ def build_db(client: str, base_dir: str | Path) -> dict[str, Any]:
         "duration_s": 0.0,
     }
 
+    file_paths: list[Path] = []
     with sqlite3.connect(db_path) as conn:
         for src in sources:
             file_path = client_dir / src["file"]
+            file_paths.append(file_path)
             currency = src.get("currency", "EUR")
             fx_rate = fx_rates.get(currency)
             if currency != "EUR" and fx_rate is None:
@@ -101,13 +112,88 @@ def build_db(client: str, base_dir: str | Path) -> dict[str, Any]:
                 **_provenance(file_path),
             })
         _tag_aggregates(conn, client_dir)
+        registry = load_registry(client_dir)
+        integrity = check_integrity(conn, registry, workbook_paths=file_paths)
         conn.commit()
         summary["financials_rows"] = conn.execute(
             "SELECT COUNT(*) FROM financials"
         ).fetchone()[0]
 
     summary["duration_s"] = round(time.perf_counter() - started, 3)
+    summary["integrity"] = {
+        "failures": len(integrity.failures),
+        "warnings": len(integrity.warnings),
+    }
+
+    report_path = db_path.with_suffix(".load_report.md")
+    report_path.write_text(_format_load_report(client, summary, integrity))
+    summary["load_report"] = str(report_path)
+
+    if integrity.has_failures():
+        raise IntegrityError(
+            f"build_db: integrity check failed for {client!r} "
+            f"({len(integrity.failures)} failure(s)); see {report_path}"
+        )
+
     return summary
+
+
+def _format_load_report(
+    client: str,
+    summary: dict[str, Any],
+    integrity: IntegrityReport,
+) -> str:
+    """Render a markdown report for clients/<client>/data/<client>.load_report.md."""
+    lines: list[str] = []
+    lines.append(f"# {client} build report")
+    lines.append("")
+    lines.append(f"- Generated: {dt.datetime.now().isoformat(timespec='seconds')}")
+    lines.append(f"- DB: `{summary['db_path']}`")
+    lines.append(f"- Total rows: {summary['financials_rows']}")
+    lines.append(f"- Duration: {summary['duration_s']}s")
+    lines.append("")
+
+    lines.append("## Sources")
+    lines.append("")
+    lines.append("| File | Rows | sha256 (first 12) | Modified | Size (kB) |")
+    lines.append("|---|---:|---|---|---:|")
+    for src in summary["sources"]:
+        sha = src.get("sha256", "")[:12]
+        kb = round(src.get("size_bytes", 0) / 1024, 1)
+        lines.append(
+            f"| `{src['file']}` | {src['rows']} | `{sha}` "
+            f"| {src.get('mtime', '')} | {kb} |"
+        )
+    lines.append("")
+
+    n_fail = len(integrity.failures)
+    n_warn = len(integrity.warnings)
+    lines.append("## Integrity")
+    lines.append("")
+    lines.append(f"**Failures: {n_fail}   Warnings: {n_warn}**")
+    lines.append("")
+
+    lines.append("### Failures")
+    if not integrity.failures:
+        lines.append("")
+        lines.append("_none_")
+    else:
+        lines.append("")
+        for f in integrity.failures:
+            lines.append(f"- **{f.rule}** `{f.name}`: {f.message}")
+    lines.append("")
+
+    lines.append("### Warnings")
+    if not integrity.warnings:
+        lines.append("")
+        lines.append("_none_")
+    else:
+        lines.append("")
+        for f in integrity.warnings:
+            lines.append(f"- **{f.rule}** `{f.name}`: {f.message}")
+    lines.append("")
+
+    return "\n".join(lines)
 
 
 def _provenance(path: Path) -> dict[str, Any]:

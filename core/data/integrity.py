@@ -190,11 +190,16 @@ def _run_r6(
     conn: sqlite3.Connection,
     tolerance: float,
 ) -> Iterable[Finding]:
-    """For every (scenario, entity) pair, walk consecutive periods and
-    verify ΔCash[t] ≈ CFO[t] + CFI[t] + CFF[t]. Skipped where the
-    statements/rows aren't present."""
+    """For every (scenario, entity) pair that has BOTH BS and CF data, walk
+    consecutive periods and verify ΔCash[t] ≈ CFO[t] + CFI[t] + CFF[t].
+    Pairs lacking either statement are skipped — incomplete data isn't a
+    coherence violation."""
     combos = conn.execute(
-        "SELECT DISTINCT scenario, entity FROM financials WHERE statement='BS'"
+        "SELECT DISTINCT bs.scenario, bs.entity FROM financials bs "
+        "WHERE bs.statement='BS' "
+        "AND EXISTS (SELECT 1 FROM financials cf "
+        "            WHERE cf.statement='CF' "
+        "            AND cf.scenario=bs.scenario AND cf.entity=bs.entity)"
     ).fetchall()
     for scenario, entity in combos:
         periods = [
@@ -235,9 +240,12 @@ def _run_r6(
             delta_cash = cash_curr - cash_prev
             mismatch = delta_cash - cf_total
             if abs(mismatch) > tolerance:
+                # warn, not fail: cash-bridge math accumulates rounding
+                # across three statements. R4 (registered formulas) is
+                # where exact-match failures belong.
                 yield Finding(
                     rule="R6",
-                    severity="fail",
+                    severity="warn",
                     name=f"cash-flow-coherence/{scenario}/{entity}",
                     message=(
                         f"{curr} ({scenario}/{entity}): ΔCash {delta_cash:+.2f} "

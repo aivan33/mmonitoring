@@ -218,6 +218,7 @@ class TestRegistryTagging:
     aggregate_formulas.yaml as is_aggregate=1."""
 
     def _setup(self, tmp_path: Path, *, registry_yaml: str | None) -> Path:
+        # Burn = -Sales, so leaf 50 + sign -1 = parsed -50 → R4 passes.
         _setup_client(tmp_path, "demo",
             config={
                 "entities": ["demo"],
@@ -226,7 +227,7 @@ class TestRegistryTagging:
                 ],
             },
             files={"a.xlsx": {"IS (Actual)": [HEADER,
-                ["Sales", "g", "leaf", *([100.0] * 12)],
+                ["Sales", "g", "leaf", *([50.0] * 12)],
                 ["KPI", "Burn", "Gross", *([-50.0] * 12)],
             ]}},
         )
@@ -277,3 +278,70 @@ ghost:
 """)
         with pytest.raises(ValueError, match="ghost"):
             build_db("demo", tmp_path)
+
+
+class TestLoadReport:
+    """Every successful build emits clients/<client>/data/<client>.load_report.md.
+    Failed integrity checks still emit the report, then raise."""
+
+    def _setup(self, tmp_path: Path) -> None:
+        _setup_client(tmp_path, "demo",
+            config={
+                "entities": ["demo"],
+                "financial_sources": [
+                    {"file": "raw/a.xlsx", "year": 2025, "entity": "demo"},
+                ],
+            },
+            files={"a.xlsx": {"IS (Actual)": [HEADER,
+                ["Sales", "g", "leaf", *([100.0] * 12)]]}},
+        )
+
+    def test_writes_report_alongside_db(self, tmp_path: Path) -> None:
+        self._setup(tmp_path)
+        build_db("demo", tmp_path)
+        report_path = tmp_path / "clients/demo/data/demo.load_report.md"
+        assert report_path.exists()
+
+    def test_report_lists_source_filename_and_sha(self, tmp_path: Path) -> None:
+        self._setup(tmp_path)
+        build_db("demo", tmp_path)
+        body = (tmp_path / "clients/demo/data/demo.load_report.md").read_text()
+        assert "raw/a.xlsx" in body
+        assert "sha256" in body.lower() or "sha" in body.lower()
+
+    def test_report_includes_findings_section(self, tmp_path: Path) -> None:
+        self._setup(tmp_path)
+        build_db("demo", tmp_path)
+        body = (tmp_path / "clients/demo/data/demo.load_report.md").read_text()
+        # Even if there are zero findings, the section is present so the
+        # reader knows the check ran.
+        assert "Integrity" in body or "findings" in body.lower()
+
+    def test_r4_failure_raises_and_still_writes_report(
+        self, tmp_path: Path,
+    ) -> None:
+        # Set up a registered aggregate whose stored value is wrong.
+        _setup_client(tmp_path, "demo",
+            config={
+                "entities": ["demo"],
+                "financial_sources": [
+                    {"file": "raw/a.xlsx", "year": 2025, "entity": "demo"},
+                ],
+            },
+            files={"a.xlsx": {"IS (Actual)": [HEADER,
+                ["Sales", "g", "leaf",         *([100.0] * 12)],
+                ["KPI",   "Burn", "Gross",     *([-9999.0] * 12)],  # wrong
+            ]}},
+        )
+        (tmp_path / "clients/demo/aggregate_formulas.yaml").write_text("""
+gross_burn:
+  taxonomi: ["KPI", "Burn", "Gross"]
+  leaves:
+    - {data: "Sales", sign: -1}
+""")
+        report_path = tmp_path / "clients/demo/data/demo.load_report.md"
+        with pytest.raises(Exception):
+            build_db("demo", tmp_path)
+        # Report must still exist so the user can see what failed.
+        assert report_path.exists()
+        assert "R4" in report_path.read_text()
