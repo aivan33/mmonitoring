@@ -193,3 +193,69 @@ class TestBuildDb:
         assert "sources" in summary
         assert summary["sources"][0]["file"] == "raw/a.xlsx"
         assert summary["sources"][0]["rows"] == 12
+
+
+class TestRegistryTagging:
+    """Build pipeline must tag rows whose triplet is in the client's
+    aggregate_formulas.yaml as is_aggregate=1."""
+
+    def _setup(self, tmp_path: Path, *, registry_yaml: str | None) -> Path:
+        _setup_client(tmp_path, "demo",
+            config={
+                "entities": ["demo"],
+                "financial_sources": [
+                    {"file": "raw/a.xlsx", "year": 2025, "entity": "demo"},
+                ],
+            },
+            files={"a.xlsx": {"IS (Actual)": [HEADER,
+                ["Sales", "g", "leaf", *([100.0] * 12)],
+                ["KPI", "Burn", "Gross", *([-50.0] * 12)],
+            ]}},
+        )
+        if registry_yaml is not None:
+            (tmp_path / "clients/demo/aggregate_formulas.yaml").write_text(
+                registry_yaml,
+            )
+        return tmp_path / "clients/demo/data/demo.db"
+
+    def test_no_registry_keeps_all_rows_as_leaves(self, tmp_path: Path) -> None:
+        db = self._setup(tmp_path, registry_yaml=None)
+        build_db("demo", tmp_path)
+        with sqlite3.connect(db) as conn:
+            distinct = conn.execute(
+                "SELECT DISTINCT is_aggregate FROM financials"
+            ).fetchall()
+        assert distinct == [(0,)]
+
+    def test_registered_row_tagged_as_aggregate(self, tmp_path: Path) -> None:
+        db = self._setup(tmp_path, registry_yaml="""
+gross_burn:
+  taxonomi: ["KPI", "Burn", "Gross"]
+  leaves:
+    - {data: "Sales", sign: -1}
+""")
+        build_db("demo", tmp_path)
+        with sqlite3.connect(db) as conn:
+            tagged = conn.execute(
+                "SELECT data, grp, subgroup, is_aggregate FROM financials "
+                "WHERE is_aggregate=1 GROUP BY data, grp, subgroup"
+            ).fetchall()
+            untagged = conn.execute(
+                "SELECT data, grp, subgroup FROM financials "
+                "WHERE is_aggregate=0 GROUP BY data, grp, subgroup"
+            ).fetchall()
+        assert tagged == [("KPI", "Burn", "Gross", 1)]
+        assert untagged == [("Sales", "g", "leaf")]
+
+    def test_registered_aggregate_missing_from_data_raises(
+        self, tmp_path: Path,
+    ) -> None:
+        # Registers an aggregate whose triplet doesn't appear in source.
+        self._setup(tmp_path, registry_yaml="""
+ghost:
+  taxonomi: ["KPI", "Ghost", "Missing"]
+  leaves:
+    - {data: "Sales", sign: 1}
+""")
+        with pytest.raises(ValueError, match="ghost"):
+            build_db("demo", tmp_path)

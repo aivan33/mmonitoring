@@ -227,3 +227,71 @@ class TestConnectionLifecycle:
             v = get_value("Sales", "Distributors", "220 ml", "2025-01-01",
                           client="cupffee")
             assert v == 100.0
+
+
+# ---------------------------------------------------------------------------
+# Aggregate filtering
+# ---------------------------------------------------------------------------
+
+class TestAggregationExcludesAggregates:
+    """get_aggregation must filter is_aggregate=1 rows so we don't
+    double-count when the source's own derived rows are also stored."""
+
+    HEADER = ["Data", "Group", "Subgroup", "Jan", "Feb", "Mar", "Apr", "May",
+              "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+    def test_excludes_registered_aggregate_at_data_level(
+        self, make_test_client,
+    ) -> None:
+        tmp = make_test_client(
+            name="demo",
+            config={"entities": ["demo"], "financial_sources": [
+                {"file": "raw/a.xlsx", "year": 2025, "entity": "demo"},
+            ]},
+            files={"a.xlsx": {"IS (Actual)": [
+                self.HEADER,
+                ["Sales", "g", "leaf_a", *([100.0] * 12)],
+                ["Sales", "g", "leaf_b", *([50.0] * 12)],
+                ["Sales", "g", "Total",  *([150.0] * 12)],
+            ]}},
+        )
+        (tmp / "clients/demo/aggregate_formulas.yaml").write_text("""
+total_sales:
+  taxonomi: ["Sales", "g", "Total"]
+  leaves:
+    - {data: "Sales", grp: "g", subgroup: "leaf_a"}
+    - {data: "Sales", grp: "g", subgroup: "leaf_b"}
+""")
+        from core.data.build import build_db
+        build_db("demo", tmp)
+
+        agg = get_aggregation("Sales", "2025-01-01", client="demo", level="data")
+        assert agg.iloc[0] == 150.0  # 100 + 50, NOT 300
+
+    def test_excludes_aggregate_at_grp_level(
+        self, make_test_client,
+    ) -> None:
+        tmp = make_test_client(
+            name="demo",
+            config={"entities": ["demo"], "financial_sources": [
+                {"file": "raw/a.xlsx", "year": 2025, "entity": "demo"},
+            ]},
+            files={"a.xlsx": {"IS (Actual)": [
+                self.HEADER,
+                ["Sales", "Distributors", "220",   *([100.0] * 12)],
+                ["Sales", "Distributors", "Total", *([100.0] * 12)],  # aggregate
+                ["Sales", "Direct",       "220",   *([20.0] * 12)],
+            ]}},
+        )
+        (tmp / "clients/demo/aggregate_formulas.yaml").write_text("""
+distrib_total:
+  taxonomi: ["Sales", "Distributors", "Total"]
+  leaves:
+    - {data: "Sales", grp: "Distributors", subgroup: "220"}
+""")
+        from core.data.build import build_db
+        build_db("demo", tmp)
+
+        agg = get_aggregation("Sales", "2025-01-01", client="demo", level="grp")
+        # Two groups, each summed from leaves only:
+        assert agg.to_dict() == {"Distributors": 100.0, "Direct": 20.0}

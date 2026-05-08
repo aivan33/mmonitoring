@@ -14,6 +14,7 @@ from typing import Any
 
 import yaml
 
+from core.data.aggregate_formulas import aggregate_keys, load_registry
 from core.data.loaders.financials import FinancialRow, load_taxonomy_xlsx
 from core.data.schema import wipe_and_create
 
@@ -94,6 +95,7 @@ def build_db(client: str, base_dir: str | Path) -> dict[str, Any]:
                 rows,
             )
             summary["sources"].append({"file": src["file"], "rows": len(rows)})
+        _tag_aggregates(conn, client_dir)
         conn.commit()
         summary["financials_rows"] = conn.execute(
             "SELECT COUNT(*) FROM financials"
@@ -101,3 +103,39 @@ def build_db(client: str, base_dir: str | Path) -> dict[str, Any]:
 
     summary["duration_s"] = round(time.perf_counter() - started, 3)
     return summary
+
+
+def _tag_aggregates(conn: sqlite3.Connection, client_dir: Path) -> None:
+    """Set ``is_aggregate=1`` on rows whose triplet appears in the client's
+    registry. Raises if a registered aggregate is missing from the loaded
+    data (R2 — registered-but-not-loaded)."""
+    registry = load_registry(client_dir)
+    keys = aggregate_keys(registry)
+    if not keys:
+        return
+
+    for data, grp, subgroup in keys:
+        conn.execute(
+            "UPDATE financials SET is_aggregate=1 "
+            "WHERE data=? AND grp=? AND subgroup=?",
+            (data, grp, subgroup),
+        )
+
+    found = {
+        (d, g, sg)
+        for d, g, sg in conn.execute(
+            "SELECT DISTINCT data, grp, subgroup FROM financials "
+            "WHERE is_aggregate=1"
+        ).fetchall()
+    }
+    missing = keys - found
+    if missing:
+        names = sorted(
+            name for name, f in registry.items()
+            if (f.data, f.grp, f.subgroup) in missing
+        )
+        raise ValueError(
+            f"aggregate_formulas.yaml registers aggregates not present in "
+            f"the loaded data: {names}. Either add the row to the source "
+            f"or remove the entry from the registry."
+        )

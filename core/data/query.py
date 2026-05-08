@@ -135,11 +135,15 @@ def get_aggregation(
     entity = _resolve_entity(client, entity)
     period = _to_iso(period_date)
 
+    # Aggregations sum leaves only — rows tagged is_aggregate=1 (e.g. a "Total
+    # Sales" row already in the source) would otherwise double-count. Use
+    # get_value(...) to read an aggregate row directly.
     with _connect(client) as conn:
         if level == "data":
             row = conn.execute(
                 "SELECT SUM(value) FROM financials "
-                "WHERE data=? AND period_date=? AND scenario=? AND entity=?",
+                "WHERE data=? AND period_date=? AND scenario=? AND entity=? "
+                "AND is_aggregate=0",
                 (data, period, scenario, entity),
             ).fetchone()
             value = row[0] if row else None
@@ -149,6 +153,7 @@ def get_aggregation(
             rows = conn.execute(
                 "SELECT grp, SUM(value) FROM financials "
                 "WHERE data=? AND period_date=? AND scenario=? AND entity=? "
+                "AND is_aggregate=0 "
                 "GROUP BY grp ORDER BY MIN(display_order)",
                 (data, period, scenario, entity),
             ).fetchall()
@@ -160,6 +165,7 @@ def get_aggregation(
         rows = conn.execute(
             "SELECT grp, subgroup, SUM(value) FROM financials "
             "WHERE data=? AND period_date=? AND scenario=? AND entity=? "
+            "AND is_aggregate=0 "
             "GROUP BY grp, subgroup ORDER BY MIN(display_order)",
             (data, period, scenario, entity),
         ).fetchall()
