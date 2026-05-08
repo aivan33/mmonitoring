@@ -90,7 +90,7 @@ def build_db(client: str, base_dir: str | Path) -> dict[str, Any]:
             ))
             conn.executemany(
                 "INSERT OR REPLACE INTO financials VALUES "
-                "(?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 rows,
             )
             summary["sources"].append({"file": src["file"], "rows": len(rows)})

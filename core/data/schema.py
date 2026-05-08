@@ -29,6 +29,8 @@ CREATE TABLE IF NOT EXISTS financials (
     subgroup       TEXT NOT NULL,
     display_order  INTEGER NOT NULL,
     value          REAL,
+    is_aggregate   INTEGER NOT NULL DEFAULT 0
+                   CHECK (is_aggregate IN (0, 1)),
     PRIMARY KEY (period_date, entity, scenario, statement, data, grp, subgroup)
 );
 

@@ -25,6 +25,7 @@ class FinancialRow(NamedTuple):
     subgroup: str
     display_order: int
     value: float | None
+    is_aggregate: int = 0
 
 
 VALID_SCENARIOS = ("actual", "pessimistic", "realistic", "optimistic")

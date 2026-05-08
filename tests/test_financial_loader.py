@@ -333,7 +333,18 @@ class TestRowShape:
         assert FinancialRow._fields == (
             "period_date", "entity", "scenario", "statement",
             "data", "grp", "subgroup", "display_order", "value",
+            "is_aggregate",
         )
+
+    def test_financialrow_is_aggregate_defaults_to_false(self) -> None:
+        # Loader currently emits all rows as leaves; the registry will set
+        # this flag declaratively in a later task.
+        row = FinancialRow(
+            period_date=dt.date(2025, 1, 1),
+            entity="cupffee", scenario="actual", statement="IS",
+            data="Sales", grp="g", subgroup="x", display_order=1, value=100.0,
+        )
+        assert row.is_aggregate == 0
 
     def test_iteration_idempotent(self, tmp_path: Path) -> None:
         path = _write_xlsx(tmp_path / "f.xlsx", {

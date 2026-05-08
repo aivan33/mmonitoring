@@ -61,7 +61,7 @@ class TestWipeAndCreate:
         with sqlite3.connect(db_path) as conn:
             conn.execute(
                 "INSERT INTO financials VALUES "
-                "('2025-01-01','cupffee','actual','IS','Sales','x','y',1,100.0)"
+                "('2025-01-01','cupffee','actual','IS','Sales','x','y',1,100.0,0)"
             )
             conn.commit()
         wipe_and_create(db_path)
@@ -117,7 +117,7 @@ class TestFinancialsTable:
         with sqlite3.connect(db_path) as conn, pytest.raises(sqlite3.IntegrityError):
             conn.execute(
                 "INSERT INTO financials VALUES "
-                "('2025-01-01','cupffee','bogus','IS','Sales','x','y',1,100.0)"
+                "('2025-01-01','cupffee','bogus','IS','Sales','x','y',1,100.0,0)"
             )
 
     def test_scenario_check_accepts_all_four(self, db_path: Path) -> None:
@@ -126,7 +126,7 @@ class TestFinancialsTable:
             for i, scen in enumerate(["actual", "pessimistic", "realistic", "optimistic"]):
                 conn.execute(
                     "INSERT INTO financials VALUES "
-                    f"('2025-01-01','cupffee','{scen}','IS','Sales','x','sg{i}',1,100.0)"
+                    f"('2025-01-01','cupffee','{scen}','IS','Sales','x','sg{i}',1,100.0,0)"
                 )
             conn.commit()
             count = conn.execute("SELECT COUNT(*) FROM financials").fetchone()[0]
@@ -137,7 +137,7 @@ class TestFinancialsTable:
         with sqlite3.connect(db_path) as conn, pytest.raises(sqlite3.IntegrityError):
             conn.execute(
                 "INSERT INTO financials VALUES "
-                "('2025-01-01','cupffee','actual','PL','Sales','x','y',1,100.0)"
+                "('2025-01-01','cupffee','actual','PL','Sales','x','y',1,100.0,0)"
             )
 
     def test_statement_check_accepts_is_cf_bs(self, db_path: Path) -> None:
@@ -146,9 +146,58 @@ class TestFinancialsTable:
             for stmt in ["IS", "CF", "BS"]:
                 conn.execute(
                     "INSERT INTO financials VALUES "
-                    f"('2025-01-01','cupffee','actual','{stmt}','Line','x','y',1,100.0)"
+                    f"('2025-01-01','cupffee','actual','{stmt}','Line','x','y',1,100.0,0)"
                 )
             conn.commit()
+
+    def test_has_is_aggregate_column_not_null(self, db_path: Path) -> None:
+        wipe_and_create(db_path)
+        with sqlite3.connect(db_path) as conn:
+            cols = _column_info(conn, "financials")
+        assert "is_aggregate" in cols
+        assert cols["is_aggregate"]["notnull"] is True
+
+    def test_is_aggregate_defaults_to_false(self, db_path: Path) -> None:
+        wipe_and_create(db_path)
+        with sqlite3.connect(db_path) as conn:
+            conn.execute(
+                "INSERT INTO financials "
+                "(period_date, entity, scenario, statement, data, grp, "
+                " subgroup, display_order, value) "
+                "VALUES ('2025-01-01','cupffee','actual','IS','Sales','g','x',1,100.0)"
+            )
+            conn.commit()
+            row = conn.execute(
+                "SELECT is_aggregate FROM financials"
+            ).fetchone()
+        assert row[0] == 0
+
+    def test_is_aggregate_accepts_true_and_false(self, db_path: Path) -> None:
+        wipe_and_create(db_path)
+        with sqlite3.connect(db_path) as conn:
+            conn.execute(
+                "INSERT INTO financials VALUES "
+                "('2025-01-01','cupffee','actual','IS','Sales','g','leaf',1,100.0,0)"
+            )
+            conn.execute(
+                "INSERT INTO financials VALUES "
+                "('2025-01-01','cupffee','actual','IS','Sales','g','aggr',2,100.0,1)"
+            )
+            conn.commit()
+            rows = conn.execute(
+                "SELECT subgroup, is_aggregate FROM financials "
+                "ORDER BY subgroup"
+            ).fetchall()
+        assert rows == [("aggr", 1), ("leaf", 0)]
+
+    def test_is_aggregate_not_in_pk(self, db_path: Path) -> None:
+        # Adding is_aggregate must not change row identity: a leaf and an
+        # aggregate cannot coexist for the same (period, entity, scenario,
+        # statement, data, grp, subgroup).
+        wipe_and_create(db_path)
+        with sqlite3.connect(db_path) as conn:
+            pk = _pk_columns(conn, "financials")
+        assert "is_aggregate" not in pk
 
 
 class TestCupVolumesTable:
