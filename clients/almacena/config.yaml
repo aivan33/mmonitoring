@@ -1,0 +1,37 @@
+client_name: Almacena
+fiscal_year_start_month: 1
+currency: EUR
+as_of_date: 2026-03-01
+
+use_cases: [charts]
+
+entities:
+  - consolidated
+  - ap_foundation
+
+# Currency conversion rates. profitability_q1.xlsx is platform KPIs in USD;
+# financial taxonomies (taxonomi_act_*, foundation_q1, ap_12_act) are EUR.
+# **TODO** verify USD rate with the team — 0.92 was carried over from the
+# archived config; confirm before chart numbers ship.
+currencies:
+  USD: 0.92    # USD → EUR
+
+# Files load in the order listed. On overlap, last loaded wins.
+financial_sources:
+  - { file: raw/taxonomi_act_12.xlsx, year: 2025, entity: consolidated,  currency: EUR }
+  - { file: raw/ap_12_act.xlsx,       year: 2025, entity: ap_foundation, currency: EUR }
+  - { file: raw/taxonomi_act_q1.xlsx, year: 2026, entity: consolidated,  currency: EUR }
+  - { file: raw/foundation_q1.xlsx,   year: 2026, entity: ap_foundation, currency: EUR }
+
+# Operational KPIs (platform metrics — GMV, Funded Amount, Days Outstanding,
+# etc.). Wired in once the operational_kpis loader lands (Phase 2.5 step 2).
+# Format: kpi_wide = rows are KPI names, columns are months.
+operational_sources:
+  - { file: raw/profitability_q1.xlsx, year: 2026, entity: ap_foundation, currency: USD, format: kpi_wide }
+
+# Brand placeholder — refined when chart specs land.
+brand:
+  primary: "#1B3A5C"
+  accent: "#E89B4B"
+  font_header: "Calibri"
+  font_body: "Calibri"
