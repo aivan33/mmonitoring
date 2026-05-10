@@ -71,10 +71,18 @@ The reference deck (the `.pptx` used as the visual benchmark) lives in
 
 ## Status & gaps
 
-- [ ] `kpi_derivations` block in `mapping.yaml` is empty pending
-  accounting confirmation of the formulas for Working Capital,
-  AR/AP Turnover, and Gross Fixed Assets. Until populated, those rows
-  in the new month's taxonomi will be empty — fill manually or wait.
+- [ ] **AR Turnover — historical canonical values inconsistent with
+  formula.** The four `kpi_derivations` formulas in `mapping.yaml` are
+  authored from accounting input. Feb/Mar AP Turnover, Working Capital,
+  and Gross Fixed Assets reproduce the canonical values exactly. AR
+  Turnover, however, does not — the formula `Sales / avg(begin TR, end TR)`
+  produces 1.27 (Feb) and 1.18 (Mar) where the existing canonical carried
+  2.00 and 1.68. No reasonable alternative (Sales+MRR, Sales/TR_t,
+  rolling) reproduces both months. The historical values appear to have
+  been manually entered with inconsistent bases. The formula is now
+  authoritative — when months are re-extracted the canonical will update.
+  Worth a sanity-check with accounting if the AR Turnover narrative is
+  load-bearing in any deck.
 - [ ] Operational data layer not built — keeps `one_offs/build_slide4.py`
   bespoke. This is option-2 work in the cleanup plan.
 - [ ] No assertions in `scripts/validate.py` yet — add once Mar-26
