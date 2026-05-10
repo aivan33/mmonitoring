@@ -10,8 +10,8 @@ entities:
 
 # Files load in the order listed. On overlap, last loaded wins.
 financial_sources:
-  - { file: raw/act_03-26.xlsx,      year: 2026, entity: honey, currency: EUR }
-  - { file: raw/export-2026-bp.xlsx, year: 2026, entity: honey, currency: EUR }
+  - { file: raw/taxonomi_act_2026-03.xlsx, year: 2026, entity: honey, currency: EUR }
+  - { file: raw/export-2026-bp.xlsx,       year: 2026, entity: honey, currency: EUR }
 
 # Reporting pipeline configuration.
 # `mapping.yaml` is not yet authored — running build_report.py will fail

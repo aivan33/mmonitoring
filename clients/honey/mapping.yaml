@@ -1,0 +1,244 @@
+# MR → Taxonomi mapping for Honey.
+#
+# Each entry maps a taxonomi (data, grp, subgroup) key to a row in the
+# MR workbook. The loader (core/report/mr.py) reads the configured
+# month's column from `mr_row` of the named MR sheet and writes it into
+# the taxonomi at the keyed cell.
+#
+# Conventions (same as the framework):
+#   - mr_row is 1-indexed (matches openpyxl).
+#   - mr_label is the EXACT label at that MR row, INCLUDING leading
+#     whitespace (Honey's MR uses 2-space and 4-space indentation as
+#     visual hierarchy; the loader does an exact string match).
+#   - mr_row: null means there is no MR source for this taxonomi row —
+#     either it's a computed/derived figure or just absent in the MR.
+#     The new month's cell stays empty; existing values are preserved.
+#   - The taxonomi row order (and labels) is locked by the existing
+#     `act_03-26.xlsx`. Do not reorder.
+#
+# **Sign-off pending from user before locking.** Most mappings are
+# label-trivial (1-to-1 by name). Judgment calls are flagged inline.
+
+# ---------------------------------------------------------------------------
+# MR layout — Honey's MR sheets differ from the framework default:
+#   - Sheet names use lowercase plus the year suffix ("is - yearly26").
+#   - Header is in row 1 (not row 2) and contains string month names
+#     ("January", "February", "March", ...) rather than dt.date cells.
+#   - Label column is column 1 across all three statements.
+# Update the year suffix when 2027 lands.
+# ---------------------------------------------------------------------------
+mr_layout:
+  IS: { sheet: "is - yearly26", header_row: 1, label_col: 1, period_format: month_name }
+  CF: { sheet: "cf - yearly26", header_row: 1, label_col: 1, period_format: month_name }
+  BS: { sheet: "bs - yearly26", header_row: 1, label_col: 1, period_format: month_name }
+
+# ---------------------------------------------------------------------------
+# IS — taxonomi 'IS (Actual)' rows 2-38 ↔ MR sheet 'is - yearly26'
+# Subtotal rows (Sales r5, Cost of Sales r11, Production Costs r17,
+# Operating Expenses r25, R&D r26, S&M r30, G&A r37, EBITDA r47, etc.)
+# are skipped — these are computed at query time via aggregations.
+# ---------------------------------------------------------------------------
+mapping_is:
+  # MRR (taxonomi r2 ↔ MR r2)
+  - { mr_row: 2,  mr_label: "MRR",                            data: "MRR",          grp: "MRR",                    subgroup: "MRR" }
+  # Sales (taxonomi r3-r7 ↔ MR r6-r10; "Sales" subtotal r5 is skipped)
+  - { mr_row: 6,  mr_label: "  B2C",                          data: "Sales",        grp: "B2C",                    subgroup: "B2C" }
+  - { mr_row: 7,  mr_label: "  B2B",                          data: "Sales",        grp: "B2B",                    subgroup: "B2B" }
+  - { mr_row: 8,  mr_label: "  ESG",                          data: "Sales",        grp: "ESG",                    subgroup: "ESG" }
+  - { mr_row: 9,  mr_label: "  Revenue from services",        data: "Sales",        grp: "Revenue from services",  subgroup: "Revenue from services" }
+  - { mr_row: 10, mr_label: "  Other Revenue",                data: "Sales",        grp: "Other Revenue",          subgroup: "Other Revenue" }
+  # Cost of Sales (taxonomi r8-r10 ↔ MR r12-r14)
+  - { mr_row: 12, mr_label: "  Primary product cost",         data: "Cost of Sales", grp: "Primary product cost",  subgroup: "Primary product cost" }
+  - { mr_row: 13, mr_label: "  Cost of Services",             data: "Cost of Sales", grp: "Cost of Services",      subgroup: "Cost of Services" }
+  - { mr_row: 14, mr_label: "  ESG Costs",                    data: "Cost of Sales", grp: "ESG Costs",              subgroup: "ESG Costs" }
+  # Production Costs (taxonomi r11-r15 ↔ MR r18-r22; r17/r23/r24 subtotals skipped)
+  - { mr_row: 18, mr_label: "  Payroll Total",                data: "Production Costs", grp: "Payroll Total",        subgroup: "Payroll Total" }
+  - { mr_row: 19, mr_label: "  Laboratory Tests",             data: "Production Costs", grp: "Laboratory Tests",     subgroup: "Laboratory Tests" }
+  - { mr_row: 20, mr_label: "  Haulage",                      data: "Production Costs", grp: "Haulage",              subgroup: "Haulage" }
+  - { mr_row: 21, mr_label: "  Fulfillment",                  data: "Production Costs", grp: "Fulfillment",          subgroup: "Fulfillment" }
+  - { mr_row: 22, mr_label: "  Other",                        data: "Production Costs", grp: "Other",                subgroup: "Other" }
+  # R&D (taxonomi r16-r18 ↔ MR r27-r29)
+  - { mr_row: 27, mr_label: "  Staff Cost",                   data: "R&D",          grp: "Staff Cost",             subgroup: "Staff Cost" }
+  - { mr_row: 28, mr_label: "  Software and tools",           data: "R&D",          grp: "Software and tools",     subgroup: "Software and tools" }
+  - { mr_row: 29, mr_label: "  Other",                        data: "R&D",          grp: "Other",                  subgroup: "Other" }
+  # S&M (taxonomi r19-r24 ↔ MR r31-r36)
+  - { mr_row: 31, mr_label: "  Staff Cost",                   data: "S&M",          grp: "Staff Cost",             subgroup: "Staff Cost" }
+  - { mr_row: 32, mr_label: "  Marketing Ads",                data: "S&M",          grp: "Marketing Ads",          subgroup: "Marketing Ads" }
+  - { mr_row: 33, mr_label: "  External Contractors",         data: "S&M",          grp: "External Contractors",   subgroup: "External Contractors" }
+  - { mr_row: 34, mr_label: "  Events",                       data: "S&M",          grp: "Events",                 subgroup: "Events" }
+  - { mr_row: 35, mr_label: "  Hosting",                      data: "S&M",          grp: "Hosting",                subgroup: "Hosting" }
+  - { mr_row: 36, mr_label: "  Other Marketing Expenses",     data: "S&M",          grp: "Other Marketing Expenses", subgroup: "Other Marketing Expenses" }
+  # G&A (taxonomi r25-r33 ↔ MR r38-r46)
+  - { mr_row: 38, mr_label: "  Staff Cost",                   data: "G&A",          grp: "Staff Cost",             subgroup: "Staff Cost" }
+  - { mr_row: 39, mr_label: "  Rent",                         data: "G&A",          grp: "Rent",                   subgroup: "Rent" }
+  - { mr_row: 40, mr_label: "  Office supplies & Equipment",  data: "G&A",          grp: "Office supplies & Equipment", subgroup: "Office supplies & Equipment" }
+  - { mr_row: 41, mr_label: "  Communications",               data: "G&A",          grp: "Communications",         subgroup: "Communications" }
+  - { mr_row: 42, mr_label: "  Professional Services",        data: "G&A",          grp: "Professional Services",  subgroup: "Professional Services" }
+  - { mr_row: 43, mr_label: "  Software and tools",           data: "G&A",          grp: "Software and tools",     subgroup: "Software and tools" }
+  - { mr_row: 44, mr_label: "  Travel",                       data: "G&A",          grp: "Travel",                 subgroup: "Travel" }
+  - { mr_row: 45, mr_label: "  Team Development",             data: "G&A",          grp: "Team Development",       subgroup: "Team Development" }
+  - { mr_row: 46, mr_label: "  Miscellaneous expense",        data: "G&A",          grp: "Miscellaneous expense",  subgroup: "Miscellaneous expense" }
+  # Finance (taxonomi r34-r35 ↔ MR r55-r56)
+  - { mr_row: 55, mr_label: "  Finance income",               data: "Finance income", grp: "Finance income",       subgroup: "Finance income" }
+  - { mr_row: 56, mr_label: "  Finance costs",                data: "Finance costs",  grp: "Finance costs",        subgroup: "Finance costs" }
+  # Depreciation and amortization (taxonomi r36 ↔ MR r50; uses the indented child row, not the section header r49)
+  - { mr_row: 50, mr_label: "  Depreciation and amortization", data: "Depreciation and amortization", grp: "Depreciation and amortization", subgroup: "Depreciation and amortization" }
+  # Other non operational revenues — Grant Revenue (taxonomi r37 ↔ MR r52)
+  - { mr_row: 52, mr_label: "  Grant Revenue",                data: "Other non operational revenues", grp: "Grant Revenue", subgroup: "Grant Revenue" }
+  # Income tax — taxonomi has the row but MR has no corresponding line.
+  # NEEDS USER CONFIRMATION: is income tax tracked elsewhere in honey's books?
+  - { mr_row: null, mr_label: null,                           data: "Income tax (expense)", grp: "Income tax (expense)", subgroup: "Income tax (expense)",
+      note: "Not in MR. Stays None until accounting confirms a source row." }
+
+# ---------------------------------------------------------------------------
+# CF Indirect — taxonomi 'CF Indirect (Actual)' rows 2-21 ↔ MR sheet 'cf - yearly26'
+# Subtotal rows (CFO r2, CFI r10, CFF r14, Net change r21, Ending Cash r24,
+# Burn rate r27, Avg Burn r28, Runway r29) are skipped — derived/aggregated.
+# ---------------------------------------------------------------------------
+mapping_cf:
+  # Operating (taxonomi r2-r8 ↔ MR r3-r9)
+  - { mr_row: 3,  mr_label: "  Cash received from customers",         data: "Cash Flow from Operating Activities", grp: "Cash received from customers",          subgroup: "Cash received from customers" }
+  - { mr_row: 4,  mr_label: "  Cash paid to suppliers",               data: "Cash Flow from Operating Activities", grp: "Cash paid to suppliers",                subgroup: "Cash paid to suppliers" }
+  - { mr_row: 5,  mr_label: "  Payment for personnel",                data: "Cash Flow from Operating Activities", grp: "Payment for personnel",                 subgroup: "Payment for personnel" }
+  - { mr_row: 6,  mr_label: "  Corporate and other taxes, net",       data: "Cash Flow from Operating Activities", grp: "Corporate and other taxes, net",        subgroup: "Corporate and other taxes, net" }
+  - { mr_row: 7,  mr_label: "  Bank charges paid",                    data: "Cash Flow from Operating Activities", grp: "Bank charges paid",                     subgroup: "Bank charges paid" }
+  - { mr_row: 8,  mr_label: "  Recovery/(repayment) of VAT",          data: "Cash Flow from Operating Activities", grp: "Recovery/(repayment) of VAT",           subgroup: "Recovery/(repayment) of VAT" }
+  - { mr_row: 9,  mr_label: "  Other",                                data: "Cash Flow from Operating Activities", grp: "Other",                                 subgroup: "Other" }
+  # Investing (taxonomi r9-r11 ↔ MR r11-r13)
+  - { mr_row: 11, mr_label: "  CAPEX",                                data: "Cash Flow from Investing Activities", grp: "CAPEX",                                 subgroup: "CAPEX" }
+  - { mr_row: 12, mr_label: "  R&D",                                  data: "Cash Flow from Investing Activities", grp: "R&D",                                   subgroup: "R&D" }
+  - { mr_row: 13, mr_label: "  Other",                                data: "Cash Flow from Investing Activities", grp: "Other",                                 subgroup: "Other" }
+  # Financing (taxonomi r12-r17 ↔ MR r15-r20)
+  - { mr_row: 15, mr_label: "  Capital Increase",                     data: "Cash Flow from Financing Activities", grp: "Capital Increase",                      subgroup: "Capital Increase" }
+  - { mr_row: 16, mr_label: "  Grant Financing",                      data: "Cash Flow from Financing Activities", grp: "Grant Financing",                       subgroup: "Grant Financing" }
+  - { mr_row: 17, mr_label: "  Loan facility financing",              data: "Cash Flow from Financing Activities", grp: "Loan facility financing",               subgroup: "Loan facility financing" }
+  - { mr_row: 18, mr_label: "  Repayment of debt obligations",        data: "Cash Flow from Financing Activities", grp: "Repayment of debt obligations",         subgroup: "Repayment of debt obligations" }
+  - { mr_row: 19, mr_label: "  Other payments/ proceeds, net",        data: "Cash Flow from Financing Activities", grp: "Other payments/ proceeds, net",         subgroup: "Other payments/ proceeds, net" }
+  - { mr_row: 20, mr_label: "  Distribution of dividends",            data: "Cash Flow from Financing Activities", grp: "Distribution of dividends",             subgroup: "Distribution of dividends" }
+  # Trailing informational rows
+  - { mr_row: 22, mr_label: "Beginning Cash Balance",                 data: "Beginning Cash Balance", grp: "Beginning Cash Balance", subgroup: "Beginning Cash Balance" }
+  - { mr_row: 25, mr_label: "% Change in cash", store_as: float,      data: "% Change in cash",       grp: "% Change in cash",       subgroup: "% Change in cash" }
+  # Capex (taxonomi r20) duplicates CFI/CAPEX (r9) — same MR cell, same as farada pattern.
+  - { mr_row: 11, mr_label: "  CAPEX",                                data: "Capex", grp: "Capex", subgroup: "Capex" }
+  # Gross Fixed assets (taxonomi r21) is a derived KPI — left null until kpi_derivations is populated.
+  - { mr_row: null, mr_label: null,                                   data: "Gross Fixed assets", grp: "Gross Fixed assets", subgroup: "Gross Fixed assets",
+      note: "Computed from BS — see kpi_derivations below." }
+
+# ---------------------------------------------------------------------------
+# BS — taxonomi 'BS (Actual)' rows 2-24 ↔ MR sheet 'bs - yearly26'
+# Subtotal rows (Total non-current assets r2, Total current assets r8,
+# Total assets r17, Total equity r18, Total non-current liabilities r21,
+# Total current liabilities r23, Total liabilities r29, etc.) are skipped.
+# ---------------------------------------------------------------------------
+mapping_bs:
+  # Non-current assets (taxonomi r2-r6 ↔ MR r3-r7)
+  - { mr_row: 3,  mr_label: "  Research and Development Asset",       data: "Non-current assets", grp: "Research and Development Asset", subgroup: "Research and Development Asset" }
+  - { mr_row: 4,  mr_label: "  Trademarks",                           data: "Non-current assets", grp: "Trademarks",                     subgroup: "Trademarks" }
+  - { mr_row: 5,  mr_label: "  Investments in related parties",       data: "Non-current assets", grp: "Investments in related parties", subgroup: "Investments in related parties" }
+  - { mr_row: 6,  mr_label: "  Property, plant and equipment",        data: "Non-current assets", grp: "Property, plant and equipment",  subgroup: "Property, plant and equipment" }
+  # Note: taxonomi groups under "Deferred tax asset" with subgroup "Tax losses" — preserved as authored.
+  - { mr_row: 7,  mr_label: "  Deferred tax asset",                   data: "Non-current assets", grp: "Deferred tax asset",             subgroup: "Tax losses" }
+  # Current assets (taxonomi r7-r11 ↔ MR r9, r11-r14)
+  - { mr_row: 9,  mr_label: "  Other receivables",                    data: "Current assets", grp: "Other receivables",  subgroup: "Other receivables" }
+  - { mr_row: 11, mr_label: "    Materials",                          data: "Current assets", grp: "Inventory on Stock", subgroup: "Materials" }
+  - { mr_row: 12, mr_label: "    Finished goods",                     data: "Current assets", grp: "Inventory on Stock", subgroup: "Finished goods" }
+  - { mr_row: 13, mr_label: "    Other",                              data: "Current assets", grp: "Inventory on Stock", subgroup: "Other" }
+  - { mr_row: 14, mr_label: "  Pre-paid expenses",                    data: "Current assets", grp: "Pre-paid expenses",  subgroup: "Pre-paid expenses" }
+  # Cash (taxonomi r12 ↔ MR r15)
+  - { mr_row: 15, mr_label: "  Cash& Cash equivalents",               data: "Cash and cash equivalents", grp: "Cash& Cash equivalents", subgroup: "Cash& Cash equivalents" }
+  # Trade receivables (taxonomi r13 ↔ MR r16)
+  - { mr_row: 16, mr_label: "  Trade receivables",                    data: "Trade receivables", grp: "Trade receivables", subgroup: "Trade receivables" }
+  # Equity (taxonomi r14-r15 ↔ MR r19-r20)
+  - { mr_row: 19, mr_label: "  Share capital",                        data: "Equity", grp: "Share capital",     subgroup: "Share capital" }
+  - { mr_row: 20, mr_label: "  Retained earnings",                    data: "Equity", grp: "Retained earnings", subgroup: "Retained earnings" }
+  # Non-Current Liabilities (taxonomi r16 ↔ MR r22)
+  - { mr_row: 22, mr_label: "  Loan facility financing",              data: "Non-Current Liabilities", grp: "Loan facility financing", subgroup: "Loan facility financing" }
+  # Current Liabilities (taxonomi r17-r20 ↔ MR r24-r27)
+  - { mr_row: 24, mr_label: "  Payables to personnel",                data: "Current Liabilities", grp: "Payables to personnel",        subgroup: "Payables to personnel" }
+  - { mr_row: 25, mr_label: "  Deferred revenue",                     data: "Current Liabilities", grp: "Deferred revenue",             subgroup: "Deferred revenue" }
+  - { mr_row: 26, mr_label: "  Other payables",                       data: "Current Liabilities", grp: "Other payables",               subgroup: "Other payables" }
+  - { mr_row: 27, mr_label: "  Loans and interest payable",           data: "Current Liabilities", grp: "Loans and interest payable",   subgroup: "Loans and interest payable" }
+  # Trade payables (taxonomi r21 ↔ MR r28 — note MR places it inside Current liabilities section but taxonomi tracks it as its own data class)
+  - { mr_row: 28, mr_label: "  Trade payables",                       data: "Trade payables", grp: "Trade payables", subgroup: "Trade payables" }
+  # Computed/derived KPI rows — no MR source. Empty kpi_derivations
+  # below means these rows stay at their existing taxonomi values during
+  # extract; preserves prior values rather than overwriting with None.
+  - { mr_row: null, mr_label: null, data: "Accounts payable turnover", grp: "Accounts payable turnover", subgroup: "Accounts payable turnover",
+      note: "KPI ratio — see kpi_derivations below." }
+  - { mr_row: null, mr_label: null, data: "Account receivable turnover", grp: "Account receivable turnover", subgroup: "Account receivable turnover",
+      note: "KPI ratio — see kpi_derivations below." }
+  - { mr_row: null, mr_label: null, data: "Working Capital",          grp: "Working Capital",          subgroup: "Working Capital",
+      note: "Computed: Current assets − Current liabilities — see kpi_derivations below." }
+
+# ---------------------------------------------------------------------------
+# Derived KPIs computed during the MR → taxonomi bridge step.
+# Four locked formula types (see core/report/mr_to_taxonomi.py):
+#   sum, working_capital, turnover_ratio, ap_turnover.
+# Source row keys for honey are listed below; the math lives in code.
+# ---------------------------------------------------------------------------
+kpi_derivations:
+  # Gross Fixed Assets = R&D Asset + Trademarks + Investments + PP&E
+  - formula: sum
+    target: ["Gross Fixed assets", "Gross Fixed assets", "Gross Fixed assets"]
+    statement_for_target: CF
+    sources:
+      - { statement: BS, key: ["Non-current assets", "Research and Development Asset", "Research and Development Asset"] }
+      - { statement: BS, key: ["Non-current assets", "Trademarks", "Trademarks"] }
+      - { statement: BS, key: ["Non-current assets", "Investments in related parties", "Investments in related parties"] }
+      - { statement: BS, key: ["Non-current assets", "Property, plant and equipment", "Property, plant and equipment"] }
+
+  # Working Capital = Σ(current assets) − Σ(current liabilities)
+  - formula: working_capital
+    target: ["Working Capital", "Working Capital", "Working Capital"]
+    statement_for_target: BS
+    current_assets:
+      - { statement: BS, key: ["Current assets", "Other receivables", "Other receivables"] }
+      - { statement: BS, key: ["Current assets", "Inventory on Stock", "Materials"] }
+      - { statement: BS, key: ["Current assets", "Inventory on Stock", "Finished goods"] }
+      - { statement: BS, key: ["Current assets", "Inventory on Stock", "Other"] }
+      - { statement: BS, key: ["Current assets", "Pre-paid expenses", "Pre-paid expenses"] }
+      - { statement: BS, key: ["Cash and cash equivalents", "Cash& Cash equivalents", "Cash& Cash equivalents"] }
+      - { statement: BS, key: ["Trade receivables", "Trade receivables", "Trade receivables"] }
+    current_liabilities:
+      - { statement: BS, key: ["Current Liabilities", "Payables to personnel", "Payables to personnel"] }
+      - { statement: BS, key: ["Current Liabilities", "Deferred revenue", "Deferred revenue"] }
+      - { statement: BS, key: ["Current Liabilities", "Other payables", "Other payables"] }
+      - { statement: BS, key: ["Current Liabilities", "Loans and interest payable", "Loans and interest payable"] }
+      - { statement: BS, key: ["Trade payables", "Trade payables", "Trade payables"] }
+
+  # AR Turnover = Sales / avg(begin TR, end TR)
+  - formula: turnover_ratio
+    target: ["Account receivable turnover", "Account receivable turnover", "Account receivable turnover"]
+    statement_for_target: BS
+    store_as: float
+    numerator:
+      type: data_aggregate
+      source: IS
+      data: Sales
+    avg_balance_key:
+      statement: BS
+      key: ["Trade receivables", "Trade receivables", "Trade receivables"]
+
+  # AP Turnover = (operating costs − payroll) / avg(begin TP, end TP)
+  # Operating costs = Cost of Sales + Production Costs + R&D + S&M + G&A
+  # (excludes Finance costs and Depreciation, which aren't paid via AP).
+  # Payroll keys subtracted = the "staff cost" rows within those classes.
+  - formula: ap_turnover
+    target: ["Accounts payable turnover", "Accounts payable turnover", "Accounts payable turnover"]
+    statement_for_target: BS
+    store_as: float
+    cost_data_classes: ["Cost of Sales", "Production Costs", "R&D", "S&M", "G&A"]
+    personnel_keys:
+      - ["Production Costs", "Payroll Total", "Payroll Total"]
+      - ["R&D", "Staff Cost", "Staff Cost"]
+      - ["S&M", "Staff Cost", "Staff Cost"]
+      - ["G&A", "Staff Cost", "Staff Cost"]
+    avg_balance_key:
+      statement: BS
+      key: ["Trade payables", "Trade payables", "Trade payables"]
+
+# ---------------------------------------------------------------------------
+# Known good prior-month discrepancies between MR and Taxonomi.
+# Reconcile groups these under "Known" so they don't trip alerts each month.
+# ---------------------------------------------------------------------------
+known_discrepancies: []
