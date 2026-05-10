@@ -56,13 +56,16 @@ def test_bad_period_returns_error(monkeypatch, capsys):
     assert "YYYY-MM" in err
 
 
-def test_variance_phase_not_yet_implemented(monkeypatch, capsys):
+def test_variance_phase_writes_outputs(monkeypatch, capsys, tmp_path):
+    """--variance-only runs end-to-end and writes variance.{md,csv}."""
     monkeypatch.setattr(sys, "argv",
-                        ["build_report.py", "farada", "2026-03",
+                        ["build_report.py", "farada", "2026-02",
                          "--variance-only"])
     rc = br.main()
-    assert rc == 1
-    err = capsys.readouterr().err
-    assert "variance" in err.lower() and "F3" in err
+    assert rc == 0
+    repo = Path(__file__).resolve().parent.parent
+    out_dir = repo / "clients" / "farada" / "reports" / "2026-02"
+    assert (out_dir / "variance.md").exists()
+    assert (out_dir / "variance.csv").exists()
 
 

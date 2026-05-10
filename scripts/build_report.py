@@ -24,6 +24,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from core.report.mr import extract_month
 from core.report.mr_to_taxonomi import populate_taxonomi
+from core.report.variance import (
+    compute_variance, write_variance_csv, write_variance_md,
+)
 
 
 _REPO = Path(__file__).resolve().parent.parent
@@ -99,8 +102,19 @@ def _find_prev_taxonomi(client_dir: Path, config: dict,
     return candidates[-1]
 
 
-def _phase_variance(*_args, **_kwargs) -> None:
-    raise NotImplementedError("variance phase ships in F3 (Task 9)")
+def _phase_variance(
+    client_dir: Path, config: dict, period: dt.date, client: str,
+) -> None:
+    """Compute variance and write variance.md + variance.csv to
+    clients/<client>/reports/<YYYY-MM>/."""
+    result = compute_variance(client, period)
+    out_dir = client_dir / "reports" / period.strftime("%Y-%m")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    write_variance_md(result, out_dir / "variance.md")
+    write_variance_csv(result, out_dir / "variance.csv")
+    flagged = len(result.flagged())
+    print(f"  variance: wrote {out_dir.relative_to(_REPO)}/{{variance.md,variance.csv}}"
+          f"  ({len(result.rows)} rows, {flagged} flagged)")
 
 
 def _phase_commentary(*_args, **_kwargs) -> None:
@@ -144,7 +158,7 @@ def main() -> int:
         if args.extract_only or run_all:
             _phase_extract(client_dir, config, period)
         if args.variance_only or run_all:
-            _phase_variance(client_dir, config, period)
+            _phase_variance(client_dir, config, period, args.client)
         if args.commentary_only or run_all:
             _phase_commentary(client_dir, config, period)
     except NotImplementedError as exc:
