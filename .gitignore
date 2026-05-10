@@ -24,6 +24,10 @@ clients/*/*
 clients/*/chart_specs/*
 !clients/*/chart_specs/*.json
 !clients/*/chart_specs/*.md
+!clients/*/one_offs/
+clients/*/one_offs/*
+!clients/*/one_offs/*.py
+!clients/*/one_offs/*.md
 
 # 2. Repo-wide deny for sensitive file types so an accidentally-misplaced
 #    file outside clients/ still can't be committed. If a legitimate need
