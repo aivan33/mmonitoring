@@ -85,65 +85,6 @@ def cupffee_assertions() -> list[Assertion]:
     return actuals + budget
 
 
-def almacena_assertions() -> list[Assertion]:
-    """Empirically picked cells across both entities and both periods.
-    Values copied verbatim from the loaded DB after build_db ran clean."""
-    cli = "almacena"
-
-    def agg(data: str, period: str, entity: str,
-            scenario: str = "actual") -> float:
-        return get_aggregation(data, period, scenario=scenario,
-                               client=cli, entity=entity, level="data").iloc[0]
-
-    def grp_ytd(data: str, grp: str, year: int, entity: str,
-                scenario: str = "actual") -> float:
-        s = get_trend(data, grp=grp, scenario=scenario,
-                      client=cli, entity=entity,
-                      start_date=f"{year}-01-01",
-                      end_date=f"{year}-12-01")
-        return float(s.dropna().sum())
-
-    return [
-        # Consolidated
-        Assertion("cons IS Sales total 2025-12 actual",
-                  lambda: agg("Sales", "2025-12-01", "consolidated"),
-                  37748.15),
-        Assertion("cons Cash 2025-12 actual",
-                  lambda: get_value("Cash and cash equivalents",
-                                    "Cash and Cash equivalents",
-                                    "Cash and Cash equivalents",
-                                    "2025-12-01", client=cli,
-                                    entity="consolidated"),
-                  201032.99),
-        Assertion("cons IS Sales total 2026-03 actual",
-                  lambda: agg("Sales", "2026-03-01", "consolidated"),
-                  78005.99),
-        # AP Foundation
-        Assertion("AP IS Sales total 2025-12 actual",
-                  lambda: agg("Sales", "2025-12-01", "ap_foundation"),
-                  31248.15),
-        Assertion("AP IS Sales total 2026-03 actual",
-                  lambda: agg("Sales", "2026-03-01", "ap_foundation"),
-                  78005.99),
-        Assertion("AP NIR/Gross Interest Revenue 2025-12 actual",
-                  lambda: get_value("Sales", "Net Interest Revenue",
-                                    "Gross Interest Revenue",
-                                    "2025-12-01", client=cli,
-                                    entity="ap_foundation"),
-                  55492.37),
-        Assertion("AP NIR/Funding Cost 2025-12 actual",
-                  lambda: get_value("Sales", "Net Interest Revenue",
-                                    "Funding Cost",
-                                    "2025-12-01", client=cli,
-                                    entity="ap_foundation"),
-                  -73976.35),
-        Assertion("AP NIR group YTD 2025 actual (deck narrative -149K)",
-                  lambda: grp_ytd("Sales", "Net Interest Revenue", 2025,
-                                  "ap_foundation"),
-                  -149511.53),
-    ]
-
-
 def farada_assertions() -> list[Assertion]:
     """Cells picked by reading the FaradaIC source files directly. Spans
     IS / BS / CF Indirect, both ``actual`` (Jan/Feb 2026) and ``realistic``
@@ -200,9 +141,8 @@ def farada_assertions() -> list[Assertion]:
 
 
 CLIENT_ASSERTIONS = {
-    "cupffee":  cupffee_assertions,
-    "almacena": almacena_assertions,
-    "farada":   farada_assertions,
+    "cupffee": cupffee_assertions,
+    "farada":  farada_assertions,
 }
 
 

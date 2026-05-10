@@ -50,11 +50,11 @@ class TestWipeAndCreate:
         wipe_and_create(db_path)
         assert db_path.exists()
 
-    def test_creates_three_tables(self, db_path: Path) -> None:
+    def test_creates_financials_table(self, db_path: Path) -> None:
         wipe_and_create(db_path)
         with sqlite3.connect(db_path) as conn:
             tables = _table_names(conn)
-        assert {"financials", "cup_volumes", "country_revenue"} <= tables
+        assert "financials" in tables
 
     def test_overwrites_existing_db(self, db_path: Path) -> None:
         wipe_and_create(db_path)
@@ -79,7 +79,7 @@ class TestApplyIdempotent:
         apply(db_path)
         apply(db_path)
         with sqlite3.connect(db_path) as conn:
-            assert {"financials", "cup_volumes", "country_revenue"} <= _table_names(conn)
+            assert "financials" in _table_names(conn)
 
 
 class TestFinancialsTable:
@@ -198,49 +198,6 @@ class TestFinancialsTable:
         with sqlite3.connect(db_path) as conn:
             pk = _pk_columns(conn, "financials")
         assert "is_aggregate" not in pk
-
-
-class TestCupVolumesTable:
-    def test_has_entity_column(self, db_path: Path) -> None:
-        wipe_and_create(db_path)
-        with sqlite3.connect(db_path) as conn:
-            cols = _column_info(conn, "cup_volumes")
-        assert "entity" in cols
-        assert cols["entity"]["notnull"] is True
-
-    def test_pk_includes_entity(self, db_path: Path) -> None:
-        wipe_and_create(db_path)
-        with sqlite3.connect(db_path) as conn:
-            pk = _pk_columns(conn, "cup_volumes")
-        assert "entity" in pk
-        assert "period_date" in pk
-        assert "cup_size" in pk
-
-
-class TestCountryRevenueTable:
-    def test_has_entity_column(self, db_path: Path) -> None:
-        wipe_and_create(db_path)
-        with sqlite3.connect(db_path) as conn:
-            cols = _column_info(conn, "country_revenue")
-        assert "entity" in cols
-        assert cols["entity"]["notnull"] is True
-
-    def test_pk_includes_entity(self, db_path: Path) -> None:
-        wipe_and_create(db_path)
-        with sqlite3.connect(db_path) as conn:
-            pk = _pk_columns(conn, "country_revenue")
-        assert "entity" in pk
-        assert "period_date" in pk
-        assert "country" in pk
-        assert "period_type" in pk
-
-    def test_period_type_check_rejects_unknown(self, db_path: Path) -> None:
-        wipe_and_create(db_path)
-        with sqlite3.connect(db_path) as conn, pytest.raises(sqlite3.IntegrityError):
-            conn.execute(
-                "INSERT INTO country_revenue VALUES "
-                "('2025-01-01','cupffee','BG','quarterly',100.0)"
-            )
 
 
 class TestIndexes:

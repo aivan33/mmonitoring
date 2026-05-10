@@ -241,3 +241,135 @@ def test_real_mr_bs_march_2026_spot_checks():
     # Computed/derived rows (mr_row=null) → None
     assert result[("Working Capital", "Working Capital",
                    "Working Capital")] is None
+
+
+# Custom mr_layout (e.g. honey) ---------------------------------------------
+
+def _make_honey_style_mr(path: Path) -> None:
+    """Synthetic MR with non-default layout: sheet 'is - yearly26', header
+    row 1, label col 1, period_format=month_name."""
+    wb = Workbook()
+    wb.remove(wb.active)
+    ws = wb.create_sheet("is - yearly26")
+    # Row 1: month-name headers in string form (Jan in col 2, ..., Mar col 4)
+    ws.cell(1, 1, None)
+    ws.cell(1, 2, "January")
+    ws.cell(1, 3, "February")
+    ws.cell(1, 4, "March")
+    ws.cell(1, 5, "April")
+    # Row 2+: labels in col 1, monthly values in cols 2..5
+    ws.cell(2, 1, "MRR")
+    ws.cell(2, 2, 100); ws.cell(2, 3, 200); ws.cell(2, 4, 300)
+    ws.cell(3, 1, "B2C")
+    ws.cell(3, 2, 50); ws.cell(3, 3, 60); ws.cell(3, 4, 70)
+    wb.save(path)
+
+
+def test_extract_month_with_custom_layout(tmp_path):
+    """mr_layout block overrides defaults: alternate sheet, header row 1,
+    string month names. Ensures honey-shaped MRs work end-to-end."""
+    mr_path = tmp_path / "honey_mr.xlsx"
+    _make_honey_style_mr(mr_path)
+
+    mapping = {
+        "mr_layout": {
+            "IS": {
+                "sheet": "is - yearly26",
+                "header_row": 1,
+                "label_col": 1,
+                "period_format": "month_name",
+            },
+        },
+        "mapping_is": [
+            {"mr_row": 2, "mr_label": "MRR",
+             "data": "MRR", "grp": "MRR", "subgroup": "MRR"},
+            {"mr_row": 3, "mr_label": "B2C",
+             "data": "Sales", "grp": "B2C", "subgroup": "B2C"},
+        ],
+    }
+
+    jan = extract_month(mr_path, mapping, 2026, 1, "IS")
+    feb = extract_month(mr_path, mapping, 2026, 2, "IS")
+    mar = extract_month(mr_path, mapping, 2026, 3, "IS")
+
+    assert jan[("MRR", "MRR", "MRR")] == 100.0
+    assert feb[("MRR", "MRR", "MRR")] == 200.0
+    assert mar[("MRR", "MRR", "MRR")] == 300.0
+    assert mar[("Sales", "B2C", "B2C")] == 70.0
+
+
+def test_partial_mr_layout_merges_with_defaults(tmp_path):
+    """A mapping that overrides only IS leaves CF/BS using default layout.
+    Confirms the merge is per-statement, not all-or-nothing."""
+    mr_path = tmp_path / "mixed_mr.xlsx"
+    wb = Workbook()
+    wb.remove(wb.active)
+    # IS sheet uses honey-style layout
+    is_ws = wb.create_sheet("custom_is")
+    is_ws.cell(1, 2, "March")
+    is_ws.cell(2, 1, "Revenue")
+    is_ws.cell(2, 2, 999)
+    # CF sheet uses default farada-style (sheet=CF, header row 2, label col 2, dt.date)
+    cf_ws = wb.create_sheet("CF")
+    cf_ws.cell(2, 3, dt.date(2026, 3, 1))
+    cf_ws.cell(4, 2, "Cash received from customers ")
+    cf_ws.cell(4, 3, 12345)
+    wb.save(mr_path)
+
+    mapping = {
+        "mr_layout": {
+            "IS": {
+                "sheet": "custom_is",
+                "header_row": 1,
+                "label_col": 1,
+                "period_format": "month_name",
+            },
+            # CF deliberately not specified → defaults apply.
+        },
+        "mapping_is": [
+            {"mr_row": 2, "mr_label": "Revenue",
+             "data": "Sales", "grp": "Sales", "subgroup": "Sales"},
+        ],
+        "mapping_cf": [
+            {"mr_row": 4, "mr_label": "Cash received from customers ",
+             "data": "Cash Flow from Operating Activities",
+             "grp": "Cash received from customers",
+             "subgroup": "Cash received from customers"},
+        ],
+    }
+
+    is_result = extract_month(mr_path, mapping, 2026, 3, "IS")
+    cf_result = extract_month(mr_path, mapping, 2026, 3, "CF")
+    assert is_result[("Sales", "Sales", "Sales")] == 999.0
+    assert cf_result[("Cash Flow from Operating Activities",
+                      "Cash received from customers",
+                      "Cash received from customers")] == 12345.0
+
+
+def test_invalid_period_format_raises(tmp_path):
+    mr_path = tmp_path / "x.xlsx"
+    wb = Workbook()
+    wb.remove(wb.active)
+    wb.create_sheet("P&L")
+    wb.save(mr_path)
+    mapping = {
+        "mr_layout": {"IS": {"period_format": "bogus"}},
+        "mapping_is": [],
+    }
+    with pytest.raises(ValueError, match="period_format"):
+        extract_month(mr_path, mapping, 2026, 3, "IS")
+
+
+def test_month_name_period_not_found_raises(tmp_path):
+    """Header has 'January' / 'February' but caller asks for month=12."""
+    mr_path = tmp_path / "honey_mr.xlsx"
+    _make_honey_style_mr(mr_path)
+    mapping = {
+        "mr_layout": {
+            "IS": {"sheet": "is - yearly26", "header_row": 1,
+                   "label_col": 1, "period_format": "month_name"},
+        },
+        "mapping_is": [],
+    }
+    with pytest.raises(ValueError, match="2026-12"):
+        extract_month(mr_path, mapping, 2026, 12, "IS")

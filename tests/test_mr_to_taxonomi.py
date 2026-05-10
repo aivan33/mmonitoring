@@ -163,7 +163,7 @@ def test_real_pipeline_extract_then_populate(tmp_path):
         for stmt in ("IS", "CF", "BS")
     }
     out = tmp_path / "taxonomi_act_2026-03.xlsx"
-    populate_taxonomi(_REAL_PREV, extracts, 2026, 3, out)
+    populate_taxonomi(_REAL_PREV, extracts, 2026, 3, out, mapping=mapping)
 
     wb = load_workbook(out)
     is_ws = wb["IS (Actual)"]
@@ -203,7 +203,7 @@ def test_real_pipeline_kpi_derivation_matches_feb_values(tmp_path):
         for stmt in ("IS", "CF", "BS")
     }
     out = tmp_path / "feb_redo.xlsx"
-    populate_taxonomi(_REAL_PREV, extracts_feb, 2026, 2, out)
+    populate_taxonomi(_REAL_PREV, extracts_feb, 2026, 2, out, mapping=mapping)
     wb = load_workbook(out)
     bs_ws = wb["BS (Actual)"]
 
@@ -213,8 +213,8 @@ def test_real_pipeline_kpi_derivation_matches_feb_values(tmp_path):
 
 
 def test_ratio_cells_kept_as_float(mini_prev, mini_extracts, tmp_path):
-    """Add a % Change in cash row to the mini taxonomi; ensure the value
-    is stored as float, not rounded to int."""
+    """A mapping entry tagged store_as: float keeps that cell stored as a
+    float in the output, not rounded to int."""
     wb = load_workbook(mini_prev)
     cf = wb["CF Indirect (Actual)"]
     cf.append(["% Change in cash", "% Change in cash", "% Change in cash",
@@ -225,10 +225,15 @@ def test_ratio_cells_kept_as_float(mini_prev, mini_extracts, tmp_path):
         **mini_extracts["CF"],
         ("% Change in cash", "% Change in cash", "% Change in cash"): 0.245,
     }}
+    mapping = {
+        "mapping_cf": [
+            {"data": "% Change in cash", "grp": "% Change in cash",
+             "subgroup": "% Change in cash", "store_as": "float"},
+        ],
+    }
     out = tmp_path / "out.xlsx"
-    populate_taxonomi(mini_prev, extracts, 2026, 3, out)
+    populate_taxonomi(mini_prev, extracts, 2026, 3, out, mapping=mapping)
     cf_out = load_workbook(out)["CF Indirect (Actual)"]
-    # Find the % Change in cash row (row 3 since we appended after the existing row 2).
     for r in range(2, cf_out.max_row + 1):
         if cf_out.cell(r, 1).value == "% Change in cash":
             v = cf_out.cell(r, 6).value
@@ -236,3 +241,57 @@ def test_ratio_cells_kept_as_float(mini_prev, mini_extracts, tmp_path):
             assert v == pytest.approx(0.245)
             return
     pytest.fail("% Change in cash row not found in output")
+
+
+def test_kpi_derivations_sum(mini_prev, mini_extracts, tmp_path):
+    """A sum-formula KPI lands at its target row with the expected sum."""
+    # Add a target row in the mini taxonomi for the derived KPI.
+    wb = load_workbook(mini_prev)
+    cf = wb["CF Indirect (Actual)"]
+    cf.append(["Gross Fixed assets", "Gross Fixed assets", "Gross Fixed assets",
+               None, None, None, None, None, None, None, None, None,
+               None, None, None])
+    wb.save(mini_prev)
+
+    extracts = {
+        **mini_extracts,
+        "BS": {
+            **mini_extracts["BS"],
+            ("Non-current assets", "Non-tangible fixed assets", "R&D"): 100,
+            ("Non-current assets", "Tangible fixed assets", "PP&E"): 50,
+        },
+    }
+    mapping = {
+        "kpi_derivations": [
+            {
+                "formula": "sum",
+                "target": ["Gross Fixed assets", "Gross Fixed assets", "Gross Fixed assets"],
+                "statement_for_target": "CF",
+                "sources": [
+                    {"statement": "BS", "key": ["Non-current assets", "Non-tangible fixed assets", "R&D"]},
+                    {"statement": "BS", "key": ["Non-current assets", "Tangible fixed assets", "PP&E"]},
+                ],
+            },
+        ],
+    }
+
+    out = tmp_path / "out.xlsx"
+    populate_taxonomi(mini_prev, extracts, 2026, 3, out, mapping=mapping)
+    cf_out = load_workbook(out)["CF Indirect (Actual)"]
+    for r in range(2, cf_out.max_row + 1):
+        if cf_out.cell(r, 1).value == "Gross Fixed assets":
+            assert cf_out.cell(r, 6).value == 150
+            return
+    pytest.fail("Gross Fixed assets row not found in output")
+
+
+def test_unknown_formula_type_raises(mini_prev, mini_extracts, tmp_path):
+    mapping = {
+        "kpi_derivations": [
+            {"formula": "bogus", "target": ["X", "Y", "Z"],
+             "statement_for_target": "CF"},
+        ],
+    }
+    out = tmp_path / "out.xlsx"
+    with pytest.raises(ValueError, match="bogus"):
+        populate_taxonomi(mini_prev, mini_extracts, 2026, 3, out, mapping=mapping)

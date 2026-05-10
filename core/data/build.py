@@ -61,11 +61,10 @@ def build_db(client: str, base_dir: str | Path) -> dict[str, Any]:
                 f"entity {src['entity']!r} not in entities {sorted(entities)}"
             )
 
-    fx_rates: dict[str, float | None] = {
-        "EUR": None,
-        "BGN": config.get("bgn_to_eur_rate"),
-        "USD": config.get("usd_to_eur_rate"),
-    }
+    # EUR is the base; per-client `currencies:` block holds rates for any
+    # other currency the client's sources use (e.g. {BGN: 1.95583, USD: 1.08}).
+    fx_rates: dict[str, float | None] = {"EUR": None}
+    fx_rates.update(config.get("currencies") or {})
 
     db_path = client_dir / "data" / f"{client}.db"
     db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -90,7 +89,7 @@ def build_db(client: str, base_dir: str | Path) -> dict[str, Any]:
             if currency != "EUR" and fx_rate is None:
                 raise ValueError(
                     f"source {src['file']!r}: currency={currency!r} but "
-                    f"config has no rate for it (e.g. bgn_to_eur_rate / usd_to_eur_rate)"
+                    f"config 'currencies:' block has no rate for it"
                 )
 
             rows: list[FinancialRow] = list(load_taxonomy_xlsx(

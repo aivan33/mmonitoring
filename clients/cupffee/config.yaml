@@ -1,7 +1,8 @@
 client_name: Cupffee
 fiscal_year_start_month: 1
 currency: EUR
-bgn_to_eur_rate: 1.95583    # fixed peg, used for any BGN sources
+currencies:
+  BGN: 1.95583    # fixed peg, used for any BGN sources
 as_of_date: 2026-03-01
 
 use_cases: [charts]

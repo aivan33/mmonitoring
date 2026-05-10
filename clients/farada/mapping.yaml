@@ -128,7 +128,7 @@ mapping_cf:
   - { mr_row: 22, mr_label: "Distribution of dividends",               data: "Cash Flow from Financing Activities", grp: "Distribution of dividends",            subgroup: "Distribution of dividends" }
   # Trailing taxonomi rows 19-22 — informational metrics at the bottom of CF Indirect.
   - { mr_row: 25, mr_label: "Beginning Cash Balance",                  data: "Beginning Cash Balance", grp: "Beginning Cash Balance", subgroup: "Beginning Cash Balance" }
-  - { mr_row: 27, mr_label: "% Change in cash",                        data: "% Change in cash",       grp: "% Change in cash",       subgroup: "% Change in cash" }
+  - { mr_row: 27, mr_label: "% Change in cash", store_as: float,       data: "% Change in cash",       grp: "% Change in cash",       subgroup: "% Change in cash" }
   # Capex (taxonomi r21) is a duplicate of CFI/CAPEX (r9) — same MR cell.
   - { mr_row: 12, mr_label: "CAPEX",                                   data: "Capex",                  grp: "Capex",                  subgroup: "Capex" }
   # Gross Fixed assets (taxonomi r22) is BS-derived (PP&E + Business Equipment + R&D Asset).
@@ -172,6 +172,68 @@ mapping_bs:
       note: "KPI ratio. Not in MR; computed if/when needed." }
   - { mr_row: null, mr_label: null, data: "Working Capital",           grp: "Working Capital",           subgroup: "Working Capital",
       note: "Computed: Current assets − Current liabilities. Not in MR." }
+
+# ---------------------------------------------------------------------------
+# Derived KPIs computed during the MR → taxonomi bridge step.
+# Four locked formula types (see core/report/mr_to_taxonomi.py):
+#   sum, working_capital, turnover_ratio, ap_turnover.
+# Source row keys for this client are listed below; the math lives in code.
+# ---------------------------------------------------------------------------
+kpi_derivations:
+  # Gross Fixed Assets = R&D Asset + PP&E + Business Equipment
+  - formula: sum
+    target: ["Gross Fixed assets", "Gross Fixed assets", "Gross Fixed assets"]
+    statement_for_target: CF
+    sources:
+      - { statement: BS, key: ["Non-current assets", "Non-tangible fixed assets", "Research and Development Asset"] }
+      - { statement: BS, key: ["Non-current assets", "Tangible fixed assets", "PP&E"] }
+      - { statement: BS, key: ["Non-current assets", "Tangible fixed assets", "Business Equipment"] }
+
+  # Working Capital = Total Current Assets − Total Current Liabilities
+  - formula: working_capital
+    target: ["Working Capital", "Working Capital", "Working Capital"]
+    statement_for_target: BS
+    current_assets:
+      - { statement: BS, key: ["Current assets", "Prepaid expenses", "Prepaid expenses"] }
+      - { statement: BS, key: ["Current assets", "Loans (other negotiable instruments)", "Loans (other negotiable instruments)"] }
+      - { statement: BS, key: ["Current assets", "Other receivables", "Other receivables"] }
+      - { statement: BS, key: ["Current assets", "Inventory", "Inventory"] }
+      - { statement: BS, key: ["Cash and cash equivalents", "Cash and cash equivalents", "Cash and cash equivalents"] }
+      - { statement: BS, key: ["Trade receivables", "Trade receivables", "Trade receivables"] }
+    current_liabilities:
+      - { statement: BS, key: ["Current Liabilities", "Payables to personnel", "Payables to personnel"] }
+      - { statement: BS, key: ["Current Liabilities", "Other payables", "Other payables"] }
+      - { statement: BS, key: ["Current Liabilities", "Loans (other negotiable instruments)", "Loans (other negotiable instruments)"] }
+      - { statement: BS, key: ["Trade payables", "Trade payables", "Trade payables"] }
+
+  # AR Turnover = Sales / avg(begin TR, end TR)
+  - formula: turnover_ratio
+    target: ["Account receivable turnover", "Account receivable turnover", "Account receivable turnover"]
+    statement_for_target: BS
+    store_as: float
+    numerator:
+      type: data_aggregate
+      source: IS
+      data: Sales
+    avg_balance_key:
+      statement: BS
+      key: ["Trade receivables", "Trade receivables", "Trade receivables"]
+
+  # AP Turnover = (CoS + OPEX − Personnel) / avg(begin TP, end TP)
+  - formula: ap_turnover
+    target: ["Accounts payable turnover", "Accounts payable turnover", "Accounts payable turnover"]
+    statement_for_target: BS
+    store_as: float
+    cost_data_classes: ["Cost of Sales", "R&D", "S&M", "G&A"]
+    personnel_keys:
+      - ["Cost of Sales", "Total Payroll", "Total Payroll"]
+      - ["R&D", "Total Payroll", "Germany"]
+      - ["R&D", "Total Payroll", "Serbia"]
+      - ["S&M", "Total Payroll", "Total Payroll"]
+      - ["G&A", "Total Payroll", "Total Payroll"]
+    avg_balance_key:
+      statement: BS
+      key: ["Trade payables", "Trade payables", "Trade payables"]
 
 # ---------------------------------------------------------------------------
 # Known good prior-month discrepancies between MR and Taxonomi.

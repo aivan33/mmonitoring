@@ -1,14 +1,15 @@
-"""Loader for the FaradaIC MR (Management Reporting) workbook.
+"""Loader for management-reporting (MR) workbooks.
 
-The MR is the master DATEV-derived workbook with consolidated P&L, CF, and
-BS sheets (Germany + Serbia, FX-converted upstream). Its layout differs
-from the canonical taxonomi format — header in row 2, monthly columns
-spanning years — so it has its own loader. Output feeds
-``core/mr_to_taxonomi.py`` which writes a new month's column into a copy
-of the prior taxonomi-actual xlsx.
+The MR is a per-client master accounting workbook (DATEV-derived for
+FaradaIC, in-house spreadsheets for others). Layouts vary across clients,
+so per-statement layout settings live in each client's ``mapping.yaml``
+under an ``mr_layout:`` block. Output feeds ``core/report/mr_to_taxonomi.py``
+which writes a new month's column into a copy of the prior taxonomi-actual
+xlsx.
 
-See ``clients/farada/MR_LAYOUT.md`` for sheet coordinates and
-``clients/farada/mapping.yaml`` for the row-to-taxonomi mapping.
+A client without an ``mr_layout:`` block falls back to FaradaIC-style
+defaults: sheets ``P&L`` / ``CF`` / ``BS``, header row 2, ``dt.date`` cells
+in the header for column matching.
 """
 
 from __future__ import annotations
@@ -22,15 +23,15 @@ from openpyxl import load_workbook
 logger = logging.getLogger(__name__)
 
 
-# (sheet name, label column 1-indexed) per statement code.
-_SHEET_META: dict[str, tuple[str, int]] = {
-    "IS": ("P&L", 1),
-    "CF": ("CF", 2),
-    "BS": ("BS", 2),
+# Defaults preserve FaradaIC behavior when ``mr_layout`` is absent from
+# mapping.yaml — existing clients keep working without config changes.
+_DEFAULT_LAYOUT: dict[str, dict] = {
+    "IS": {"sheet": "P&L", "header_row": 2, "label_col": 1, "period_format": "date_cell"},
+    "CF": {"sheet": "CF",  "header_row": 2, "label_col": 2, "period_format": "date_cell"},
+    "BS": {"sheet": "BS",  "header_row": 2, "label_col": 2, "period_format": "date_cell"},
 }
 
-# Header row is fixed at row 2 across all consumed MR sheets.
-_HEADER_ROW = 2
+_VALID_PERIOD_FORMATS = ("date_cell", "month_name")
 
 _MAPPING_KEY: dict[str, str] = {
     "IS": "mapping_is",
@@ -40,6 +41,16 @@ _MAPPING_KEY: dict[str, str] = {
 
 # Cell strings treated as "no value".
 _BLANK_STRINGS = frozenset({"", "-", "—", "n/a", "N/A"})
+
+# For ``period_format='month_name'``: English month names → 1..12.
+_MONTH_NAMES: dict[str, int] = {
+    name.lower(): idx
+    for idx, name in enumerate(
+        ["January", "February", "March", "April", "May", "June",
+         "July", "August", "September", "October", "November", "December"],
+        start=1,
+    )
+}
 
 
 def extract_month(
@@ -55,6 +66,8 @@ def extract_month(
         mr_path: path to the MR workbook.
         mapping: parsed ``mapping.yaml`` dict; must contain the per-statement
             list keyed by ``mapping_is`` / ``mapping_cf`` / ``mapping_bs``.
+            May contain an ``mr_layout`` block overriding the per-statement
+            sheet name, header row, label column, and period format.
         year, month: the target period.
         statement: ``'IS' | 'CF' | 'BS'``.
 
@@ -64,8 +77,9 @@ def extract_month(
         when the mapping entry has ``mr_row=null`` (derived/non-MR rows).
 
     Behavior:
-        - Resolves the target column by scanning ``row 2`` for a date cell
-          matching ``(year, month)``. Raises ``ValueError`` if absent.
+        - Resolves the target column by scanning ``layout['header_row']``
+          for a header that matches ``(year, month)`` according to
+          ``layout['period_format']``. Raises ``ValueError`` if absent.
         - For each entry: reads the configured row's label; if it matches
           ``mr_label``, uses the configured row. Otherwise searches the
           label column for ``mr_label`` and uses that row instead, emitting
@@ -73,34 +87,66 @@ def extract_month(
           be found anywhere, the entry's value is ``None`` and a warning
           is emitted.
     """
-    if statement not in _SHEET_META:
+    if statement not in _DEFAULT_LAYOUT:
         raise ValueError(
-            f"statement={statement!r}; expected one of {list(_SHEET_META)}"
+            f"statement={statement!r}; expected one of {list(_DEFAULT_LAYOUT)}"
         )
 
-    sheet_name, label_col = _SHEET_META[statement]
+    layout = _resolve_layout(mapping, statement)
     entries = mapping[_MAPPING_KEY[statement]]
 
     wb = load_workbook(mr_path, data_only=True)
     try:
-        ws = wb[sheet_name]
-        target_col = _find_month_column(ws, year, month, statement)
-        return _extract(ws, entries, label_col, target_col, statement)
+        ws = wb[layout["sheet"]]
+        target_col = _find_period_column(ws, year, month, layout, statement)
+        return _extract(
+            ws, entries,
+            label_col=layout["label_col"],
+            header_row=layout["header_row"],
+            target_col=target_col,
+            statement=statement,
+        )
     finally:
         wb.close()
 
 
-def _find_month_column(ws, year: int, month: int, statement: str) -> int:
+def _resolve_layout(mapping: dict, statement: str) -> dict:
+    """Merge per-client ``mr_layout`` over the per-statement defaults."""
+    layout = dict(_DEFAULT_LAYOUT[statement])
+    user_layout = (mapping.get("mr_layout") or {}).get(statement) or {}
+    layout.update(user_layout)
+    if layout["period_format"] not in _VALID_PERIOD_FORMATS:
+        raise ValueError(
+            f"mr_layout[{statement}].period_format={layout['period_format']!r}; "
+            f"expected one of {_VALID_PERIOD_FORMATS}"
+        )
+    return layout
+
+
+def _find_period_column(
+    ws, year: int, month: int, layout: dict, statement: str,
+) -> int:
+    header_row = layout["header_row"]
+    fmt = layout["period_format"]
     for c in range(1, ws.max_column + 1):
-        v = ws.cell(_HEADER_ROW, c).value
-        if isinstance(v, dt.date) and v.year == year and v.month == month:
-            return c
+        v = ws.cell(header_row, c).value
+        if fmt == "date_cell":
+            if isinstance(v, dt.date) and v.year == year and v.month == month:
+                return c
+        elif fmt == "month_name":
+            if isinstance(v, str) and _MONTH_NAMES.get(v.strip().lower()) == month:
+                return c
     raise ValueError(
-        f"{statement} sheet: no header column for {year}-{month:02d}"
+        f"{statement} sheet {layout['sheet']!r}: no header column for "
+        f"{year}-{month:02d} in row {header_row} "
+        f"(period_format={fmt!r})"
     )
 
 
-def _extract(ws, entries, label_col: int, target_col: int, statement: str):
+def _extract(
+    ws, entries, *, label_col: int, header_row: int, target_col: int,
+    statement: str,
+) -> dict[tuple[str, str, str], float | None]:
     out: dict[tuple[str, str, str], float | None] = {}
     for entry in entries:
         key = (entry["data"], entry["grp"], entry["subgroup"])
@@ -109,7 +155,7 @@ def _extract(ws, entries, label_col: int, target_col: int, statement: str):
             out[key] = None
             continue
         row = _resolve_row(
-            ws, mr_row, entry["mr_label"], label_col, statement,
+            ws, mr_row, entry["mr_label"], label_col, header_row, statement,
         )
         if row is None:
             out[key] = None
@@ -123,12 +169,13 @@ def _extract(ws, entries, label_col: int, target_col: int, statement: str):
 
 
 def _resolve_row(
-    ws, mr_row: int, mr_label: str, label_col: int, statement: str,
+    ws, mr_row: int, mr_label: str, label_col: int, header_row: int,
+    statement: str,
 ) -> int | None:
     actual = ws.cell(mr_row, label_col).value
     if actual == mr_label:
         return mr_row
-    for r in range(_HEADER_ROW + 1, ws.max_row + 1):
+    for r in range(header_row + 1, ws.max_row + 1):
         if ws.cell(r, label_col).value == mr_label:
             logger.warning(
                 "%s: configured row %d has label %r, but %r found at row %d "

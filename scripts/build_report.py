@@ -70,7 +70,8 @@ def _phase_extract(
 
     prev_taxonomi = _find_prev_taxonomi(client_dir, config, period)
     out_taxonomi = client_dir / "raw" / f"taxonomi_act_{period.strftime('%Y-%m')}.xlsx"
-    populate_taxonomi(prev_taxonomi, extracts, period.year, period.month, out_taxonomi)
+    populate_taxonomi(prev_taxonomi, extracts, period.year, period.month,
+                      out_taxonomi, mapping=mapping)
     print(f"  extract: wrote {out_taxonomi.relative_to(_REPO)}")
     return out_taxonomi
 

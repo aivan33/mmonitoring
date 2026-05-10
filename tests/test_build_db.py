@@ -124,7 +124,7 @@ class TestBuildDb:
         _setup_client(tmp_path, "demo",
             config={
                 "entities": ["demo"],
-                "bgn_to_eur_rate": 1.95583,
+                "currencies": {"BGN": 1.95583},
                 "financial_sources": [
                     {"file": "raw/a.xlsx", "year": 2025, "entity": "demo",
                      "currency": "BGN"},
