@@ -400,6 +400,58 @@ def _resolve_burn(
 
 
 # ---------------------------------------------------------------------------
+# Operational KPIs
+# ---------------------------------------------------------------------------
+
+def get_kpi(
+    kpi: str,
+    period_date: dt.date | str,
+    *,
+    client: str,
+    entity: str | None = None,
+) -> float | None:
+    """Read one operational KPI value at a given period."""
+    entity = _resolve_entity(client, entity)
+    with _connect(client) as conn:
+        row = conn.execute(
+            "SELECT value FROM operational_kpis WHERE "
+            "period_date=? AND entity=? AND kpi=?",
+            (_to_iso(period_date), entity, kpi),
+        ).fetchone()
+    return None if row is None else row[0]
+
+
+def get_kpi_trend(
+    kpi: str,
+    start_date: dt.date | str | None = None,
+    end_date: dt.date | str | None = None,
+    *,
+    client: str,
+    entity: str | None = None,
+) -> pd.Series:
+    """Read a KPI's monthly series. Returns an empty Series if no rows match."""
+    entity = _resolve_entity(client, entity)
+    where = ["kpi=?", "entity=?"]
+    args: list[Any] = [kpi, entity]
+    if start_date is not None:
+        where.append("period_date>=?")
+        args.append(_to_iso(start_date))
+    if end_date is not None:
+        where.append("period_date<=?")
+        args.append(_to_iso(end_date))
+    sql = (
+        "SELECT period_date, value FROM operational_kpis "
+        f"WHERE {' AND '.join(where)} "
+        "ORDER BY period_date"
+    )
+    with _connect(client) as conn:
+        rows = conn.execute(sql, args).fetchall()
+    idx = [dt.date.fromisoformat(d) for d, _ in rows]
+    vals = [v for _, v in rows]
+    return pd.Series(vals, index=idx, name=kpi)
+
+
+# ---------------------------------------------------------------------------
 # to_csv
 # ---------------------------------------------------------------------------
 

@@ -18,6 +18,7 @@ import yaml
 from core.data.aggregate_formulas import aggregate_keys, load_registry
 from core.data.integrity import IntegrityReport, check_integrity
 from core.data.loaders.financials import FinancialRow, load_taxonomy_xlsx
+from core.data.loaders.kpis import KPIRow, load_kpi_wide_xlsx
 from core.data.schema import wipe_and_create
 
 
@@ -75,7 +76,9 @@ def build_db(client: str, base_dir: str | Path) -> dict[str, Any]:
         "client": client,
         "db_path": str(db_path),
         "sources": [],
+        "operational_sources": [],
         "financials_rows": 0,
+        "operational_kpi_rows": 0,
         "duration_s": 0.0,
     }
 
@@ -110,12 +113,53 @@ def build_db(client: str, base_dir: str | Path) -> dict[str, Any]:
                 "rows": len(rows),
                 **_provenance(file_path),
             })
+        # Operational KPIs (optional; only some clients have these).
+        op_sources = config.get("operational_sources", []) or []
+        for src in op_sources:
+            if not isinstance(src, dict):
+                continue  # legacy placeholder shape (key: null) — skip
+            fmt = src.get("format", "kpi_wide")
+            file_path = client_dir / src["file"]
+            currency = src.get("currency", "EUR")
+            fx_rate = fx_rates.get(currency)
+            if currency != "EUR" and fx_rate is None:
+                raise ValueError(
+                    f"operational source {src['file']!r}: currency={currency!r} "
+                    f"but config 'currencies:' block has no rate for it"
+                )
+            if fmt == "kpi_wide":
+                kpi_rows: list[KPIRow] = list(load_kpi_wide_xlsx(
+                    file_path,
+                    year=src["year"],
+                    entity=src["entity"],
+                    currency=currency,
+                    fx_rate=fx_rate,
+                ))
+            else:
+                raise ValueError(
+                    f"operational source {src['file']!r}: unknown format "
+                    f"{fmt!r} (expected one of: kpi_wide)"
+                )
+            conn.executemany(
+                "INSERT OR REPLACE INTO operational_kpis VALUES (?, ?, ?, ?)",
+                kpi_rows,
+            )
+            summary["operational_sources"].append({
+                "file": src["file"],
+                "format": fmt,
+                "rows": len(kpi_rows),
+                **_provenance(file_path),
+            })
+
         _tag_aggregates(conn, client_dir)
         registry = load_registry(client_dir)
         integrity = check_integrity(conn, registry, workbook_paths=file_paths)
         conn.commit()
         summary["financials_rows"] = conn.execute(
             "SELECT COUNT(*) FROM financials"
+        ).fetchone()[0]
+        summary["operational_kpi_rows"] = conn.execute(
+            "SELECT COUNT(*) FROM operational_kpis"
         ).fetchone()[0]
 
     summary["duration_s"] = round(time.perf_counter() - started, 3)
@@ -164,6 +208,20 @@ def _format_load_report(
             f"| {src.get('mtime', '')} | {kb} |"
         )
     lines.append("")
+
+    if summary.get("operational_sources"):
+        lines.append("## Operational sources")
+        lines.append("")
+        lines.append("| File | Format | Rows | sha256 (first 12) | Modified | Size (kB) |")
+        lines.append("|---|---|---:|---|---|---:|")
+        for src in summary["operational_sources"]:
+            sha = src.get("sha256", "")[:12]
+            kb = round(src.get("size_bytes", 0) / 1024, 1)
+            lines.append(
+                f"| `{src['file']}` | {src['format']} | {src['rows']} | `{sha}` "
+                f"| {src.get('mtime', '')} | {kb} |"
+            )
+        lines.append("")
 
     n_fail = len(integrity.failures)
     n_warn = len(integrity.warnings)

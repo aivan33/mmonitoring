@@ -30,6 +30,10 @@ def main() -> int:
     print(f"  financials rows: {summary['financials_rows']}")
     for src in summary["sources"]:
         print(f"  - {src['file']}: {src['rows']} rows")
+    if summary.get("operational_kpi_rows"):
+        print(f"  operational KPI rows: {summary['operational_kpi_rows']}")
+        for src in summary.get("operational_sources", []):
+            print(f"  - {src['file']} ({src['format']}): {src['rows']} rows")
     print(f"  duration: {summary['duration_s']}s")
     return 0
 

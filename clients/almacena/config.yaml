@@ -11,10 +11,16 @@ entities:
 
 # Currency conversion rates. profitability_q1.xlsx is platform KPIs in USD;
 # financial taxonomies (taxonomi_act_*, foundation_q1, ap_12_act) are EUR.
-# **TODO** verify USD rate with the team — 0.92 was carried over from the
-# archived config; confirm before chart numbers ship.
+#
+# Convention: fx_rate = source units per 1 EUR; the loaders divide the
+# source value by the rate. So for USD the rate is ~1.087 (today's
+# EUR/USD), NOT 0.92. The archived config carried 0.92 which would have
+# produced EUR values ~36% too large under the divide convention.
+#
+# **TODO** confirm with the team: (1) is profitability_q1 actually USD,
+# (2) what FX rate to lock in (today's quote, period-end, average, etc.).
 currencies:
-  USD: 0.92    # USD → EUR
+  USD: 1.087    # USD per EUR — flag for team confirmation
 
 # Files load in the order listed. On overlap, last loaded wins.
 financial_sources:

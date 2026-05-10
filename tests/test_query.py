@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 import datetime as dt
+import sqlite3
 from pathlib import Path
 
 import pandas as pd
 import pytest
+import yaml
 
+from core.data import schema
+from core.data import query as query_module
 from core.data.query import (
-    get_aggregation, get_line, get_statement, get_trend,
-    get_value, to_csv, ytd,
+    get_aggregation, get_kpi, get_kpi_trend, get_line, get_statement,
+    get_trend, get_value, to_csv, ytd,
 )
 
 
@@ -295,3 +299,77 @@ distrib_total:
         agg = get_aggregation("Sales", "2025-01-01", client="demo", level="grp")
         # Two groups, each summed from leaves only:
         assert agg.to_dict() == {"Distributors": 100.0, "Direct": 20.0}
+
+
+# ---------------------------------------------------------------------------
+# get_kpi / get_kpi_trend
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def kpi_test_db(tmp_path: Path, monkeypatch) -> Path:
+    """Build a synthetic client DB with operational_kpis rows."""
+    cdir = tmp_path / "clients" / "demo"
+    (cdir / "data").mkdir(parents=True)
+    (cdir / "config.yaml").write_text(yaml.safe_dump({"entities": ["e1"]}))
+    db = cdir / "data" / "demo.db"
+    schema.wipe_and_create(db)
+    rows = [
+        ("2026-01-01", "e1", "GMV", 100.0),
+        ("2026-02-01", "e1", "GMV", 200.0),
+        ("2026-03-01", "e1", "GMV", 300.0),
+        ("2026-01-01", "e1", "Funded Amount", 90.0),
+        ("2026-01-01", "e1", "% GMV Insured", 0.0),
+        # Different entity (e2) — should be filtered out by entity arg.
+        ("2026-01-01", "e2", "GMV", 999.0),
+    ]
+    with sqlite3.connect(db) as conn:
+        conn.executemany(
+            "INSERT INTO operational_kpis VALUES (?, ?, ?, ?)", rows,
+        )
+        conn.commit()
+    monkeypatch.setattr(query_module, "_ROOT", tmp_path)
+    return tmp_path
+
+
+class TestGetKPI:
+    def test_returns_value_for_known_kpi(self, kpi_test_db):
+        assert get_kpi("GMV", "2026-01-01", client="demo", entity="e1") == 100.0
+        assert get_kpi("GMV", "2026-03-01", client="demo", entity="e1") == 300.0
+
+    def test_returns_none_for_missing_kpi(self, kpi_test_db):
+        assert get_kpi("Nonexistent", "2026-01-01", client="demo", entity="e1") is None
+
+    def test_returns_none_for_missing_period(self, kpi_test_db):
+        assert get_kpi("GMV", "2026-12-01", client="demo", entity="e1") is None
+
+    def test_zero_value_returns_zero_not_none(self, kpi_test_db):
+        v = get_kpi("% GMV Insured", "2026-01-01", client="demo", entity="e1")
+        assert v == 0.0
+
+    def test_explicit_entity_filters(self, kpi_test_db):
+        # e1 GMV at Jan = 100; e2 GMV at Jan = 999.
+        assert get_kpi("GMV", "2026-01-01", client="demo", entity="e1") == 100.0
+        assert get_kpi("GMV", "2026-01-01", client="demo", entity="e2") == 999.0
+
+
+class TestGetKPITrend:
+    def test_returns_full_series(self, kpi_test_db):
+        s = get_kpi_trend("GMV", client="demo", entity="e1")
+        assert isinstance(s, pd.Series)
+        assert s.name == "GMV"
+        assert s.index.tolist() == [
+            dt.date(2026, 1, 1), dt.date(2026, 2, 1), dt.date(2026, 3, 1),
+        ]
+        assert s.tolist() == [100.0, 200.0, 300.0]
+
+    def test_date_range_filters(self, kpi_test_db):
+        s = get_kpi_trend("GMV",
+                          start_date="2026-02-01", end_date="2026-02-28",
+                          client="demo", entity="e1")
+        assert len(s) == 1
+        assert s.iloc[0] == 200.0
+
+    def test_missing_kpi_returns_empty(self, kpi_test_db):
+        s = get_kpi_trend("Nonexistent", client="demo", entity="e1")
+        assert s.empty
+

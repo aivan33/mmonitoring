@@ -214,3 +214,36 @@ class TestIndexes:
                 for col_row in info:
                     covered.add(col_row[2])
         assert {"period_date", "scenario", "data", "entity"} <= covered
+
+
+class TestOperationalKpisTable:
+    def test_table_created(self, db_path: Path) -> None:
+        wipe_and_create(db_path)
+        with sqlite3.connect(db_path) as conn:
+            assert "operational_kpis" in _table_names(conn)
+
+    def test_pk_columns(self, db_path: Path) -> None:
+        wipe_and_create(db_path)
+        with sqlite3.connect(db_path) as conn:
+            pk = _pk_columns(conn, "operational_kpis")
+        assert pk == ["period_date", "entity", "kpi"]
+
+    def test_value_is_real_and_nullable(self, db_path: Path) -> None:
+        wipe_and_create(db_path)
+        with sqlite3.connect(db_path) as conn:
+            cols = _column_info(conn, "operational_kpis")
+        assert cols["value"]["type"].upper() == "REAL"
+        assert cols["value"]["notnull"] is False
+
+    def test_insert_and_query(self, db_path: Path) -> None:
+        wipe_and_create(db_path)
+        with sqlite3.connect(db_path) as conn:
+            conn.execute(
+                "INSERT INTO operational_kpis VALUES "
+                "('2026-01-01', 'almacena', 'GMV', 17044518.98)"
+            )
+            conn.commit()
+            row = conn.execute(
+                "SELECT value FROM operational_kpis WHERE kpi='GMV'"
+            ).fetchone()
+        assert row[0] == pytest.approx(17044518.98)

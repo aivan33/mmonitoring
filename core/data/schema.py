@@ -1,9 +1,15 @@
 """SQLite schema for the monitoring DB.
 
-One table: ``financials`` (taxonomy-format IS/CF/BS data, all scenarios).
-The ``entity`` column lets a single client DB hold multiple tracked entities
-(e.g. consolidated + subsidiary). Single-entity clients use one constant
-value throughout.
+Two tables:
+
+- ``financials`` — taxonomy-format IS/CF/BS data across all scenarios.
+- ``operational_kpis`` — per-period platform KPIs (GMV, # invoices,
+  active subscriptions, etc.) that don't fit the IS/CF/BS structure.
+  Stored long-form: one row per (period, entity, kpi).
+
+The ``entity`` column on both tables lets a single client DB hold
+multiple tracked entities (e.g. consolidated + subsidiary). Single-entity
+clients use one constant value throughout.
 
 ``apply`` is idempotent and safe to run against an existing DB.
 ``wipe_and_create`` is destructive — it deletes the file first.
@@ -35,6 +41,18 @@ CREATE INDEX IF NOT EXISTS idx_fin_period   ON financials(period_date);
 CREATE INDEX IF NOT EXISTS idx_fin_scenario ON financials(scenario);
 CREATE INDEX IF NOT EXISTS idx_fin_data     ON financials(data);
 CREATE INDEX IF NOT EXISTS idx_fin_entity   ON financials(entity);
+
+CREATE TABLE IF NOT EXISTS operational_kpis (
+    period_date  DATE NOT NULL,
+    entity       TEXT NOT NULL,
+    kpi          TEXT NOT NULL,
+    value        REAL,
+    PRIMARY KEY (period_date, entity, kpi)
+);
+
+CREATE INDEX IF NOT EXISTS idx_kpi_period ON operational_kpis(period_date);
+CREATE INDEX IF NOT EXISTS idx_kpi_name   ON operational_kpis(kpi);
+CREATE INDEX IF NOT EXISTS idx_kpi_entity ON operational_kpis(entity);
 """
 
 
