@@ -24,6 +24,7 @@
     "platform_export": {"type": ["string", "null"]},
     "entity":   {"type": ["string", "null"]},
     "notes":    {"type": "string"},
+    "value_format": {"enum": ["eur", "count", "percent_decimal", "days", "ratio"]},
 
     "period": {
       "type": "object",

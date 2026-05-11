@@ -410,7 +410,7 @@ def _draw_line(ax, spec: ChartSpec, resolved: list[dict], palette: list[str]) ->
             else:
                 above = y >= 0
             ax.annotate(
-                _format_eur(y), xy=(x, y),
+                format_value(y, spec.value_format), xy=(x, y),
                 xytext=(0, 10 if above else -10),
                 textcoords="offset points",
                 ha="center", va="bottom" if above else "top",
@@ -440,7 +440,7 @@ def _draw_bar(ax, spec: ChartSpec, resolved: list[dict], palette: list[str]) -> 
         ax.set_xticklabels(_month_labels(list(s.index)), rotation=0, ha="center")
         ax.bar_label(
             bars,
-            labels=[_format_eur(v) if v is not None and not pd.isna(v) else ""
+            labels=[format_value(v, spec.value_format)
                     for v in s.values],
             padding=4, fontsize=LABEL_FONTSIZE_DATA, color=TEXT_INK,
             fontweight="medium",
@@ -529,16 +529,32 @@ def _slice_colors(
 
 def _draw_kpi_card(ax, spec: ChartSpec, resolved: list[dict], palette: list[str]) -> None:
     ax.set_axis_off()
-    ax.text(0.5, 0.7, spec.title, ha="center", va="center",
-            fontsize=12, fontweight="bold")
+    ax.text(0.5, 0.78, spec.title, ha="center", va="center",
+            fontsize=12, fontweight="bold", color=TEXT_MUTED)
     if resolved:
         v = resolved[0]["raw"]
         if isinstance(v, pd.Series):
             v = v.iloc[0] if len(v) else None
         if v is not None:
-            ax.text(0.5, 0.35, _format_eur(v), ha="center", va="center",
-                    fontsize=24, fontweight="bold",
+            ax.text(0.5, 0.40, format_value(v, spec.value_format),
+                    ha="center", va="center",
+                    fontsize=32, fontweight="bold",
                     color=palette[0])
+        # If a second series is supplied, treat it as the prior-period
+        # baseline and render a small delta arrow + percent change.
+        if len(resolved) > 1:
+            prev_raw = resolved[1]["raw"]
+            if isinstance(prev_raw, pd.Series):
+                prev_raw = prev_raw.iloc[0] if len(prev_raw) else None
+            if (prev_raw is not None and v is not None
+                    and isinstance(prev_raw, (int, float)) and prev_raw != 0):
+                delta = (float(v) - float(prev_raw)) / abs(float(prev_raw))
+                arrow = "▲" if delta >= 0 else "▼"
+                color = "#2E7A56" if delta >= 0 else "#C24C44"
+                ax.text(0.5, 0.12,
+                        f"{arrow} {delta * 100:+.1f}% vs last period",
+                        ha="center", va="center",
+                        fontsize=10, color=color, fontweight="medium")
 
 
 def _draw_stacked_bar(
@@ -635,7 +651,7 @@ def _draw_stacked_bar(
         ax.bar_label(
             bars,
             labels=[
-                _format_eur(v) if abs(v) >= threshold and v != 0 else ""
+                format_value(v, spec.value_format) if abs(v) >= threshold and v != 0 else ""
                 for v in values
             ],
             label_type="center", fontsize=LABEL_FONTSIZE_DATA - 1,
@@ -661,9 +677,10 @@ _MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
 
 def _label_clustered_bars(
     ax, bars, values: list, label_inside_top: bool,
+    value_format: str = "eur",
 ) -> None:
     formatted = [
-        _format_eur(v) if v is not None and not pd.isna(v) else ""
+        format_value(v, value_format)
         for v in values
     ]
     if not label_inside_top:
@@ -750,7 +767,8 @@ def _draw_clustered_bar(
             c = palette[i % len(palette)]
             bars = ax.bar(offsets, values, width=bar_width, color=c,
                           zorder=3, linewidth=0)
-            _label_clustered_bars(ax, bars, values, label_inside_top)
+            _label_clustered_bars(ax, bars, values, label_inside_top,
+                                  value_format=spec.value_format)
             labels_legend.append(entry["label"])
             colors_legend.append(c)
         ax.set_xticks(x)
@@ -772,7 +790,8 @@ def _draw_clustered_bar(
             c = palette[i % len(palette)]
             bars = ax.bar(offsets, values, width=bar_width, color=c,
                           zorder=3, linewidth=0)
-            _label_clustered_bars(ax, bars, values, label_inside_top)
+            _label_clustered_bars(ax, bars, values, label_inside_top,
+                                  value_format=spec.value_format)
             labels_legend.append(entry["label"])
             colors_legend.append(c)
         ax.set_xticks(x)
@@ -870,7 +889,7 @@ def _draw_bar_with_line(
         bar_max = bar_max_per_x[xi]
         below = bar_max is not None and v < bar_max
         ax.annotate(
-            _format_eur(v), xy=(xi, v),
+            format_value(v, spec.value_format), xy=(xi, v),
             xytext=(0, -14 if below else 11),
             textcoords="offset points", ha="center",
             va="top" if below else "bottom",
@@ -1131,6 +1150,27 @@ def _apply_axis_format(ax, spec: ChartSpec) -> None:
             )
         )
         ax.set_ylabel("")
+    elif yfmt == "count":
+        ax.yaxis.set_major_formatter(
+            plt.FuncFormatter(lambda v, _: f"{int(v):,}")
+        )
+        ax.set_ylabel("")
+    elif yfmt == "percent_decimal":
+        # Storage 0.15 → axis label 15%.
+        ax.yaxis.set_major_formatter(
+            plt.FuncFormatter(lambda v, _: f"{v * 100:.0f}%")
+        )
+        ax.set_ylabel("")
+    elif yfmt == "days":
+        ax.yaxis.set_major_formatter(
+            plt.FuncFormatter(lambda v, _: f"{v:.0f}d")
+        )
+        ax.set_ylabel("")
+    elif yfmt == "ratio":
+        ax.yaxis.set_major_formatter(
+            plt.FuncFormatter(lambda v, _: f"{v:.2f}")
+        )
+        ax.set_ylabel("")
 
 
 def _catmull_rom_smooth(
@@ -1176,6 +1216,43 @@ def _format_eur(v: float) -> str:
     if abs(v) >= 1_000:
         return f"€{v / 1_000:.0f}K"
     return f"€{v:.0f}"
+
+
+def _format_count(v: float) -> str:
+    return f"{int(round(v)):,}"
+
+
+def _format_percent_decimal(v: float) -> str:
+    """Storage convention: 0.155 → '15.5%'."""
+    return f"{v * 100:.1f}%"
+
+
+def _format_days(v: float) -> str:
+    return f"{v:.1f} days"
+
+
+def _format_ratio(v: float) -> str:
+    return f"{v:.2f}"
+
+
+_VALUE_FORMATTERS = {
+    "eur":             _format_eur,
+    "count":           _format_count,
+    "percent_decimal": _format_percent_decimal,
+    "days":            _format_days,
+    "ratio":           _format_ratio,
+}
+
+
+def format_value(v: float | None, fmt: str = "eur") -> str:
+    """Format a single value per the spec's ``value_format`` (default eur).
+    Returns an empty string for missing values."""
+    if v is None or (isinstance(v, float) and pd.isna(v)):
+        return ""
+    formatter = _VALUE_FORMATTERS.get(fmt)
+    if formatter is None:
+        return _format_eur(float(v))
+    return formatter(float(v))
 
 
 # ---------------------------------------------------------------------------

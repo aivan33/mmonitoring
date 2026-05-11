@@ -50,6 +50,7 @@ class ChartSpec:
     style: dict[str, Any] = field(default_factory=dict)
     gauge: dict[str, Any] = field(default_factory=dict)
     notes: str = ""
+    value_format: str = "eur"
 
     @property
     def is_platform(self) -> bool:
@@ -122,4 +123,5 @@ def load_spec(path: str | Path) -> ChartSpec:
         style=raw.get("style", {}),
         gauge=raw.get("gauge", {}),
         notes=raw.get("notes", ""),
+        value_format=raw.get("value_format", "eur"),
     )
