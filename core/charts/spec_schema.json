@@ -65,7 +65,8 @@
             "required": ["kind"],
             "additionalProperties": false,
             "properties": {
-              "kind":     {"enum": ["trend", "value", "aggregation", "projection"]},
+              "kind":     {"enum": ["trend", "value", "aggregation", "projection",
+                                    "kpi_trend", "kpi_value"]},
               "data":     {"oneOf": [
                 {"type": "string"},
                 {"type": "array", "items": {"type": "string"}, "minItems": 1}
@@ -82,8 +83,15 @@
               "actual":   {"type": "object"},
               "projection_delta": {"type": "object"},
               "year":     {"type": "integer"},
-              "window":   {"enum": ["current", "ytd"]}
-            }
+              "window":   {"enum": ["current", "ytd"]},
+              "kpi":      {"type": "string", "minLength": 1}
+            },
+            "allOf": [
+              {"if": {"properties": {"kind": {"const": "kpi_trend"}}, "required": ["kind"]},
+               "then": {"required": ["kpi"]}},
+              {"if": {"properties": {"kind": {"const": "kpi_value"}}, "required": ["kind"]},
+               "then": {"required": ["kpi"]}}
+            ]
           }
         }
       }

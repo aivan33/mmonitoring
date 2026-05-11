@@ -230,3 +230,112 @@ class TestUnsupportedType:
         )
         with pytest.raises(NotImplementedError, match="waterfall"):
             render(spec, anchor=dt.date(2025, 1, 1), brand={}, out_dir=tmp_path)
+
+
+# ---------------------------------------------------------------------------
+# KPI query resolution (operational_kpis source)
+# ---------------------------------------------------------------------------
+
+import sqlite3 as _sqlite3
+import yaml as _yaml
+from core.data import schema as _schema
+from core.data import query as _query_module
+
+
+@pytest.fixture
+def kpi_chart_db(tmp_path: Path, monkeypatch) -> Path:
+    """Synthetic client with operational_kpis rows for chart-render tests."""
+    cdir = tmp_path / "clients" / "almacena"
+    (cdir / "data").mkdir(parents=True)
+    (cdir / "config.yaml").write_text(_yaml.safe_dump({
+        "entities": ["ap_foundation"],
+        "brand": {"primary": "#1B3A5C", "accent": "#E89B4B"},
+    }))
+    db = cdir / "data" / "almacena.db"
+    _schema.wipe_and_create(db)
+    with _sqlite3.connect(db) as conn:
+        conn.executemany(
+            "INSERT INTO operational_kpis VALUES (?, ?, ?, ?)",
+            [
+                ("2026-01-01", "ap_foundation", "GMV", 15_680_330.25),
+                ("2026-02-01", "ap_foundation", "GMV", 19_815_603.14),
+                ("2026-03-01", "ap_foundation", "GMV", 20_481_861.06),
+                ("2026-01-01", "ap_foundation", "# Invoices", 69.0),
+                ("2026-02-01", "ap_foundation", "# Invoices", 75.0),
+                ("2026-03-01", "ap_foundation", "# Invoices", 101.0),
+            ],
+        )
+        conn.commit()
+    monkeypatch.setattr(_query_module, "_ROOT", tmp_path)
+    return tmp_path
+
+
+class TestResolveKPIQueries:
+    def test_kpi_trend_returns_series(self, kpi_chart_db: Path) -> None:
+        result = resolve_query(
+            {"kind": "kpi_trend", "kpi": "GMV"},
+            client="almacena", entity="ap_foundation",
+            start=dt.date(2026, 1, 1), end=dt.date(2026, 3, 1),
+        )
+        import pandas as pd
+        assert isinstance(result, pd.Series)
+        assert list(result.index) == [
+            dt.date(2026, 1, 1), dt.date(2026, 2, 1), dt.date(2026, 3, 1),
+        ]
+        assert result.iloc[-1] == pytest.approx(20_481_861.06)
+
+    def test_kpi_trend_filters_to_window(self, kpi_chart_db: Path) -> None:
+        result = resolve_query(
+            {"kind": "kpi_trend", "kpi": "GMV"},
+            client="almacena", entity="ap_foundation",
+            start=dt.date(2026, 2, 1), end=dt.date(2026, 2, 28),
+        )
+        assert len(result) == 1
+        assert result.iloc[0] == pytest.approx(19_815_603.14)
+
+    def test_kpi_value_returns_scalar(self, kpi_chart_db: Path) -> None:
+        result = resolve_query(
+            {"kind": "kpi_value", "kpi": "# Invoices"},
+            client="almacena", entity="ap_foundation",
+            start=dt.date(2026, 3, 1), end=dt.date(2026, 3, 1),
+        )
+        assert result == 101.0
+
+    def test_kpi_value_missing_returns_none(self, kpi_chart_db: Path) -> None:
+        result = resolve_query(
+            {"kind": "kpi_value", "kpi": "Bogus"},
+            client="almacena", entity="ap_foundation",
+            start=dt.date(2026, 3, 1), end=dt.date(2026, 3, 1),
+        )
+        assert result is None
+
+
+def test_render_kpi_chart_end_to_end(kpi_chart_db: Path, tmp_path: Path) -> None:
+    """A spec referencing kpi_trend renders to PNG + sidecar without error,
+    and the sidecar values match what we inserted."""
+    spec = ChartSpec(
+        chart_id="almacena_gmv",
+        client="almacena",
+        title="GMV — Q1 2026",
+        chart_type="line",
+        source="custom",
+        period={"kind": "ltm", "months": 3},
+        data=[DataSeries(label="GMV", query={"kind": "kpi_trend", "kpi": "GMV"})],
+        entity="ap_foundation",
+        axes={"y": {"format": "EUR_thousands"}},
+    )
+    out_dir = tmp_path / "out"
+    png_path, json_path = render(
+        spec, anchor=dt.date(2026, 3, 1),
+        brand={"primary": "#1B3A5C"}, out_dir=out_dir,
+    )
+    assert png_path.exists()
+    assert png_path.stat().st_size > 1000  # sanity: real PNG content
+    sidecar = json.loads(json_path.read_text())
+    series = sidecar["data"][0]["values"]
+    assert len(series) == 3
+    # Last point matches what we inserted (Mar).
+    last = series[-1]
+    assert last["key"] == "2026-03-01"
+    assert last["value"] == pytest.approx(20_481_861.06)
+

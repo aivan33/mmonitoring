@@ -32,7 +32,9 @@ import pandas as pd
 from dateutil.relativedelta import relativedelta
 
 from core.charts.spec import ChartSpec, DataSeries
-from core.data.query import get_aggregation, get_trend, get_value
+from core.data.query import (
+    get_aggregation, get_kpi, get_kpi_trend, get_trend, get_value,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -169,6 +171,21 @@ def resolve_query(
         # the renderer can color actual vs projected separately.
         return _resolve_projection(
             query, client=client, entity=entity, start=start, end=end,
+        )
+
+    if kind == "kpi_trend":
+        # Operational KPI series across the period. No scenario fan-out —
+        # KPIs are observed values, not budget/actual variants.
+        return get_kpi_trend(
+            query["kpi"], start_date=start, end_date=end,
+            client=client, entity=entity,
+        )
+
+    if kind == "kpi_value":
+        # Spot-period KPI; ``start`` is the target period for single-month
+        # kinds like ``current_month`` / ``explicit``.
+        return get_kpi(
+            query["kpi"], start, client=client, entity=entity,
         )
 
     raise ValueError(f"unknown query kind {kind!r}")

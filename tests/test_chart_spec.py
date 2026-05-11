@@ -134,3 +134,66 @@ class TestRealCupffeeSpec:
         assert spec.client == "cupffee"
         assert spec.chart_type == "line"
         assert spec.source == "custom"
+
+
+# ---------------------------------------------------------------------------
+# KPI query kinds (operational_kpis source)
+# ---------------------------------------------------------------------------
+
+class TestKPIQueryKinds:
+    def test_kpi_trend_accepted(self, tmp_path: Path) -> None:
+        spec_dict = {
+            **VALID_MIN,
+            "data": [{
+                "label": "GMV",
+                "query": {"kind": "kpi_trend", "kpi": "GMV"},
+            }],
+        }
+        path = _write(tmp_path / "kpi_trend.json", spec_dict)
+        spec = load_spec(path)
+        assert spec.data[0].query["kind"] == "kpi_trend"
+        assert spec.data[0].query["kpi"] == "GMV"
+
+    def test_kpi_value_accepted(self, tmp_path: Path) -> None:
+        spec_dict = {
+            **VALID_MIN,
+            "period": {"kind": "current_month"},
+            "data": [{
+                "label": "# Invoices",
+                "query": {"kind": "kpi_value", "kpi": "# Invoices"},
+            }],
+        }
+        path = _write(tmp_path / "kpi_value.json", spec_dict)
+        spec = load_spec(path)
+        assert spec.data[0].query["kind"] == "kpi_value"
+
+    def test_kpi_trend_without_kpi_field_raises(self, tmp_path: Path) -> None:
+        spec_dict = {
+            **VALID_MIN,
+            "data": [{
+                "label": "GMV",
+                "query": {"kind": "kpi_trend"},  # missing kpi
+            }],
+        }
+        path = _write(tmp_path / "missing.json", spec_dict)
+        with pytest.raises(SpecValidationError, match="kpi"):
+            load_spec(path)
+
+    def test_kpi_value_without_kpi_field_raises(self, tmp_path: Path) -> None:
+        spec_dict = {
+            **VALID_MIN,
+            "data": [{
+                "label": "GMV",
+                "query": {"kind": "kpi_value"},  # missing kpi
+            }],
+        }
+        path = _write(tmp_path / "missing.json", spec_dict)
+        with pytest.raises(SpecValidationError, match="kpi"):
+            load_spec(path)
+
+    def test_existing_trend_kinds_still_work(self, tmp_path: Path) -> None:
+        """Adding new kinds should not break specs using the old trend kind."""
+        path = _write(tmp_path / "trend.json", VALID_MIN)
+        spec = load_spec(path)
+        assert spec.data[0].query["kind"] == "trend"
+
