@@ -30,14 +30,29 @@ financial_sources:
   - { file: raw/foundation_q1.xlsx,   year: 2026, entity: ap_foundation, currency: EUR }
 
 # Operational KPIs (platform metrics — GMV, Funded Amount, Days Outstanding,
-# etc.). Wired in once the operational_kpis loader lands (Phase 2.5 step 2).
-# Format: kpi_wide = rows are KPI names, columns are months.
+# etc.). Format: kpi_wide = rows are KPI names, columns are months.
+# dimensionless_kpis: counts, ratios, percentages, days — these pass
+# through unconverted even though the source currency is USD.
 operational_sources:
-  - { file: raw/profitability_q1.xlsx, year: 2026, entity: ap_foundation, currency: USD, format: kpi_wide }
+  - file: raw/profitability_q1.xlsx
+    year: 2026
+    entity: ap_foundation
+    currency: USD
+    format: kpi_wide
+    dimensionless_kpis:
+      - "# Invoices"
+      - "# Boxes"
+      - "Docs"
+      - "Average Days Outstanding"
+      - "Cash Drag %"
+      - "Gross Profit %"
+      - "% GMV Insured"
 
-# Brand placeholder — refined when chart specs land.
+# Brand — matches Dec 2025 deck visual style (teal + gold).
 brand:
-  primary: "#1B3A5C"
-  accent: "#E89B4B"
+  primary: "#1F4D4D"   # dark teal — Dec deck primary line / bar
+  accent:  "#D4A024"   # gold — actual values when paired with budget
+  budget:  "#2E7A7A"   # mid teal — budget bars
+  light:   "#A8D5D0"   # light aqua — tertiary stacked bands
   font_header: "Calibri"
   font_body: "Calibri"

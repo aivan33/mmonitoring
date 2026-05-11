@@ -182,3 +182,27 @@ def test_real_almacena_profitability_loads():
         if r.kpi == "GMV" and r.period_date == dt.date(2026, 1, 1)
     )
     assert gmv_jan.value == pytest.approx(15_680_330, abs=1000)
+
+
+def test_dimensionless_kpis_skip_currency_conversion(tmp_path):
+    """KPIs listed as dimensionless pass through unconverted even when the
+    source is USD."""
+    from openpyxl import Workbook
+    p = tmp_path / "x.xlsx"
+    wb = Workbook(); wb.remove(wb.active)
+    ws = wb.create_sheet("KPIs")
+    ws.append(["", "Jan 26"])
+    ws.append(["GMV", 1087])             # USD → /1.087 = €1000
+    ws.append(["# Invoices", 69])        # dimensionless → stays 69
+    ws.append(["Cash Drag %", 0.15])     # dimensionless → stays 0.15
+    wb.save(p)
+    rows = list(load_kpi_wide_xlsx(
+        p, year=2026, entity="e1",
+        currency="USD", fx_rate=1.087,
+        dimensionless_kpis=["# Invoices", "Cash Drag %"],
+    ))
+    by_kpi = {r.kpi: r.value for r in rows}
+    assert by_kpi["GMV"] == pytest.approx(1000.0, abs=0.01)
+    assert by_kpi["# Invoices"] == 69.0
+    assert by_kpi["Cash Drag %"] == pytest.approx(0.15)
+

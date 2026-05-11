@@ -134,6 +134,7 @@ def build_db(client: str, base_dir: str | Path) -> dict[str, Any]:
                     entity=src["entity"],
                     currency=currency,
                     fx_rate=fx_rate,
+                    dimensionless_kpis=src.get("dimensionless_kpis") or (),
                 ))
             else:
                 raise ValueError(

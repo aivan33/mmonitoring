@@ -102,6 +102,7 @@ def load_kpi_wide_xlsx(
     entity: str,
     currency: str = "EUR",
     fx_rate: float | None = None,
+    dimensionless_kpis: Iterable[str] | None = None,
 ) -> Iterable[KPIRow]:
     """Iterate rows of a ``kpi_wide`` xlsx, yielding one KPIRow per
     (period, kpi) pair.
@@ -111,8 +112,14 @@ def load_kpi_wide_xlsx(
         year: default year for headers without a year (e.g. ``Jan``).
         entity: stamped on every yielded row.
         currency: source currency. ``EUR`` = pass-through; otherwise
-            every numeric value is divided by ``fx_rate``.
+            monetary values are divided by ``fx_rate`` (per the
+            financials-loader convention: fx_rate = source units per
+            1 EUR).
         fx_rate: required when ``currency != 'EUR'``.
+        dimensionless_kpis: KPI names that carry no currency (counts,
+            ratios, days, percentages). These pass through unconverted
+            even when ``currency != 'EUR'``. Match is exact and
+            case-sensitive against the column-1 label.
 
     Behavior:
         - Reads the first sheet of the workbook.
@@ -126,6 +133,7 @@ def load_kpi_wide_xlsx(
         raise ValueError(
             f"currency={currency!r} requires fx_rate to be set"
         )
+    dimensionless = set(dimensionless_kpis or ())
     wb = load_workbook(Path(path), data_only=True, read_only=True)
     try:
         ws = wb[wb.sheetnames[0]]
@@ -161,7 +169,7 @@ def load_kpi_wide_xlsx(
                     value = float(raw)
                 except (TypeError, ValueError):
                     continue
-                if currency != "EUR":
+                if currency != "EUR" and kpi not in dimensionless:
                     assert fx_rate is not None
                     # Convention matches core/data/loaders/financials.py:
                     # fx_rate = source units per 1 EUR. Divide source by rate
