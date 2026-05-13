@@ -1,0 +1,19 @@
+{
+  "chart_id": "efficiency_portfolio_outstanding",
+  "client": "almacena",
+  "title": "Portfolio Outstanding — Capital Deployed",
+  "chart_type": "line",
+  "source": "custom",
+  "value_format": "eur",
+  "period": {"kind": "ltm", "months": 12},
+  "axes": {"y": {"format": "EUR_thousands"}},
+  "display_order": 65,
+  "data": [
+    {"label": "Portfolio Outstanding",
+     "query": {"kind": "kpi_trend", "kpi": "Average Portfolio Outstanding"}}
+  ],
+  "reference_lines": [
+    {"aggregate": "mean", "label": "LTM mean", "color": "#FF9800", "style": "dashed"}
+  ],
+  "notes": "Average monthly deployed capital, LTM-12. Pairs with efficiency_cash_drag (efficiency) and efficiency_days_outstanding (velocity) on Slide 3C. Mar-26 €14.8M is 3.3x the Apr-25 baseline of €4.4M."
+}
