@@ -133,14 +133,18 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["value"],
         "additionalProperties": false,
         "properties": {
-          "value": {"type": "number"},
+          "value":     {"type": "number"},
+          "aggregate": {"enum": ["mean", "median"]},
           "label": {"type": "string"},
           "color": {"type": "string"},
           "style": {"enum": ["solid", "dashed", "dotted"]}
-        }
+        },
+        "oneOf": [
+          {"required": ["value"]},
+          {"required": ["aggregate"]}
+        ]
       }
     }
   }

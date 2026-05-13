@@ -20,7 +20,7 @@
     }
   ],
   "reference_lines": [
-    {"value": 202000, "label": "Apr-25 baseline", "color": "#FF9800", "style": "dashed"}
+    {"aggregate": "mean", "label": "LTM mean", "color": "#FF9800", "style": "dashed"}
   ],
-  "notes": "Proves the Volume thesis: ticket size is flat across the LTM (Apr-25 €202K → Mar-26 €203K) while GMV grew 2.5x. The dashed Apr-25 reference makes the no-inflation point visible at a glance."
+  "notes": "Proves the Volume thesis: ticket size is flat across the LTM while GMV grew 2.5x. The dashed LTM-mean reference auto-recomputes each month so the baseline never goes stale."
 }

@@ -534,8 +534,26 @@ def _draw_line(ax, spec: ChartSpec, resolved: list[dict], palette: list[str],
         ref_style_map = {"dashed": (4, 2), "dotted": (1, 2), "solid": None}
         dash_style = ref_style_map.get(ref.get("style", "dashed"), (4, 2))
         ref_color = ref.get("color", "#FF9800")  # legacy uses orange
+        # Reference line value: explicit `value` wins; otherwise compute
+        # the named aggregate from the first resolved series so monthly
+        # decks pick up the new month's average without re-editing the
+        # spec. Only the first series is used — multi-series aggregates
+        # would need a `series:` selector if that case arises.
+        if "value" in ref:
+            ref_y = ref["value"]
+        elif "aggregate" in ref and resolved:
+            agg = ref["aggregate"]
+            first = resolved[0].get("raw")
+            if not isinstance(first, pd.Series) or first.empty:
+                continue
+            clean = first.dropna()
+            if clean.empty:
+                continue
+            ref_y = float(clean.mean()) if agg == "mean" else float(clean.median())
+        else:
+            continue
         line = ax.axhline(
-            ref["value"], color=ref_color, linewidth=1.6, zorder=2.5,
+            ref_y, color=ref_color, linewidth=1.6, zorder=2.5,
         )
         if dash_style is not None:
             line.set_dashes(dash_style)

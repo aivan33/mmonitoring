@@ -235,6 +235,60 @@ class TestUnsupportedType:
             render(spec, anchor=dt.date(2025, 1, 1), brand={}, out_dir=tmp_path)
 
 
+class TestReferenceLineAggregate:
+    """A reference line with aggregate: 'mean' or 'median' computes its
+    value from the resolved data at draw time, so monthly recurring decks
+    never carry a stale hardcoded baseline."""
+
+    def _render_with_ref(self, ref: dict) -> float:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        import pandas as pd
+        from core.charts import tokens as tokens_mod
+        from core.charts.render import _draw_line
+        from core.charts.spec import ChartSpec, DataSeries
+
+        dates = [dt.date(2025, m, 1) for m in (1, 2, 3, 4)]
+        spec = ChartSpec(
+            chart_id="x", client="x", title="x",
+            chart_type="line", source="custom",
+            period={"kind": "range", "start": "2025-01-01", "end": "2025-04-30"},
+            value_format="eur",
+            data=[DataSeries(label="X",
+                             query={"kind": "trend", "data": "X"})],
+            reference_lines=[ref],
+        )
+        resolved = [{"label": "X", "raw": pd.Series([100.0, 200.0, 300.0, 400.0],
+                                                     index=dates),
+                     "display_sign": 1}]
+        fig, ax = plt.subplots()
+        try:
+            _draw_line(ax, spec, resolved, ["#000"], tokens_mod.DEFAULT)
+            # The reference line is the single horizontal axhline in this
+            # synthetic setup. Read its y from the underlying Line2D ydata.
+            hlines = [
+                l for l in ax.lines
+                if len(set(l.get_ydata())) == 1 and len(l.get_ydata()) >= 2
+            ]
+            assert hlines, "expected one horizontal reference line"
+            return float(hlines[0].get_ydata()[0])
+        finally:
+            plt.close(fig)
+
+    def test_aggregate_mean_uses_series_mean(self) -> None:
+        y = self._render_with_ref({"aggregate": "mean", "label": "mean"})
+        assert y == pytest.approx(250.0)  # (100+200+300+400)/4
+
+    def test_aggregate_median_uses_series_median(self) -> None:
+        y = self._render_with_ref({"aggregate": "median", "label": "median"})
+        assert y == pytest.approx(250.0)  # median of [100,200,300,400]
+
+    def test_static_value_still_works(self) -> None:
+        y = self._render_with_ref({"value": 999.0, "label": "static"})
+        assert y == pytest.approx(999.0)
+
+
 class TestStackedBarWithLine:
     """Last data entry renders as an overlay line; the rest stack as
     diverging bars on the same axes. Used for P&L decompositions where
