@@ -235,6 +235,71 @@ class TestUnsupportedType:
             render(spec, anchor=dt.date(2025, 1, 1), brand={}, out_dir=tmp_path)
 
 
+class TestClusteredBarAxisOrdering:
+    """clustered_bar must show chronological mmm-yy labels for LTM windows.
+
+    A multi-year span without month-of-year collisions (e.g. Apr 25 –
+    Mar 26) is a single LTM time-series: the x-axis should run Apr-25 →
+    Mar-26 so the latest month sits on the right. The year-over-year
+    bucketed view (month names without year) should only kick in when
+    the same calendar month appears in more than one year, which is the
+    intended use case for prior-period comparisons.
+    """
+
+    @staticmethod
+    def _draw(series: dict) -> list[str]:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        from core.charts import tokens as tokens_mod
+        from core.charts.render import _draw_clustered_bar
+        from core.charts.spec import ChartSpec, DataSeries
+
+        spec = ChartSpec(
+            chart_id="cb", client="x", title="cb",
+            chart_type="clustered_bar", source="custom",
+            period={"kind": "ltm"},
+            data=[DataSeries(label=lbl,
+                             query={"kind": "trend", "data": lbl})
+                  for lbl in series],
+        )
+        import pandas as pd
+        resolved = [
+            {"label": lbl, "raw": pd.Series(vals)} for lbl, vals in series.items()
+        ]
+        fig, ax = plt.subplots()
+        try:
+            _draw_clustered_bar(ax, spec, resolved, ["#000", "#111"], tokens_mod.DEFAULT)
+            return [t.get_text() for t in ax.get_xticklabels()]
+        finally:
+            plt.close(fig)
+
+    def test_ltm_uses_chronological_mmm_yy(self) -> None:
+        # Apr 2025 – Mar 2026: no calendar month appears twice.
+        dates = [dt.date(2025, m, 1) for m in range(4, 13)] + \
+                [dt.date(2026, m, 1) for m in (1, 2, 3)]
+        series = {"A": {d: 1.0 for d in dates}}
+        labels = self._draw(series)
+        assert labels == [
+            "Apr-25", "May-25", "Jun-25", "Jul-25", "Aug-25", "Sep-25",
+            "Oct-25", "Nov-25", "Dec-25", "Jan-26", "Feb-26", "Mar-26",
+        ]
+
+    def test_year_over_year_keeps_month_only_buckets(self) -> None:
+        # Same months appear in two years — bucketed compare is intended.
+        dates_25 = [dt.date(2025, m, 1) for m in range(1, 13)]
+        dates_26 = [dt.date(2026, m, 1) for m in range(1, 13)]
+        series = {
+            "A": {d: 1.0 for d in dates_25},
+            "B": {d: 2.0 for d in dates_26},
+        }
+        labels = self._draw(series)
+        assert labels == [
+            "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+        ]
+
+
 # ---------------------------------------------------------------------------
 # KPI query resolution (operational_kpis source)
 # ---------------------------------------------------------------------------

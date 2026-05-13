@@ -865,9 +865,11 @@ def _draw_clustered_bar(
 ) -> None:
     """Multiple bar series side-by-side per x category.
 
-    If series span multiple years, x = month-of-year (1..12) so series
-    align by month for prior-period / multi-year comparisons. Otherwise
-    x = the union of date indices in chronological order.
+    If the same calendar month appears in more than one year across the
+    resolved series, x = month-of-year (1..12) so the bars align for a
+    prior-period / year-over-year comparison. Otherwise x = the union
+    of date indices in chronological order with mmm-yy labels — this is
+    the LTM case where every month is unique.
 
     When ``label_inside_top`` is True, value labels are drawn inside the
     bar near the top edge in white (used by ``_draw_bar_with_line`` so
@@ -883,12 +885,16 @@ def _draw_clustered_bar(
         return
     n = len(series_list)
 
-    all_years: set[int] = set()
+    # Bucketed month-of-year layout only when there's an actual
+    # collision — i.e. some calendar month appears in 2+ years across
+    # the resolved series. LTM windows span two years but each month
+    # appears once, so they fall through to the chronological branch.
+    years_per_month: dict[int, set[int]] = {}
     for s in series_list:
         for d in s.index:
             if isinstance(d, dt.date):
-                all_years.add(d.year)
-    multi_year = len(all_years) > 1
+                years_per_month.setdefault(d.month, set()).add(d.year)
+    multi_year = any(len(ys) > 1 for ys in years_per_month.values())
 
     labels_legend: list[str] = []
     colors_legend: list[str] = []
