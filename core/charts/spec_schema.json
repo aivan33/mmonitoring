@@ -28,6 +28,8 @@
     "value_format": {"enum": ["eur", "count", "percent_decimal", "days", "ratio"]},
     "show_totals": {"type": "boolean"},
     "display_order": {"type": "integer"},
+    "compute_total": {"type": "boolean"},
+    "total_label": {"type": "string"},
 
     "period": {
       "type": "object",
@@ -93,7 +95,8 @@
               "projection_delta": {"type": "object"},
               "year":     {"type": "integer"},
               "window":   {"enum": ["current", "ytd"]},
-              "kpi":      {"type": "string", "minLength": 1}
+              "kpi":      {"type": "string", "minLength": 1},
+              "entity":   {"type": "string", "minLength": 1}
             },
             "allOf": [
               {"if": {"properties": {"kind": {"const": "kpi_trend"}}, "required": ["kind"]},

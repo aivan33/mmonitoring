@@ -90,6 +90,18 @@ def resolve_query(
     """
     kind = query["kind"]
     scenario = query.get("scenario", "actual")
+    # Entity resolution:
+    # - KPI queries (kpi_*) are platform-level facts; the operational
+    #   KPI table happens to carry an entity column but every client
+    #   tags it to a single placeholder. So KPI queries ignore entity
+    #   entirely (pass None → cross-entity SUM in the loader).
+    # - Financial queries (trend / value / aggregation) honour the
+    #   spec-level entity, with an optional per-query `entity` override
+    #   so one chart can mix entities (e.g. KPIs + consolidated IS).
+    if kind.startswith("kpi_"):
+        entity = None
+    else:
+        entity = query.get("entity", entity)
 
     if kind == "trend":
         data_arg = query["data"]
@@ -1463,8 +1475,15 @@ def _draw_stacked_bar_with_line(
         _draw_stacked_bar(ax, spec, resolved, palette, tokens)
         return
 
-    bar_entries = resolved[:-1]
-    line_entry = resolved[-1]
+    # When compute_total is set, every data entry is a bar and the
+    # overlay line is a virtual entry built from spec.total_label —
+    # callers no longer need a dummy data series for the total.
+    if getattr(spec, "compute_total", False) and getattr(spec, "total_label", ""):
+        bar_entries = resolved
+        line_entry = {"label": spec.total_label, "raw": None, "display_sign": 1}
+    else:
+        bar_entries = resolved[:-1]
+        line_entry = resolved[-1]
 
     # Per-series colour resolution: prefer style.color_map[label]; for
     # diverging bars (display_sign=-1) without an explicit colour, fall
@@ -1521,21 +1540,49 @@ def _draw_stacked_bar_with_line(
         legend_labels.append(series["label"])
         legend_colors.append(c)
 
-    # In-bar labels (centered, white) sized off the typical stack span.
+    # Bar labels — every non-zero segment gets one. Big enough to fit
+    # an inside-center white label uses that; thinner segments get an
+    # outside label (above for positives, below for negatives) so a
+    # small bar like Cost of Sales never goes mute.
     pos_for_span = sorted(pos_bottom)
     neg_for_span = sorted(neg_bottom)
     typical_pos = pos_for_span[len(pos_for_span) // 2] if pos_for_span else 0.0
     typical_neg = neg_for_span[len(neg_for_span) // 2] if neg_for_span else 0.0
     typical_span = max(typical_pos - typical_neg, 1.0)
-    threshold = max(typical_span * 0.08, 8000.0)
+    inside_threshold = max(typical_span * 0.08, 8000.0)
     for bars, values, diverging in drawn:
+        inside_labels: list[str] = []
+        for k, rect in enumerate(bars.patches):
+            v = values[k]
+            if v == 0:
+                inside_labels.append("")
+                continue
+            text = format_value(abs(v) if diverging else v, spec.value_format)
+            if abs(v) >= inside_threshold:
+                inside_labels.append(text)
+            else:
+                inside_labels.append("")
+                # Outside placement: above for positive segments, below
+                # for negative. rect.get_y() / get_height are always
+                # non-negative; combine with the sign of v to know
+                # which edge to anchor on.
+                xc = rect.get_x() + rect.get_width() / 2
+                if v > 0:
+                    y_anchor = rect.get_y() + rect.get_height()
+                    yoff, va = 4, "bottom"
+                else:
+                    y_anchor = rect.get_y()
+                    yoff, va = -4, "top"
+                ax.annotate(
+                    text,
+                    xy=(xc, y_anchor),
+                    xytext=(0, yoff), textcoords="offset points",
+                    ha="center", va=va,
+                    fontsize=LABEL_FONTSIZE_DATA - 1,
+                    color=tokens.text_ink, fontweight="medium", zorder=6,
+                )
         ax.bar_label(
-            bars,
-            labels=[
-                format_value(abs(v) if diverging else v, spec.value_format)
-                if abs(v) >= threshold and v != 0 else ""
-                for v in values
-            ],
+            bars, labels=inside_labels,
             label_type="center", fontsize=LABEL_FONTSIZE_DATA - 1,
             color="white", fontweight="bold",
         )
@@ -1543,47 +1590,64 @@ def _draw_stacked_bar_with_line(
     # Overlay line — last series. Colour: style.color_map wins; else
     # palette accent slot that's distinct from the bars (last palette
     # entry tends to be the accent in the brand presets).
-    line_s = line_entry["raw"]
+    #
+    # If ``spec.compute_total`` is True, the line value at each period is
+    # the running sum of the bar values (which already include
+    # display_sign), so the line literally traces the chart's implied
+    # total rather than relying on a separately-fetched KPI. The line
+    # series' label/color still come from line_entry; its raw data is
+    # ignored.
     line_color = (
         color_map.get(line_entry["label"])
         or palette[(len(bar_entries)) % len(palette)]
     )
-    if isinstance(line_s, pd.Series) and not line_s.empty:
-        line_x: list[int] = []
-        line_y: list[float] = []
-        for d, v in line_s.items():
-            if d not in all_dates or v is None or pd.isna(v):
-                continue
-            line_x.append(all_dates.index(d))
-            line_y.append(float(v))
-        if line_x:
-            smooth_x, smooth_y = _catmull_rom_smooth(line_x, line_y)
-            if smooth_x:
-                ax.plot(smooth_x, smooth_y, linewidth=tokens.line_width,
-                        color=line_color, solid_capstyle="round",
-                        solid_joinstyle="round", zorder=4)
-            ax.plot(line_x, line_y, linestyle="None", marker="o",
-                    markersize=tokens.marker_size, color=line_color, zorder=5,
-                    markerfacecolor=line_color, markeredgecolor=line_color)
-            # Line labels carry a white bbox so they're visually owned by
-            # the line, not the bars they overlap.
-            for xi, yi in zip(line_x, line_y):
-                ax.annotate(
-                    format_value(yi, spec.value_format),
-                    xy=(xi, yi), xytext=(0, 8), textcoords="offset points",
-                    ha="center", va="bottom",
-                    fontsize=LABEL_FONTSIZE_DATA, color=line_color,
-                    fontweight="bold", zorder=6,
-                    bbox=dict(
-                        boxstyle="round,pad=0.25",
-                        facecolor="white",
-                        edgecolor=line_color,
-                        linewidth=0.8,
-                        alpha=0.95,
-                    ),
-                )
-            legend_labels.append(line_entry["label"])
-            legend_colors.append(line_color)
+    line_x: list[int] = []
+    line_y: list[float] = []
+    if getattr(spec, "compute_total", False):
+        # Sum the per-period bar values from the `drawn` tuples.
+        per_period_totals = [0.0] * n_dates
+        for _bars, values, _diverging in drawn:
+            for j, v in enumerate(values):
+                per_period_totals[j] += v
+        for j, total_v in enumerate(per_period_totals):
+            line_x.append(j)
+            line_y.append(total_v)
+    else:
+        line_s = line_entry["raw"]
+        if isinstance(line_s, pd.Series) and not line_s.empty:
+            for d, v in line_s.items():
+                if d not in all_dates or v is None or pd.isna(v):
+                    continue
+                line_x.append(all_dates.index(d))
+                line_y.append(float(v))
+    if line_x:
+        smooth_x, smooth_y = _catmull_rom_smooth(line_x, line_y)
+        if smooth_x:
+            ax.plot(smooth_x, smooth_y, linewidth=tokens.line_width,
+                    color=line_color, solid_capstyle="round",
+                    solid_joinstyle="round", zorder=4)
+        ax.plot(line_x, line_y, linestyle="None", marker="o",
+                markersize=tokens.marker_size, color=line_color, zorder=5,
+                markerfacecolor=line_color, markeredgecolor=line_color)
+        # Line labels carry a white bbox so they're visually owned by
+        # the line, not the bars they overlap.
+        for xi, yi in zip(line_x, line_y):
+            ax.annotate(
+                format_value(yi, spec.value_format),
+                xy=(xi, yi), xytext=(0, 8), textcoords="offset points",
+                ha="center", va="bottom",
+                fontsize=LABEL_FONTSIZE_DATA, color=line_color,
+                fontweight="bold", zorder=6,
+                bbox=dict(
+                    boxstyle="round,pad=0.25",
+                    facecolor="white",
+                    edgecolor=line_color,
+                    linewidth=0.8,
+                    alpha=0.95,
+                ),
+            )
+        legend_labels.append(line_entry["label"])
+        legend_colors.append(line_color)
 
     ax.set_xticks(x)
     ax.set_xticklabels(_month_labels(all_dates), rotation=0, ha="center")

@@ -55,6 +55,8 @@ class ChartSpec:
     value_format: str = "eur"
     show_totals: bool = False
     display_order: int | None = None
+    compute_total: bool = False
+    total_label: str = ""
 
     @property
     def is_platform(self) -> bool:
@@ -138,4 +140,6 @@ def load_spec(path: str | Path) -> ChartSpec:
         value_format=raw.get("value_format", "eur"),
         show_totals=bool(raw.get("show_totals", False)),
         display_order=raw.get("display_order"),
+        compute_total=bool(raw.get("compute_total", False)),
+        total_label=raw.get("total_label", ""),
     )

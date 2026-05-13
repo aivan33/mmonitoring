@@ -410,15 +410,26 @@ def get_kpi(
     client: str,
     entity: str | None = None,
 ) -> float | None:
-    """Read one operational KPI value at a given period."""
-    entity = _resolve_entity(client, entity)
+    """Read one operational KPI value at a given period.
+
+    Operational KPIs are platform-level facts — they're not really
+    entity-scoped even though the column exists. When ``entity`` is None,
+    we sum across whatever entity tags appear (every client today only
+    tags KPIs to one entity, so this is a single value). Pass entity
+    explicitly to keep the legacy filter.
+    """
+    where = ["period_date=?", "kpi=?"]
+    args: list[Any] = [_to_iso(period_date), kpi]
+    if entity is not None:
+        where.append("entity=?")
+        args.append(entity)
+    sql = (
+        "SELECT SUM(value) FROM operational_kpis "
+        f"WHERE {' AND '.join(where)}"
+    )
     with _connect(client) as conn:
-        row = conn.execute(
-            "SELECT value FROM operational_kpis WHERE "
-            "period_date=? AND entity=? AND kpi=?",
-            (_to_iso(period_date), entity, kpi),
-        ).fetchone()
-    return None if row is None else row[0]
+        row = conn.execute(sql, args).fetchone()
+    return None if row is None or row[0] is None else row[0]
 
 
 def get_kpi_trend(
@@ -429,10 +440,17 @@ def get_kpi_trend(
     client: str,
     entity: str | None = None,
 ) -> pd.Series:
-    """Read a KPI's monthly series. Returns an empty Series if no rows match."""
-    entity = _resolve_entity(client, entity)
-    where = ["kpi=?", "entity=?"]
-    args: list[Any] = [kpi, entity]
+    """Read a KPI's monthly series. Returns empty Series if no rows match.
+
+    Like ``get_kpi``: entity defaults to None (cross-entity sum), which
+    matches how operational KPIs are actually used — platform-wide
+    facts that happen to carry an entity column.
+    """
+    where = ["kpi=?"]
+    args: list[Any] = [kpi]
+    if entity is not None:
+        where.append("entity=?")
+        args.append(entity)
     if start_date is not None:
         where.append("period_date>=?")
         args.append(_to_iso(start_date))
@@ -440,8 +458,9 @@ def get_kpi_trend(
         where.append("period_date<=?")
         args.append(_to_iso(end_date))
     sql = (
-        "SELECT period_date, value FROM operational_kpis "
+        "SELECT period_date, SUM(value) FROM operational_kpis "
         f"WHERE {' AND '.join(where)} "
+        "GROUP BY period_date "
         "ORDER BY period_date"
     )
     with _connect(client) as conn:

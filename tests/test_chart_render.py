@@ -295,6 +295,63 @@ class TestStackedBarWithLine:
     the total (e.g. Gross Profit) needs to read as a trend overlaying
     its positive/negative components."""
 
+    def test_compute_total_derives_line_from_bar_sum(self) -> None:
+        """When spec.compute_total is True, the overlay line value at
+        each period is the cumulative bar sum (respecting display_sign),
+        not the line series' raw data."""
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        import pandas as pd
+        from core.charts import tokens as tokens_mod
+        from core.charts.render import _draw_stacked_bar_with_line
+        from core.charts.spec import ChartSpec, DataSeries
+
+        dates = [dt.date(2026, m, 1) for m in (1, 2, 3)]
+        spec = ChartSpec(
+            chart_id="x", client="x", title="x",
+            chart_type="stacked_bar_with_line", source="custom",
+            period={"kind": "range", "start": "2026-01-01", "end": "2026-03-31"},
+            value_format="eur",
+            data=[
+                DataSeries(label="A",
+                           query={"kind": "kpi_trend", "kpi": "A"}),
+                DataSeries(label="B", display_sign=-1,
+                           query={"kind": "kpi_trend", "kpi": "B"}),
+                DataSeries(label="Total",
+                           query={"kind": "kpi_trend", "kpi": "ignored"}),
+            ],
+            compute_total=True,
+        )
+        # Bars: A=100/200/300 (sign +1) and B=40/60/90 (sign -1).
+        # Expected line: 60, 140, 210 — independent of "Total" raw.
+        resolved = [
+            {"label": "A", "raw": pd.Series([100.0, 200.0, 300.0], index=dates),
+             "display_sign": 1},
+            {"label": "B", "raw": pd.Series([40.0, 60.0, 90.0], index=dates),
+             "display_sign": -1},
+            {"label": "Total", "raw": pd.Series([999.0, 999.0, 999.0], index=dates),
+             "display_sign": 1},
+        ]
+        fig, ax = plt.subplots()
+        try:
+            _draw_stacked_bar_with_line(
+                ax, spec, resolved, ["#000", "#111", "#222"], tokens_mod.DEFAULT,
+            )
+            # Find the overlaid line plot (Line2D with >1 distinct ydata).
+            data_lines = [
+                l for l in ax.lines
+                if len(set(l.get_ydata())) > 1
+            ]
+            assert data_lines, "expected an overlay line"
+            # Catmull-Rom smoothing inserts interpolated points, so
+            # check the endpoints of the smoothed line are anchored.
+            ydata = list(data_lines[0].get_ydata())
+            assert ydata[0] == pytest.approx(60.0)
+            assert ydata[-1] == pytest.approx(210.0)
+        finally:
+            plt.close(fig)
+
     def test_renders_with_bars_and_line(self, tmp_path: Path) -> None:
         import matplotlib
         matplotlib.use("Agg")
@@ -494,6 +551,26 @@ class TestResolveKPIQueries:
             start=dt.date(2026, 3, 1), end=dt.date(2026, 3, 1),
         )
         assert result is None
+
+    def test_kpi_queries_ignore_entity(self, kpi_chart_db: Path) -> None:
+        # Op KPIs are platform-level — kpi_* queries should return the
+        # same data whether the spec passes a real entity, a nonsense
+        # entity, or no entity at all.
+        import pandas as pd
+        a = resolve_query(
+            {"kind": "kpi_trend", "kpi": "GMV"},
+            client="almacena", entity="ap_foundation",
+            start=dt.date(2026, 1, 1), end=dt.date(2026, 3, 1),
+        )
+        b = resolve_query(
+            {"kind": "kpi_trend", "kpi": "GMV"},
+            client="almacena", entity="totally_made_up",
+            start=dt.date(2026, 1, 1), end=dt.date(2026, 3, 1),
+        )
+        assert isinstance(a, pd.Series) and not a.empty
+        assert list(a.index) == list(b.index)
+        for av, bv in zip(a.values, b.values):
+            assert av == pytest.approx(bv)
 
     def test_kpi_diff_subtracts_element_wise(self, kpi_chart_db: Path) -> None:
         # GMV - Funded Amount per month; Mar-26: 20,481,861 - 17,221,971 = 3,259,890

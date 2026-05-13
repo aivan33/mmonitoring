@@ -4,25 +4,29 @@
   "title": "Gross Profit Build-up — Q1 2026",
   "chart_type": "stacked_bar_with_line",
   "source": "custom",
-  "entity": "ap_foundation",
   "value_format": "eur",
   "period": {"kind": "range", "start": "2026-01-01", "end": "2026-03-31"},
   "axes": {"y": {"format": "EUR_thousands"}},
   "display_order": 50,
+  "compute_total": true,
+  "total_label": "Gross Profit",
   "data": [
     {"label": "Arrangement Fees", "query": {"kind": "kpi_trend", "kpi": "Arrangement Fees"}},
     {"label": "Accrued Interest", "query": {"kind": "kpi_trend", "kpi": "Accrued Interest"}},
     {"label": "Funding Cost",     "display_sign": -1,
      "query": {"kind": "kpi_trend", "kpi": "Cost of Funds"}},
-    {"label": "Gross Profit",     "query": {"kind": "kpi_trend", "kpi": "Gross Profit"}}
+    {"label": "Service Cost, Payroll & Infra", "display_sign": -1,
+     "query": {"kind": "trend", "data": "Cost of Sales", "scenario": "actual",
+               "entity": "consolidated"}}
   ],
   "style": {
     "color_map": {
-      "Arrangement Fees": "#20D9DC",
-      "Accrued Interest": "#009091",
-      "Funding Cost":     "#D64545",
-      "Gross Profit":     "#013E3F"
+      "Arrangement Fees":              "#20D9DC",
+      "Accrued Interest":              "#009091",
+      "Funding Cost":                  "#D64545",
+      "Service Cost, Payroll & Infra": "#8B1A1A",
+      "Gross Profit":                  "#013E3F"
     }
   },
-  "notes": "Build-up of Q1 2026 Gross Profit: Arrangement Fees + Accrued Interest stacked positive, Funding Cost stacked negative (display_sign -1), Gross Profit overlaid as the net line. Q1-only window because GP is only tracked from Jan-26 onward."
+  "notes": "Build-up of Q1 2026 Gross Profit. Bars: Arrangement Fees + Accrued Interest stacked positive; Funding Cost (op_kpis) and CoS (taxonomi: Production Payroll + Infrastructure + Other) stacked negative. compute_total: true makes the GP line recompute from the bars instead of using the stored op_kpi Gross Profit (which doesn't account for CoS)."
 }
