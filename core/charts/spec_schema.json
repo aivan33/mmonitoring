@@ -11,7 +11,8 @@
     "chart_type": {
       "enum": ["line", "bar", "stacked_bar", "donut", "kpi_card", "waterfall",
                "table", "gauge", "clustered_bar", "bar_with_line",
-               "lines_with_bar", "bar_projection", "donut_pair"]
+               "lines_with_bar", "stacked_bar_with_line",
+               "bar_projection", "donut_pair"]
     },
     "gauge": {
       "type": "object",

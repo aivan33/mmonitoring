@@ -235,6 +235,67 @@ class TestUnsupportedType:
             render(spec, anchor=dt.date(2025, 1, 1), brand={}, out_dir=tmp_path)
 
 
+class TestStackedBarWithLine:
+    """Last data entry renders as an overlay line; the rest stack as
+    diverging bars on the same axes. Used for P&L decompositions where
+    the total (e.g. Gross Profit) needs to read as a trend overlaying
+    its positive/negative components."""
+
+    def test_renders_with_bars_and_line(self, tmp_path: Path) -> None:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        import pandas as pd
+        from core.charts import tokens as tokens_mod
+        from core.charts.render import _draw_stacked_bar_with_line
+        from core.charts.spec import ChartSpec, DataSeries
+
+        dates = [dt.date(2026, m, 1) for m in (1, 2, 3)]
+        spec = ChartSpec(
+            chart_id="gp", client="x", title="gp",
+            chart_type="stacked_bar_with_line", source="custom",
+            period={"kind": "range", "start": "2026-01-01", "end": "2026-03-31"},
+            value_format="eur",
+            data=[
+                DataSeries(label="Arrangement Fees",
+                           query={"kind": "kpi_trend", "kpi": "Arrangement Fees"}),
+                DataSeries(label="Accrued Interest",
+                           query={"kind": "kpi_trend", "kpi": "Accrued Interest"}),
+                DataSeries(label="Funding Cost", display_sign=-1,
+                           query={"kind": "kpi_trend", "kpi": "Cost of Funds"}),
+                DataSeries(label="Gross Profit",
+                           query={"kind": "kpi_trend", "kpi": "Gross Profit"}),
+            ],
+        )
+        resolved = [
+            {"label": "Arrangement Fees", "raw": pd.Series([60.0, 73.0, 63.0], index=dates),
+             "display_sign": 1},
+            {"label": "Accrued Interest", "raw": pd.Series([71.0, 94.0, 128.0], index=dates),
+             "display_sign": 1},
+            {"label": "Funding Cost",     "raw": pd.Series([76.0, 89.0, 115.0], index=dates),
+             "display_sign": -1},
+            {"label": "Gross Profit",     "raw": pd.Series([55.0, 78.0, 76.0], index=dates),
+             "display_sign": 1},
+        ]
+        fig, ax = plt.subplots()
+        try:
+            _draw_stacked_bar_with_line(
+                ax, spec, resolved, ["#1B3A5C", "#FFB000", "#F4845F", "#00897B"],
+                tokens_mod.DEFAULT,
+            )
+            # Has bar containers (3 bar series) AND line plots (1 line series).
+            # Bars manifest as Rectangle patches; lines as Line2D objects.
+            bar_count = sum(1 for c in ax.containers if hasattr(c, "patches"))
+            line_count = len([l for l in ax.lines if len(l.get_xdata()) > 0])
+            assert bar_count == 3, f"expected 3 bar series, got {bar_count}"
+            assert line_count >= 1, f"expected at least 1 line, got {line_count}"
+            # x-axis labels should be mmm-yy
+            labels = [t.get_text() for t in ax.get_xticklabels()]
+            assert labels == ["Jan-26", "Feb-26", "Mar-26"]
+        finally:
+            plt.close(fig)
+
+
 class TestClusteredBarAxisOrdering:
     """clustered_bar must show chronological mmm-yy labels for LTM windows.
 

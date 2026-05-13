@@ -1429,6 +1429,127 @@ def _draw_lines_with_bar(
         _dot_legend(ax, legend_labels, legend_colors)
 
 
+def _draw_stacked_bar_with_line(
+    ax, spec: ChartSpec, resolved: list[dict], palette: list[str],
+    tokens: Tokens,
+) -> None:
+    """Diverging stacked bars + an overlay line on the same axes.
+
+    All series except the last stack as bars (positives go up, series
+    with display_sign=-1 stack down). The last series renders as a
+    smoothed line with markers and per-point labels — used for a
+    P&L-style decomposition where the total (e.g. Gross Profit) overlays
+    its positive/negative components.
+    """
+    if len(resolved) < 2:
+        _draw_stacked_bar(ax, spec, resolved, palette, tokens)
+        return
+
+    bar_entries = resolved[:-1]
+    line_entry = resolved[-1]
+
+    # Union x-axis across all series so misaligned periods still stack.
+    all_dates: list = sorted({
+        d for e in resolved
+        for d in (e["raw"].index if isinstance(e["raw"], pd.Series) else [])
+    })
+    if not all_dates:
+        return
+    x = list(range(len(all_dates)))
+    n_dates = len(x)
+
+    pos_bottom = [0.0] * n_dates
+    neg_bottom = [0.0] * n_dates
+    legend_labels: list[str] = []
+    legend_colors: list[str] = []
+    drawn: list[tuple[Any, list[float], bool]] = []  # (BarContainer, values, diverging)
+
+    for i, series in enumerate(bar_entries):
+        s = series["raw"]
+        if not isinstance(s, pd.Series):
+            continue
+        sign = int(series.get("display_sign", 1))
+        c = palette[i % len(palette)]
+        values: list[float] = []
+        bottoms: list[float] = []
+        for j, d in enumerate(all_dates):
+            raw = s.get(d) if d in s.index else None
+            if raw is None or pd.isna(raw):
+                values.append(0.0)
+                bottoms.append(0.0)
+                continue
+            v = float(raw) * sign
+            if v >= 0:
+                bottoms.append(pos_bottom[j])
+                pos_bottom[j] += v
+            else:
+                bottoms.append(neg_bottom[j])
+                neg_bottom[j] += v
+            values.append(v)
+        bars = ax.bar(x, values, bottom=bottoms, color=c, width=0.5,
+                      zorder=2, linewidth=0)
+        drawn.append((bars, values, sign == -1))
+        legend_labels.append(series["label"])
+        legend_colors.append(c)
+
+    # In-bar labels (centered, white) sized off the typical stack span.
+    pos_for_span = sorted(pos_bottom)
+    neg_for_span = sorted(neg_bottom)
+    typical_pos = pos_for_span[len(pos_for_span) // 2] if pos_for_span else 0.0
+    typical_neg = neg_for_span[len(neg_for_span) // 2] if neg_for_span else 0.0
+    typical_span = max(typical_pos - typical_neg, 1.0)
+    threshold = max(typical_span * 0.08, 8000.0)
+    for bars, values, diverging in drawn:
+        ax.bar_label(
+            bars,
+            labels=[
+                format_value(abs(v) if diverging else v, spec.value_format)
+                if abs(v) >= threshold and v != 0 else ""
+                for v in values
+            ],
+            label_type="center", fontsize=LABEL_FONTSIZE_DATA - 1,
+            color="white", fontweight="bold",
+        )
+
+    # Overlay line — last series.
+    line_s = line_entry["raw"]
+    line_color = palette[len(bar_entries) % len(palette)]
+    if isinstance(line_s, pd.Series) and not line_s.empty:
+        line_x: list[int] = []
+        line_y: list[float] = []
+        for d, v in line_s.items():
+            if d not in all_dates or v is None or pd.isna(v):
+                continue
+            line_x.append(all_dates.index(d))
+            line_y.append(float(v))
+        if line_x:
+            smooth_x, smooth_y = _catmull_rom_smooth(line_x, line_y)
+            if smooth_x:
+                ax.plot(smooth_x, smooth_y, linewidth=tokens.line_width,
+                        color=line_color, solid_capstyle="round",
+                        solid_joinstyle="round", zorder=4)
+            ax.plot(line_x, line_y, linestyle="None", marker="o",
+                    markersize=tokens.marker_size, color=line_color, zorder=5,
+                    markerfacecolor=line_color, markeredgecolor=line_color)
+            for xi, yi in zip(line_x, line_y):
+                ax.annotate(
+                    format_value(yi, spec.value_format),
+                    xy=(xi, yi), xytext=(0, 6), textcoords="offset points",
+                    ha="center", va="bottom",
+                    fontsize=LABEL_FONTSIZE_DATA, color=tokens.text_ink,
+                    fontweight="medium", zorder=6,
+                )
+            legend_labels.append(line_entry["label"])
+            legend_colors.append(line_color)
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(_month_labels(all_dates), rotation=0, ha="center")
+    _style_axes(ax, tokens)
+    _apply_axis_format(ax, spec)
+    if legend_labels:
+        _dot_legend(ax, legend_labels, legend_colors)
+
+
 _DRAW: dict[str, Any] = {
     "line": _draw_line,
     "bar": _draw_bar,
@@ -1439,6 +1560,7 @@ _DRAW: dict[str, Any] = {
     "clustered_bar": _draw_clustered_bar,
     "bar_with_line": _draw_bar_with_line,
     "lines_with_bar": _draw_lines_with_bar,
+    "stacked_bar_with_line": _draw_stacked_bar_with_line,
     "bar_projection": _draw_bar_projection,
     "donut_pair": _draw_donut_pair,
     "waterfall": _draw_waterfall,
@@ -1452,6 +1574,7 @@ _FIGSIZE_BY_TYPE: dict[str, tuple[float, float]] = {
     "clustered_bar": (13, 4.6),
     "bar_with_line": (13, 4.6),
     "lines_with_bar": (13, 4.6),
+    "stacked_bar_with_line": (13, 4.6),
     "bar_projection": (13, 4.2),
     "donut": (8.5, 6.0),
     "donut_pair": (13, 6.0),
@@ -1628,7 +1751,8 @@ def render(
             entity=spec.entity,
             start=start, end=end,
         )
-        resolved.append({"label": d.label, "raw": raw})
+        resolved.append({"label": d.label, "raw": raw,
+                         "display_sign": d.display_sign})
 
     ctx = apply_brand(brand)
     palette = _resolve_palette(spec, ctx.palette)

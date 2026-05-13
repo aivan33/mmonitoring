@@ -1,0 +1,20 @@
+{
+  "chart_id": "econ_gross_profit_q1_build",
+  "client": "almacena",
+  "title": "Gross Profit Build-up — Q1 2026",
+  "chart_type": "stacked_bar_with_line",
+  "source": "custom",
+  "entity": "ap_foundation",
+  "value_format": "eur",
+  "period": {"kind": "range", "start": "2026-01-01", "end": "2026-03-31"},
+  "axes": {"y": {"format": "EUR_thousands"}},
+  "display_order": 50,
+  "data": [
+    {"label": "Arrangement Fees", "query": {"kind": "kpi_trend", "kpi": "Arrangement Fees"}},
+    {"label": "Accrued Interest", "query": {"kind": "kpi_trend", "kpi": "Accrued Interest"}},
+    {"label": "Funding Cost",     "display_sign": -1,
+     "query": {"kind": "kpi_trend", "kpi": "Cost of Funds"}},
+    {"label": "Gross Profit",     "query": {"kind": "kpi_trend", "kpi": "Gross Profit"}}
+  ],
+  "notes": "Build-up of Q1 2026 Gross Profit: Arrangement Fees + Accrued Interest stacked positive, Funding Cost stacked negative (display_sign -1), Gross Profit overlaid as the net line. Q1-only window because GP is only tracked from Jan-26 onward."
+}
