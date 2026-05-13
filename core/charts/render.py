@@ -189,6 +189,28 @@ def resolve_query(
             query["kpi"], start, client=client, entity=entity,
         )
 
+    if kind == "kpi_ratio":
+        # Element-wise ratio of two operational KPI trends over the same
+        # period window. Used for "X as % of Y" framings like Funding
+        # Cost / GMV. Months where denominator is zero or missing drop
+        # out so the line doesn't render a spurious infinity.
+        num = get_kpi_trend(
+            query["numerator"], start_date=start, end_date=end,
+            client=client, entity=entity,
+        )
+        den = get_kpi_trend(
+            query["denominator"], start_date=start, end_date=end,
+            client=client, entity=entity,
+        )
+        if not isinstance(num, pd.Series) or num.empty:
+            return pd.Series(dtype=float)
+        if not isinstance(den, pd.Series) or den.empty:
+            return pd.Series(dtype=float)
+        # Replace zero / NaN denominators with NaN so the division
+        # propagates instead of producing inf.
+        den_safe = den.where(den.fillna(0) != 0)
+        return num.div(den_safe)
+
     raise ValueError(f"unknown query kind {kind!r}")
 
 

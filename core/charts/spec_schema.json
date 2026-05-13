@@ -70,11 +70,13 @@
             "additionalProperties": false,
             "properties": {
               "kind":     {"enum": ["trend", "value", "aggregation", "projection",
-                                    "kpi_trend", "kpi_value"]},
+                                    "kpi_trend", "kpi_value", "kpi_ratio"]},
               "data":     {"oneOf": [
                 {"type": "string"},
                 {"type": "array", "items": {"type": "string"}, "minItems": 1}
               ]},
+              "numerator":   {"type": "string", "minLength": 1},
+              "denominator": {"type": "string", "minLength": 1},
               "grp":      {"oneOf": [
                 {"type": ["string", "null"]},
                 {"type": "array", "items": {"type": "string"}, "minItems": 1}
@@ -94,7 +96,9 @@
               {"if": {"properties": {"kind": {"const": "kpi_trend"}}, "required": ["kind"]},
                "then": {"required": ["kpi"]}},
               {"if": {"properties": {"kind": {"const": "kpi_value"}}, "required": ["kind"]},
-               "then": {"required": ["kpi"]}}
+               "then": {"required": ["kpi"]}},
+              {"if": {"properties": {"kind": {"const": "kpi_ratio"}}, "required": ["kind"]},
+               "then": {"required": ["numerator", "denominator"]}}
             ]
           }
         }
