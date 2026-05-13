@@ -1,0 +1,15 @@
+{
+  "chart_id": "throughput_gmv_funded",
+  "client": "almacena",
+  "title": "GMV vs Funded Amount",
+  "chart_type": "line",
+  "source": "custom",
+  "entity": "ap_foundation",
+  "value_format": "eur",
+  "period": {"kind": "ltm", "months": 12},
+  "axes": {"y": {"format": "EUR_thousands"}},
+  "data": [
+    {"label": "GMV",           "query": {"kind": "kpi_trend", "kpi": "GMV"}},
+    {"label": "Funded Amount", "query": {"kind": "kpi_trend", "kpi": "Funded Amount"}}
+  ]
+}

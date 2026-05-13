@@ -1,0 +1,17 @@
+{
+  "chart_id": "efficiency_cash_drag",
+  "client": "almacena",
+  "title": "Cash Drag %",
+  "chart_type": "line",
+  "source": "custom",
+  "entity": "ap_foundation",
+  "value_format": "percent_decimal",
+  "period": {"kind": "ltm", "months": 12},
+  "axes": {"y": {"format": "percent_decimal"}},
+  "data": [
+    {"label": "Cash Drag", "query": {"kind": "kpi_trend", "kpi": "Cash Drag %"}}
+  ],
+  "reference_lines": [
+    {"value": 0.15, "label": "Target (15%)", "color": "#FF9800", "style": "dashed"}
+  ]
+}

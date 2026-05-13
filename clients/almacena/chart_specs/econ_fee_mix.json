@@ -1,0 +1,18 @@
+{
+  "chart_id": "econ_fee_mix",
+  "client": "almacena",
+  "title": "Fee Revenue Mix",
+  "chart_type": "stacked_bar",
+  "source": "custom",
+  "entity": "ap_foundation",
+  "value_format": "eur",
+  "period": {"kind": "ltm", "months": 12},
+  "axes": {"y": {"format": "EUR_thousands"}},
+  "data": [
+    {"label": "Arrangement Fees",   "query": {"kind": "kpi_trend", "kpi": "Arrangement Fees"}},
+    {"label": "Logistic Fees",      "query": {"kind": "kpi_trend", "kpi": "Logistic Fees"}},
+    {"label": "Cargo Ins. Fees",    "query": {"kind": "kpi_trend", "kpi": "Cargo Insurance Fees"}},
+    {"label": "Handling Fees",      "query": {"kind": "kpi_trend", "kpi": "Handling & Warehouse Destination Fees"}},
+    {"label": "Docs Mgmt Fees",     "query": {"kind": "kpi_trend", "kpi": "Docs Management Fees"}}
+  ]
+}

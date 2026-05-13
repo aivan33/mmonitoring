@@ -28,6 +28,7 @@ class Tokens:
     text_ink: str
     text_muted: str
     grid_color: str
+    show_y_grid: bool
     tick_color: str
     font_size_tick: float
     font_size_data: float
@@ -52,6 +53,7 @@ DEFAULT = Tokens(
     text_ink="#2D2D2D",
     text_muted="#6E6E6E",
     grid_color="#E5DBD5",
+    show_y_grid=True,       # deck-style dotted y-grid stays for cupffee
     tick_color="#6E6E6E",   # = TEXT_MUTED; legacy tick colour
     font_size_tick=10.5,
     font_size_data=9.0,
@@ -84,10 +86,12 @@ ALMACENA_ARCHIVE = Tokens(
     palette=("#013E3F", "#006768", "#009091", "#20D9DC", "#E1AA12", "#F98F45"),
     text_ink="#222222",
     text_muted="#666666",
-    # Very-light grid + tick colour, matching the legacy charts.js values
-    # — these are visibly different from DEFAULT's #E5DBD5 / #6E6E6E and
-    # are the single biggest reason the archive charts feel "cleaner".
+    # Grid OFF entirely under the archive preset — even at 0.04 alpha
+    # the rasterized matplotlib output reads as visual noise rather than
+    # the near-invisible CSS gridlines the legacy bundle showed. Y-axis
+    # tick labels carry the magnitude reference on their own.
     grid_color="rgba(0,0,0,0.04)",
+    show_y_grid=False,
     tick_color="#9ca3af",
     font_size_tick=10.5,
     font_size_data=9.0,

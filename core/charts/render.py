@@ -356,11 +356,14 @@ def _style_axes(ax, tokens: Tokens = DEFAULT) -> None:
     # Legacy charts.js used a near-invisible solid grid; the deck style
     # uses a dotted line. Switch line style by whether the grid_color
     # contains alpha — alpha-grids look better as solid hairlines.
-    is_alpha_grid = "rgba" in tokens.grid_color
-    ax.grid(True, axis="y",
-            linestyle="-" if is_alpha_grid else ":",
-            color=_parse_color(tokens.grid_color),
-            linewidth=0.8, alpha=1.0, zorder=0)
+    if tokens.show_y_grid:
+        is_alpha_grid = "rgba" in tokens.grid_color
+        ax.grid(True, axis="y",
+                linestyle="-" if is_alpha_grid else ":",
+                color=_parse_color(tokens.grid_color),
+                linewidth=0.8, alpha=1.0, zorder=0)
+    else:
+        ax.grid(False)
     ax.set_axisbelow(True)
     ax.tick_params(axis="x", labelsize=tokens.font_size_tick, length=0, pad=8,
                    colors=tokens.tick_color)

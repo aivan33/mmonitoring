@@ -1,0 +1,15 @@
+{
+  "chart_id": "throughput_operational",
+  "client": "almacena",
+  "title": "Operational Volume",
+  "chart_type": "clustered_bar",
+  "source": "custom",
+  "entity": "ap_foundation",
+  "value_format": "count",
+  "period": {"kind": "ltm", "months": 12},
+  "axes": {"y": {"format": "count"}},
+  "data": [
+    {"label": "# Invoices", "query": {"kind": "kpi_trend", "kpi": "# Invoices"}},
+    {"label": "# Boxes",    "query": {"kind": "kpi_trend", "kpi": "# Boxes"}}
+  ]
+}
