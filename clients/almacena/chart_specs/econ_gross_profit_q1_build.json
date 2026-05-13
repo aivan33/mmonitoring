@@ -16,5 +16,13 @@
      "query": {"kind": "kpi_trend", "kpi": "Cost of Funds"}},
     {"label": "Gross Profit",     "query": {"kind": "kpi_trend", "kpi": "Gross Profit"}}
   ],
+  "style": {
+    "color_map": {
+      "Arrangement Fees": "#20D9DC",
+      "Accrued Interest": "#009091",
+      "Funding Cost":     "#D64545",
+      "Gross Profit":     "#013E3F"
+    }
+  },
   "notes": "Build-up of Q1 2026 Gross Profit: Arrangement Fees + Accrued Interest stacked positive, Funding Cost stacked negative (display_sign -1), Gross Profit overlaid as the net line. Q1-only window because GP is only tracked from Jan-26 onward."
 }

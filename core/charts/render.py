@@ -1448,6 +1448,12 @@ def _draw_stacked_bar_with_line(
     bar_entries = resolved[:-1]
     line_entry = resolved[-1]
 
+    # Per-series colour resolution: prefer style.color_map[label]; for
+    # diverging bars (display_sign=-1) without an explicit colour, fall
+    # back to a red so the bar reads as a cost / subtraction.
+    color_map = (spec.style or {}).get("color_map") or {}
+    NEG_DEFAULT = "#D64545"
+
     # Union x-axis across all series so misaligned periods still stack.
     all_dates: list = sorted({
         d for e in resolved
@@ -1469,7 +1475,12 @@ def _draw_stacked_bar_with_line(
         if not isinstance(s, pd.Series):
             continue
         sign = int(series.get("display_sign", 1))
-        c = palette[i % len(palette)]
+        if series["label"] in color_map:
+            c = color_map[series["label"]]
+        elif sign == -1:
+            c = NEG_DEFAULT
+        else:
+            c = palette[i % len(palette)]
         values: list[float] = []
         bottoms: list[float] = []
         for j, d in enumerate(all_dates):
@@ -1511,9 +1522,14 @@ def _draw_stacked_bar_with_line(
             color="white", fontweight="bold",
         )
 
-    # Overlay line — last series.
+    # Overlay line — last series. Colour: style.color_map wins; else
+    # palette accent slot that's distinct from the bars (last palette
+    # entry tends to be the accent in the brand presets).
     line_s = line_entry["raw"]
-    line_color = palette[len(bar_entries) % len(palette)]
+    line_color = (
+        color_map.get(line_entry["label"])
+        or palette[(len(bar_entries)) % len(palette)]
+    )
     if isinstance(line_s, pd.Series) and not line_s.empty:
         line_x: list[int] = []
         line_y: list[float] = []
@@ -1531,13 +1547,22 @@ def _draw_stacked_bar_with_line(
             ax.plot(line_x, line_y, linestyle="None", marker="o",
                     markersize=tokens.marker_size, color=line_color, zorder=5,
                     markerfacecolor=line_color, markeredgecolor=line_color)
+            # Line labels carry a white bbox so they're visually owned by
+            # the line, not the bars they overlap.
             for xi, yi in zip(line_x, line_y):
                 ax.annotate(
                     format_value(yi, spec.value_format),
-                    xy=(xi, yi), xytext=(0, 6), textcoords="offset points",
+                    xy=(xi, yi), xytext=(0, 8), textcoords="offset points",
                     ha="center", va="bottom",
-                    fontsize=LABEL_FONTSIZE_DATA, color=tokens.text_ink,
-                    fontweight="medium", zorder=6,
+                    fontsize=LABEL_FONTSIZE_DATA, color=line_color,
+                    fontweight="bold", zorder=6,
+                    bbox=dict(
+                        boxstyle="round,pad=0.25",
+                        facecolor="white",
+                        edgecolor=line_color,
+                        linewidth=0.8,
+                        alpha=0.95,
+                    ),
                 )
             legend_labels.append(line_entry["label"])
             legend_colors.append(line_color)
