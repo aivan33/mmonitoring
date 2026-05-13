@@ -3,7 +3,7 @@
   "client": "almacena",
   "title": "Interest Spread: Accrued Interest, Cost of Funds, Net Interest",
   "display_order": 40,
-  "chart_type": "line",
+  "chart_type": "lines_with_bar",
   "source": "custom",
   "entity": "ap_foundation",
   "value_format": "eur",

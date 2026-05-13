@@ -1282,6 +1282,106 @@ def _draw_waterfall(
     _apply_axis_format(ax, spec)
 
 
+def _draw_lines_with_bar(
+    ax, spec: ChartSpec, resolved: list[dict], palette: list[str],
+    tokens: Tokens,
+) -> None:
+    """Inverse of bar_with_line: the LAST series renders as bars, the
+    rest as smoothed lines on the same axis. Used when one derived
+    series (e.g. Net Interest) needs to read as the headline while its
+    underlying components (Accrued Interest, Cost of Funds) stay as
+    context lines.
+
+    Bar colour: spec.style.colors[-1] wins. Otherwise sign-driven —
+    #F4845F (orange) for negative values, palette[len(lines)] gold/
+    accent for positive. Mixed-sign months get per-bar colouring so a
+    recovery from losses to profits reads visually.
+    """
+    if len(resolved) < 2:
+        _draw_line(ax, spec, resolved, palette, tokens)
+        return
+
+    line_entries = resolved[:-1]
+    bar_entry = resolved[-1]
+    n_lines = len(line_entries)
+
+    all_dates: list = sorted({
+        d for e in resolved
+        for d in (e["raw"].index if isinstance(e["raw"], pd.Series) else [])
+    })
+    if not all_dates:
+        return
+    x = list(range(len(all_dates)))
+
+    legend_labels: list[str] = []
+    legend_colors: list[str] = []
+
+    # Bars first so the line overlays.
+    bar_s = bar_entry["raw"]
+    style_colors = (spec.style or {}).get("colors") or []
+    positive_color = (
+        style_colors[-1] if style_colors
+        else palette[n_lines % len(palette)]
+    )
+    negative_color = "#F4845F"  # consistent with waterfall's loss colour
+
+    if isinstance(bar_s, pd.Series):
+        bar_values = [
+            float(bar_s.get(d)) if d in bar_s.index and not pd.isna(bar_s.get(d))
+            else None
+            for d in all_dates
+        ]
+        bar_colors = [
+            negative_color if (v is not None and v < 0) else positive_color
+            for v in bar_values
+        ]
+        bars = ax.bar(
+            x, [v if v is not None else 0 for v in bar_values],
+            color=bar_colors, width=0.5, zorder=2, linewidth=0,
+        )
+        ax.bar_label(
+            bars,
+            labels=[format_value(v, spec.value_format) if v is not None and v != 0 else ""
+                    for v in bar_values],
+            padding=4, fontsize=tokens.font_size_data, color=tokens.text_ink,
+            fontweight="medium",
+        )
+        legend_labels.append(bar_entry["label"])
+        legend_colors.append(positive_color)
+
+    # Lines on top, sharing the same axis.
+    for i, entry in enumerate(line_entries):
+        s = entry["raw"]
+        if not (isinstance(s, pd.Series) and not s.empty):
+            continue
+        c = palette[i % len(palette)]
+        line_x: list[int] = []
+        line_y: list[float] = []
+        for d, v in s.items():
+            if d not in all_dates or v is None or pd.isna(v):
+                continue
+            line_x.append(all_dates.index(d))
+            line_y.append(float(v))
+        if not line_x:
+            continue
+        smooth_x, smooth_y = _catmull_rom_smooth(line_x, line_y)
+        if smooth_x:
+            ax.plot(smooth_x, smooth_y, linewidth=tokens.line_width, color=c,
+                    solid_capstyle="round", solid_joinstyle="round", zorder=3)
+        ax.plot(line_x, line_y, linestyle="None", marker="o",
+                markersize=tokens.marker_size, color=c, zorder=4,
+                markerfacecolor=c, markeredgecolor=c)
+        legend_labels.append(entry["label"])
+        legend_colors.append(c)
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(_month_labels(all_dates), rotation=0, ha="center")
+    _style_axes(ax, tokens)
+    _apply_axis_format(ax, spec)
+    if legend_labels:
+        _dot_legend(ax, legend_labels, legend_colors)
+
+
 _DRAW: dict[str, Any] = {
     "line": _draw_line,
     "bar": _draw_bar,
@@ -1291,6 +1391,7 @@ _DRAW: dict[str, Any] = {
     "gauge": _draw_gauge,
     "clustered_bar": _draw_clustered_bar,
     "bar_with_line": _draw_bar_with_line,
+    "lines_with_bar": _draw_lines_with_bar,
     "bar_projection": _draw_bar_projection,
     "donut_pair": _draw_donut_pair,
     "waterfall": _draw_waterfall,
@@ -1303,6 +1404,7 @@ _FIGSIZE_BY_TYPE: dict[str, tuple[float, float]] = {
     "stacked_bar": (13, 4.6),
     "clustered_bar": (13, 4.6),
     "bar_with_line": (13, 4.6),
+    "lines_with_bar": (13, 4.6),
     "bar_projection": (13, 4.2),
     "donut": (8.5, 6.0),
     "donut_pair": (13, 6.0),
