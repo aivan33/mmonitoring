@@ -9,9 +9,9 @@
     "client":   {"type": "string", "minLength": 1},
     "title":    {"type": "string", "minLength": 1},
     "chart_type": {
-      "enum": ["line", "bar", "stacked_bar", "donut", "kpi_card", "waterfall", "table",
-               "gauge", "clustered_bar", "bar_with_line", "bar_projection",
-               "donut_pair"]
+      "enum": ["line", "bar", "stacked_bar", "donut", "kpi_card", "waterfall",
+               "table", "gauge", "clustered_bar", "bar_with_line",
+               "bar_projection", "donut_pair"]
     },
     "gauge": {
       "type": "object",
@@ -25,6 +25,7 @@
     "entity":   {"type": ["string", "null"]},
     "notes":    {"type": "string"},
     "value_format": {"enum": ["eur", "count", "percent_decimal", "days", "ratio"]},
+    "show_totals": {"type": "boolean"},
 
     "period": {
       "type": "object",
@@ -61,6 +62,7 @@
         "additionalProperties": false,
         "properties": {
           "label": {"type": "string", "minLength": 1},
+          "display_sign": {"enum": [1, -1]},
           "query": {
             "type": "object",
             "required": ["kind"],
@@ -114,6 +116,21 @@
       "properties": {
         "colors":    {"type": "array", "items": {"type": "string"}},
         "color_map": {"type": "object", "additionalProperties": {"type": "string"}}
+      }
+    },
+
+    "reference_lines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["value"],
+        "additionalProperties": false,
+        "properties": {
+          "value": {"type": "number"},
+          "label": {"type": "string"},
+          "color": {"type": "string"},
+          "style": {"enum": ["solid", "dashed", "dotted"]}
+        }
       }
     }
   }

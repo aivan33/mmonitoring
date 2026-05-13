@@ -27,6 +27,15 @@ class TestTokensDataclass:
         assert all(isinstance(c, str) and c.startswith("#") for c in DEFAULT.palette)
         assert len(DEFAULT.palette) >= 3
 
+    def test_line_fidelity_fields_exist(self) -> None:
+        # Line/area visual knobs surfaced as tokens so presets can swap them.
+        for field in (
+            "line_width", "line_fill_alpha", "marker_size",
+            "tick_color",
+        ):
+            assert hasattr(DEFAULT, field), f"DEFAULT missing token field {field!r}"
+            assert hasattr(ALMACENA_ARCHIVE, field)
+
 
 class TestDefaultPresetMatchesCurrentRenderer:
     """The DEFAULT preset must equal the constants used today so existing
@@ -75,6 +84,25 @@ class TestAlmacenaArchivePreset:
         # color.text.primary / secondary in tokens.json
         assert ALMACENA_ARCHIVE.text_ink == "#222222"
         assert ALMACENA_ARCHIVE.text_muted == "#666666"
+
+    def test_line_fidelity_matches_archive(self) -> None:
+        # Legacy charts.js GMV trend: borderWidth 3, fill: true (alpha ~0.1),
+        # pointRadius 5. Grid rgba(0,0,0,0.04). Tick color #9ca3af.
+        assert ALMACENA_ARCHIVE.line_width == 3.0
+        assert ALMACENA_ARCHIVE.line_fill_alpha == 0.10
+        assert ALMACENA_ARCHIVE.marker_size == 5.0
+        assert ALMACENA_ARCHIVE.tick_color == "#9ca3af"
+        # Lighter grid than DEFAULT.
+        assert ALMACENA_ARCHIVE.grid_color == "rgba(0,0,0,0.04)"
+
+    def test_line_fidelity_defaults_preserve_legacy(self) -> None:
+        # DEFAULT keeps the existing line look so Cupffee renders unchanged.
+        assert DEFAULT.line_width == 1.8
+        assert DEFAULT.line_fill_alpha == 0.0
+        assert DEFAULT.marker_size == 4.0
+        # DEFAULT tick colour matches the renderer's TEXT_MUTED constant.
+        from core.charts import render
+        assert DEFAULT.tick_color == render.TEXT_MUTED
 
     def test_kpi_chrome_matches_archive(self) -> None:
         # KPI card border: 2px deep-teal, per tokens.json components.kpi.container

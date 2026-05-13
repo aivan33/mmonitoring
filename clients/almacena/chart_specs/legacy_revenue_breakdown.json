@@ -1,0 +1,20 @@
+{
+  "chart_id": "legacy_revenue_breakdown",
+  "client": "almacena",
+  "title": "Revenue Streams Breakdown",
+  "chart_type": "stacked_bar",
+  "source": "custom",
+  "entity": "ap_foundation",
+  "value_format": "eur",
+  "period": {"kind": "ltm", "months": 12},
+  "axes": {"y": {"format": "EUR_thousands"}},
+  "data": [
+    {"label": "Arrangement Fees",
+     "query": {"kind": "kpi_trend", "kpi": "Arrangement Fees"}},
+    {"label": "Logistic Fees",
+     "query": {"kind": "kpi_trend", "kpi": "Logistic Fees"}},
+    {"label": "Accrued Interest",
+     "query": {"kind": "kpi_trend", "kpi": "Accrued Interest"}}
+  ],
+  "notes": "Legacy 3-stream stacked bar (createRevenueBreakdownChart). Cargo Insurance / Docs Mgmt / Warehouse fees were not stacked in the legacy chart."
+}

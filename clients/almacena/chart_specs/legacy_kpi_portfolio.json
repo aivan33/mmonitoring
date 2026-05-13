@@ -1,0 +1,13 @@
+{
+  "chart_id": "legacy_kpi_portfolio",
+  "client": "almacena",
+  "title": "Avg Portfolio Outstanding",
+  "chart_type": "kpi_card",
+  "source": "custom",
+  "entity": "ap_foundation",
+  "value_format": "eur",
+  "period": {"kind": "current_month"},
+  "data": [
+    {"label": "Portfolio", "query": {"kind": "kpi_value", "kpi": "Average Portfolio Outstanding"}}
+  ]
+}

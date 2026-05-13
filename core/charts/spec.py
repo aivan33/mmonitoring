@@ -33,6 +33,7 @@ class SpecValidationError(ValueError):
 class DataSeries:
     label: str
     query: dict[str, Any]
+    display_sign: int = 1
 
 
 @dataclass(frozen=True)
@@ -49,8 +50,10 @@ class ChartSpec:
     axes: dict[str, Any] = field(default_factory=dict)
     style: dict[str, Any] = field(default_factory=dict)
     gauge: dict[str, Any] = field(default_factory=dict)
+    reference_lines: list[dict[str, Any]] = field(default_factory=list)
     notes: str = ""
     value_format: str = "eur"
+    show_totals: bool = False
 
     @property
     def is_platform(self) -> bool:
@@ -116,12 +119,21 @@ def load_spec(path: str | Path) -> ChartSpec:
         chart_type=raw["chart_type"],
         source=raw["source"],
         period=raw["period"],
-        data=[DataSeries(label=d["label"], query=d["query"]) for d in raw["data"]],
+        data=[
+            DataSeries(
+                label=d["label"],
+                query=d["query"],
+                display_sign=int(d.get("display_sign", 1)),
+            )
+            for d in raw["data"]
+        ],
         entity=raw.get("entity"),
         platform_export=raw.get("platform_export"),
         axes=raw.get("axes", {}),
         style=raw.get("style", {}),
         gauge=raw.get("gauge", {}),
+        reference_lines=raw.get("reference_lines", []),
         notes=raw.get("notes", ""),
         value_format=raw.get("value_format", "eur"),
+        show_totals=bool(raw.get("show_totals", False)),
     )

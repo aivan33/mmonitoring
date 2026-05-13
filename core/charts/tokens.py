@@ -28,10 +28,14 @@ class Tokens:
     text_ink: str
     text_muted: str
     grid_color: str
+    tick_color: str
     font_size_tick: float
     font_size_data: float
     font_size_legend: float
     font_size_donut_center: float
+    line_width: float
+    line_fill_alpha: float
+    marker_size: float
     kpi_border_color: str
     kpi_border_width: float
     kpi_value_color: str
@@ -47,10 +51,16 @@ DEFAULT = Tokens(
     text_ink="#2D2D2D",
     text_muted="#6E6E6E",
     grid_color="#E5DBD5",
+    tick_color="#6E6E6E",   # = TEXT_MUTED; legacy tick colour
     font_size_tick=10.5,
     font_size_data=9.0,
     font_size_legend=10.5,
     font_size_donut_center=26,
+    # Line / area visual knobs — DEFAULT mirrors render.py's pre-tokens
+    # line look: 1.8px stroke, 4px markers, no area fill.
+    line_width=1.8,
+    line_fill_alpha=0.0,
+    marker_size=4.0,
     # KPI chrome under DEFAULT keeps the renderer's current behaviour:
     # no explicit border (matplotlib axis-off cards), brand-primary value
     # colour, neutral title colour, render.py's hard-coded delta arrow
@@ -72,11 +82,21 @@ ALMACENA_ARCHIVE = Tokens(
     palette=("#013E3F", "#006768", "#009091", "#20D9DC", "#E1AA12", "#F98F45"),
     text_ink="#222222",
     text_muted="#666666",
-    grid_color="#E5DBD5",
+    # Very-light grid + tick colour, matching the legacy charts.js values
+    # — these are visibly different from DEFAULT's #E5DBD5 / #6E6E6E and
+    # are the single biggest reason the archive charts feel "cleaner".
+    grid_color="rgba(0,0,0,0.04)",
+    tick_color="#9ca3af",
     font_size_tick=10.5,
     font_size_data=9.0,
     font_size_legend=10.5,
     font_size_donut_center=26,
+    # Thicker stroke, slightly larger marker, and a translucent fill below
+    # each line — the "area chart" look from charts.js (fill: true,
+    # backgroundColor rgba(brand, 0.1)).
+    line_width=3.0,
+    line_fill_alpha=0.10,
+    marker_size=5.0,
     kpi_border_color="#013E3F",
     kpi_border_width=2.0,
     kpi_value_color="#222222",

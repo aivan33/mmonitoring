@@ -327,15 +327,45 @@ def _resolve_palette(spec: ChartSpec, brand_palette: list[str]) -> list[str]:
     return brand_palette
 
 
-def _style_axes(ax) -> None:
-    """Apply the deck-style axis chrome: light dotted y-grid, no spines,
-    horizontal tick labels, capped tick density."""
+def _parse_color(spec_value: str) -> Any:
+    """Translate token colour strings to matplotlib-friendly values.
+
+    ``rgba(r,g,b,a)`` becomes a 4-tuple of 0..1 floats. Hex / named
+    colours pass through. matplotlib doesn't natively parse rgba()
+    strings, so this is the one canonical bridge for tokens that came
+    from CSS / charts.js values verbatim.
+    """
+    s = spec_value.strip()
+    if not s.lower().startswith("rgba"):
+        return s
+    inner = s[s.index("(") + 1: s.rindex(")")]
+    parts = [p.strip() for p in inner.split(",")]
+    if len(parts) != 4:
+        return s
+    r, g, b = (float(p) / 255.0 for p in parts[:3])
+    a = float(parts[3])
+    return (r, g, b, a)
+
+
+def _style_axes(ax, tokens: Tokens = DEFAULT) -> None:
+    """Apply the deck-style axis chrome: light grid, no spines, horizontal
+    tick labels, capped tick density. Grid and tick colours are token-
+    driven so the archive preset can swap to the legacy charts.js values
+    (rgba(0,0,0,0.04) grid + #9ca3af ticks) without touching draw code."""
     from matplotlib.ticker import MaxNLocator
-    ax.grid(True, axis="y", linestyle=":", color=GRID_INK,
+    # Legacy charts.js used a near-invisible solid grid; the deck style
+    # uses a dotted line. Switch line style by whether the grid_color
+    # contains alpha — alpha-grids look better as solid hairlines.
+    is_alpha_grid = "rgba" in tokens.grid_color
+    ax.grid(True, axis="y",
+            linestyle="-" if is_alpha_grid else ":",
+            color=_parse_color(tokens.grid_color),
             linewidth=0.8, alpha=1.0, zorder=0)
     ax.set_axisbelow(True)
-    ax.tick_params(axis="x", labelsize=LABEL_FONTSIZE_TICK, length=0, pad=8)
-    ax.tick_params(axis="y", labelsize=LABEL_FONTSIZE_TICK, length=0, pad=6)
+    ax.tick_params(axis="x", labelsize=tokens.font_size_tick, length=0, pad=8,
+                   colors=tokens.tick_color)
+    ax.tick_params(axis="y", labelsize=tokens.font_size_tick, length=0, pad=6,
+                   colors=tokens.tick_color)
     ax.yaxis.set_major_locator(MaxNLocator(nbins=6, prune="upper"))
     for spine in ax.spines.values():
         spine.set_visible(False)
@@ -390,12 +420,21 @@ def _draw_line(ax, spec: ChartSpec, resolved: list[dict], palette: list[str],
         smooth_x, smooth_y = _catmull_rom_smooth(x_nums, list(s.values))
         if smooth_x:
             ax.plot(
-                smooth_x, smooth_y, linewidth=1.8, color=c,
+                smooth_x, smooth_y, linewidth=tokens.line_width, color=c,
                 solid_capstyle="round", solid_joinstyle="round", zorder=3,
             )
+            # Area fill below the smoothed line (legacy charts.js
+            # fill: true with rgba(brand, 0.1)). DEFAULT preset has
+            # line_fill_alpha=0 so this is a no-op there.
+            if tokens.line_fill_alpha > 0:
+                ax.fill_between(
+                    smooth_x, smooth_y, 0,
+                    color=c, alpha=tokens.line_fill_alpha,
+                    linewidth=0, zorder=2,
+                )
         ax.plot(
             s.index, s.values,
-            linestyle="None", marker="o", markersize=4.0,
+            linestyle="None", marker="o", markersize=tokens.marker_size,
             color=c, label=series["label"],
             markerfacecolor=c, markeredgecolor=c,
             zorder=4,
@@ -437,7 +476,25 @@ def _draw_line(ax, spec: ChartSpec, resolved: list[dict], palette: list[str],
                 color=c, fontweight="medium",
             )
 
-    _style_axes(ax)
+    # Optional reference lines from the spec — used by the archived cash-
+    # drag-analysis chart (dashed target at 15%). Drawn ABOVE the area
+    # fill but BELOW the data markers so they don't get hidden but also
+    # don't visually compete with the data line itself.
+    for ref in (spec.reference_lines or []):
+        ref_style_map = {"dashed": (4, 2), "dotted": (1, 2), "solid": None}
+        dash_style = ref_style_map.get(ref.get("style", "dashed"), (4, 2))
+        ref_color = ref.get("color", "#FF9800")  # legacy uses orange
+        line = ax.axhline(
+            ref["value"], color=ref_color, linewidth=1.6, zorder=2.5,
+        )
+        if dash_style is not None:
+            line.set_dashes(dash_style)
+        ref_label = ref.get("label")
+        if ref_label:
+            labels.append(ref_label)
+            colors.append(ref_color)
+
+    _style_axes(ax, tokens)
     _apply_axis_format(ax, spec)
     if plotted and any(
         len(s) > 0 and isinstance(s.index[0], dt.date) for s, _ in plotted
@@ -465,7 +522,7 @@ def _draw_bar(ax, spec: ChartSpec, resolved: list[dict], palette: list[str],
             padding=4, fontsize=LABEL_FONTSIZE_DATA, color=TEXT_INK,
             fontweight="medium",
         )
-    _style_axes(ax)
+    _style_axes(ax, tokens)
     _apply_axis_format(ax, spec)
 
 
@@ -714,7 +771,7 @@ def _draw_stacked_bar(
 
     ax.set_xticks(x)
     ax.set_xticklabels(_month_labels(all_dates), rotation=0, ha="center")
-    _style_axes(ax)
+    _style_axes(ax, tokens)
     _apply_axis_format(ax, spec)
     if labels:
         _dot_legend(ax, labels, colors)
@@ -852,7 +909,7 @@ def _draw_clustered_bar(
         ax.set_xticks(x)
         ax.set_xticklabels(_month_labels(all_idx), rotation=0, ha="center")
 
-    _style_axes(ax)
+    _style_axes(ax, tokens)
     _apply_axis_format(ax, spec)
     if labels_legend:
         _dot_legend(ax, labels_legend, colors_legend)
@@ -1123,7 +1180,7 @@ def _draw_bar_projection(
         resolved[0]["label"] if resolved else "Actual",
         resolved[1]["label"] if len(resolved) > 1 else "Rolling budget",
     ]
-    _style_axes(ax)
+    _style_axes(ax, tokens)
     _apply_axis_format(ax, spec)
     _dot_legend(ax, legend_labels, [actual_color, projected_color])
 
@@ -1167,6 +1224,55 @@ def _draw_donut_pair(
         sub_ax.set_ylim(-1.4, 1.4)
 
 
+def _draw_waterfall(
+    ax, spec: ChartSpec, resolved: list[dict], palette: list[str],
+    tokens: Tokens,
+) -> None:
+    """Categorical bar summary (Gross / Costs / Net) modelled after the
+    legacy dashboard's 'Profitability Waterfall' tile. Each spec.data
+    entry becomes one bar; display_sign=-1 flips a positive cost value
+    below the axis AND switches its fill colour. Spec authors can also
+    override colours via spec.style.colors (positional).
+    """
+    if not resolved:
+        return
+    style_colors = (spec.style or {}).get("colors") or []
+
+    labels: list[str] = []
+    values: list[float] = []
+    colors: list[str] = []
+    n = len(resolved)
+    for i, series in enumerate(resolved):
+        v = _scalar_from(series["raw"]) or 0.0
+        sign = int(series.get("display_sign", 1))
+        v = float(v) * sign
+        if i < len(style_colors):
+            color = style_colors[i]
+        elif v < 0:
+            color = "#F4845F"
+        elif i == n - 1 and n >= 3:
+            color = palette[0]  # net margin (deepest brand colour)
+        else:
+            color = palette[2 % len(palette)]
+        labels.append(series["label"])
+        values.append(v)
+        colors.append(color)
+
+    x = list(range(n))
+    bars = ax.bar(x, values, color=colors, width=0.62, zorder=3, linewidth=0)
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels, rotation=0, ha="center",
+                       fontsize=tokens.font_size_tick, color=tokens.text_ink)
+    ax.bar_label(
+        bars,
+        labels=[format_value(abs(v), spec.value_format) for v in values],
+        padding=4, fontsize=tokens.font_size_data, color=tokens.text_ink,
+        fontweight="medium",
+    )
+    _style_axes(ax, tokens)
+    _apply_axis_format(ax, spec)
+
+
 _DRAW: dict[str, Any] = {
     "line": _draw_line,
     "bar": _draw_bar,
@@ -1178,6 +1284,7 @@ _DRAW: dict[str, Any] = {
     "bar_with_line": _draw_bar_with_line,
     "bar_projection": _draw_bar_projection,
     "donut_pair": _draw_donut_pair,
+    "waterfall": _draw_waterfall,
 }
 
 

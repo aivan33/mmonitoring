@@ -218,17 +218,20 @@ class TestUnsupportedType:
     def test_raises_for_unimplemented(
         self, cupffee_test_db: Path, tmp_path: Path
     ) -> None:
+        # 'table' is in the schema enum but not in _DRAW dispatch yet —
+        # use it as the canonical not-yet-implemented type. (waterfall
+        # moved from this slot when _draw_waterfall landed.)
         spec = ChartSpec(
             chart_id="x",
             client="cupffee",
             title="x",
-            chart_type="waterfall",
+            chart_type="table",
             source="custom",
             period={"kind": "current_month"},
             data=[DataSeries(label="x",
                              query={"kind": "trend", "data": "Sales"})],
         )
-        with pytest.raises(NotImplementedError, match="waterfall"):
+        with pytest.raises(NotImplementedError, match="table"):
             render(spec, anchor=dt.date(2025, 1, 1), brand={}, out_dir=tmp_path)
 
 

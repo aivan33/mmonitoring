@@ -1,0 +1,13 @@
+{
+  "chart_id": "legacy_kpi_cash_drag",
+  "client": "almacena",
+  "title": "Cash Drag",
+  "chart_type": "kpi_card",
+  "source": "custom",
+  "entity": "ap_foundation",
+  "value_format": "percent_decimal",
+  "period": {"kind": "current_month"},
+  "data": [
+    {"label": "Cash Drag", "query": {"kind": "kpi_value", "kpi": "Cash Drag %"}}
+  ]
+}

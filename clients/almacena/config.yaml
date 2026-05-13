@@ -34,6 +34,20 @@ financial_sources:
 # dimensionless_kpis: counts, ratios, percentages, days — these pass
 # through unconverted even though the source currency is USD.
 operational_sources:
+  # 2025 KPIs — extracted from the legacy dashboard JSON (see
+  # one_offs/build_2025_kpis.py). EUR values used directly, KPI names
+  # normalized to match the 2026 Q1 file. 12 months, 19 KPIs.
+  - file: raw/almacena_2025_kpis.xlsx
+    year: 2025
+    entity: ap_foundation
+    currency: EUR
+    format: kpi_wide
+    dimensionless_kpis:
+      - "# Invoices"
+      - "# Boxes"
+      - "Average Days Outstanding"
+      - "Cash Drag %"
+      - "% GMV Insured"
   - file: raw/profitability_q1.xlsx
     year: 2026
     entity: ap_foundation
@@ -48,11 +62,16 @@ operational_sources:
       - "Gross Profit %"
       - "% GMV Insured"
 
-# Brand — matches Dec 2025 deck visual style (teal + gold).
+# Brand — legacy dashboard's design system (tokens.json's deep-teal palette).
+# tokens_preset wires KPI border colour, value text colour, trend arrow
+# colours, and the chart-series palette from
+# _archive/dashboard/tokens.json. primary/accent/budget still appear
+# first in the palette so per-spec colour overrides keep working.
 brand:
-  primary: "#1F4D4D"   # dark teal — Dec deck primary line / bar
-  accent:  "#D4A024"   # gold — actual values when paired with budget
-  budget:  "#2E7A7A"   # mid teal — budget bars
-  light:   "#A8D5D0"   # light aqua — tertiary stacked bands
-  font_header: "Calibri"
-  font_body: "Calibri"
+  primary: "#013E3F"   # deep teal — tokens.json color.chart.series[0]
+  accent:  "#009091"   # mid teal — color.chart.series[2]
+  budget:  "#20D9DC"   # bright teal — color.chart.series[3]
+  light:   "#E1AA12"   # gold accent — color.chart.series[4]
+  font_header: "Segoe UI"
+  font_body: "Segoe UI"
+  tokens_preset: almacena_archive
