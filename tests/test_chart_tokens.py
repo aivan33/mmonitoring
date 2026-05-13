@@ -188,3 +188,151 @@ class TestApplyBrandIntegration:
 
         with pytest.raises(ValueError, match="unknown tokens preset"):
             apply_brand({"tokens_preset": "rainbow_dash"})
+
+
+# ---------------------------------------------------------------------------
+# Task 1.3 — _draw_kpi_card consumes tokens
+# ---------------------------------------------------------------------------
+
+class TestKpiCardTokens:
+    """The KPI card draws the brand border, value colour, and trend arrows
+    from tokens. Under DEFAULT the rendered card matches the renderer's
+    pre-tokens output (no visible border, brand-primary value, legacy
+    arrow colours). Under ALMACENA_ARCHIVE the deep-teal border, #222222
+    value, and #10b981 / #F4845F arrows show up."""
+
+    def _make_spec(self, value_format: str = "eur"):
+        from core.charts.spec import ChartSpec, DataSeries
+        return ChartSpec(
+            chart_id="kpi_test",
+            client="cupffee",
+            title="Test KPI",
+            chart_type="kpi_card",
+            source="custom",
+            period={"kind": "current_month"},
+            data=[DataSeries(label="v", query={"kind": "kpi_value", "kpi": "X"})],
+            value_format=value_format,
+        )
+
+    def test_default_uses_palette_primary_for_value(self) -> None:
+        """Under DEFAULT the KPI value text still uses palette[0] — the
+        renderer's pre-tokens behaviour."""
+        import matplotlib.pyplot as plt
+
+        from core.charts.render import _draw_kpi_card
+
+        fig, ax = plt.subplots()
+        _draw_kpi_card(
+            ax, self._make_spec(), [{"label": "v", "raw": 1234.0}],
+            palette=["#FF00FF", "#000000"],
+            tokens=DEFAULT,
+        )
+        # Find the big numeric text (fontsize >= 28 by current render)
+        large = [t for t in ax.texts if t.get_fontsize() >= 28]
+        assert large, "expected a large value text"
+        # DEFAULT preset: value colour follows palette[0].
+        assert large[0].get_color() == "#FF00FF"
+        plt.close(fig)
+
+    def test_archive_uses_kpi_value_color_not_palette(self) -> None:
+        """Under ALMACENA_ARCHIVE the value colour is the token's
+        kpi_value_color (#222222), independent of the palette so the
+        deep-teal border + dark-ink value combo from tokens.json
+        renders correctly."""
+        import matplotlib.pyplot as plt
+
+        from core.charts.render import _draw_kpi_card
+
+        fig, ax = plt.subplots()
+        _draw_kpi_card(
+            ax, self._make_spec(), [{"label": "v", "raw": 1234.0}],
+            palette=["#FF00FF"],
+            tokens=ALMACENA_ARCHIVE,
+        )
+        large = [t for t in ax.texts if t.get_fontsize() >= 28]
+        assert large[0].get_color() == "#222222"
+        plt.close(fig)
+
+    def test_archive_trend_up_color(self) -> None:
+        """Positive MoM delta uses tokens.kpi_trend_up_color (#10b981)."""
+        import matplotlib.pyplot as plt
+
+        from core.charts.render import _draw_kpi_card
+
+        fig, ax = plt.subplots()
+        _draw_kpi_card(
+            ax, self._make_spec(),
+            [{"label": "now", "raw": 200.0}, {"label": "prev", "raw": 100.0}],
+            palette=["#000000"],
+            tokens=ALMACENA_ARCHIVE,
+        )
+        trend = [t for t in ax.texts if "vs last period" in t.get_text()]
+        assert trend, "expected trend annotation"
+        assert trend[0].get_color() == "#10b981"
+        plt.close(fig)
+
+    def test_archive_trend_down_color(self) -> None:
+        """Negative MoM delta uses tokens.kpi_trend_down_color (#F4845F)."""
+        import matplotlib.pyplot as plt
+
+        from core.charts.render import _draw_kpi_card
+
+        fig, ax = plt.subplots()
+        _draw_kpi_card(
+            ax, self._make_spec(),
+            [{"label": "now", "raw": 50.0}, {"label": "prev", "raw": 100.0}],
+            palette=["#000000"],
+            tokens=ALMACENA_ARCHIVE,
+        )
+        trend = [t for t in ax.texts if "vs last period" in t.get_text()]
+        assert trend[0].get_color() == "#F4845F"
+        plt.close(fig)
+
+    def test_archive_draws_brand_border(self) -> None:
+        """When tokens.kpi_border_width > 0, the KPI card draws a
+        brand-coloured border around the axes (legacy CSS .kpi-card
+        border-left). The archive preset has width 2 and colour #013E3F."""
+        import matplotlib.pyplot as plt
+
+        from core.charts.render import _draw_kpi_card
+
+        fig, ax = plt.subplots()
+        _draw_kpi_card(
+            ax, self._make_spec(), [{"label": "v", "raw": 1234.0}],
+            palette=["#000000"],
+            tokens=ALMACENA_ARCHIVE,
+        )
+        # The border is a rectangle patch on the axes, coloured #013E3F.
+        from matplotlib.patches import Rectangle
+        rects = [
+            p for p in ax.patches
+            if isinstance(p, Rectangle) and p.get_edgecolor() is not None
+        ]
+        assert any(
+            tuple(round(c, 3) for c in p.get_edgecolor()[:3]) ==
+            tuple(round(c, 3) for c in (0x01 / 255, 0x3E / 255, 0x3F / 255))
+            for p in rects
+        ), "expected a deep-teal border rectangle on the KPI card"
+        plt.close(fig)
+
+    def test_default_no_visible_border(self) -> None:
+        """Under DEFAULT (kpi_border_width=0) no border patch is added."""
+        import matplotlib.pyplot as plt
+
+        from core.charts.render import _draw_kpi_card
+
+        fig, ax = plt.subplots()
+        _draw_kpi_card(
+            ax, self._make_spec(), [{"label": "v", "raw": 1234.0}],
+            palette=["#000000"],
+            tokens=DEFAULT,
+        )
+        from matplotlib.patches import Rectangle
+        rects = [p for p in ax.patches if isinstance(p, Rectangle)]
+        # Either no rectangles at all, or none with a visible edge colour.
+        assert not any(
+            p.get_linewidth() > 0 and p.get_edgecolor() is not None
+            and tuple(p.get_edgecolor()[:3]) != (0, 0, 0, 0)[:3]
+            for p in rects
+        ), "DEFAULT preset must not draw a visible KPI border"
+        plt.close(fig)

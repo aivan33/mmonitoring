@@ -32,7 +32,7 @@ import pandas as pd
 from dateutil.relativedelta import relativedelta
 
 from core.charts.spec import ChartSpec, DataSeries
-from core.charts.tokens import Tokens, resolve as resolve_tokens
+from core.charts.tokens import DEFAULT, Tokens, resolve as resolve_tokens
 from core.data.query import (
     get_aggregation, get_kpi, get_kpi_trend, get_trend, get_value,
 )
@@ -369,7 +369,8 @@ def _dot_legend(ax, labels: list[str], colors: list[str]) -> None:
 # Drawing routines per chart_type
 # ---------------------------------------------------------------------------
 
-def _draw_line(ax, spec: ChartSpec, resolved: list[dict], palette: list[str]) -> None:
+def _draw_line(ax, spec: ChartSpec, resolved: list[dict], palette: list[str],
+               tokens: Tokens) -> None:
     labels: list[str] = []
     colors: list[str] = []
     plotted: list[tuple[pd.Series, str]] = []
@@ -447,7 +448,8 @@ def _draw_line(ax, spec: ChartSpec, resolved: list[dict], palette: list[str]) ->
         _dot_legend(ax, labels, colors)
 
 
-def _draw_bar(ax, spec: ChartSpec, resolved: list[dict], palette: list[str]) -> None:
+def _draw_bar(ax, spec: ChartSpec, resolved: list[dict], palette: list[str],
+              tokens: Tokens) -> None:
     if len(resolved) == 0:
         return
     s = resolved[0]["raw"]
@@ -467,7 +469,8 @@ def _draw_bar(ax, spec: ChartSpec, resolved: list[dict], palette: list[str]) -> 
     _apply_axis_format(ax, spec)
 
 
-def _draw_donut(ax, spec: ChartSpec, resolved: list[dict], palette: list[str]) -> None:
+def _draw_donut(ax, spec: ChartSpec, resolved: list[dict], palette: list[str],
+                tokens: Tokens) -> None:
     if not resolved:
         return
     s = resolved[0]["raw"]
@@ -545,19 +548,32 @@ def _slice_colors(
     return out
 
 
-def _draw_kpi_card(ax, spec: ChartSpec, resolved: list[dict], palette: list[str]) -> None:
+def _draw_kpi_card(ax, spec: ChartSpec, resolved: list[dict], palette: list[str],
+                   tokens: Tokens) -> None:
     ax.set_axis_off()
+    # Title sits muted at the top; value dominates the centre. Under DEFAULT
+    # the value colour follows palette[0] (legacy behaviour); under presets
+    # with a distinct kpi_value_color (e.g. ALMACENA_ARCHIVE's #222222) the
+    # token wins so the deep-teal border + dark-ink value combination from
+    # tokens.json renders correctly.
     ax.text(0.5, 0.78, spec.title, ha="center", va="center",
-            fontsize=12, fontweight="bold", color=TEXT_MUTED)
+            fontsize=12, fontweight="bold", color=tokens.kpi_title_color)
     if resolved:
         v = resolved[0]["raw"]
         if isinstance(v, pd.Series):
             v = v.iloc[0] if len(v) else None
         if v is not None:
+            # DEFAULT preset reuses palette[0] so existing client output is
+            # unchanged. A preset opts out by setting kpi_value_color to
+            # something other than DEFAULT's #2D2D2D.
+            value_color = (
+                palette[0] if tokens.kpi_value_color == DEFAULT.kpi_value_color
+                else tokens.kpi_value_color
+            )
             ax.text(0.5, 0.40, format_value(v, spec.value_format),
                     ha="center", va="center",
                     fontsize=32, fontweight="bold",
-                    color=palette[0])
+                    color=value_color)
         # If a second series is supplied, treat it as the prior-period
         # baseline and render a small delta arrow + percent change.
         if len(resolved) > 1:
@@ -568,15 +584,35 @@ def _draw_kpi_card(ax, spec: ChartSpec, resolved: list[dict], palette: list[str]
                     and isinstance(prev_raw, (int, float)) and prev_raw != 0):
                 delta = (float(v) - float(prev_raw)) / abs(float(prev_raw))
                 arrow = "▲" if delta >= 0 else "▼"
-                color = "#2E7A56" if delta >= 0 else "#C24C44"
+                color = (tokens.kpi_trend_up_color if delta >= 0
+                         else tokens.kpi_trend_down_color)
                 ax.text(0.5, 0.12,
                         f"{arrow} {delta * 100:+.1f}% vs last period",
                         ha="center", va="center",
                         fontsize=10, color=color, fontweight="medium")
 
+    # Brand border (legacy CSS .kpi-card border-left). Presets with
+    # kpi_border_width=0 (DEFAULT) skip this entirely so unrelated clients
+    # keep their borderless cards.
+    if tokens.kpi_border_width > 0:
+        from matplotlib.patches import Rectangle
+        # Rectangle in axes coords (0..1) inset slightly so it isn't clipped
+        # by tight_layout / bbox_inches="tight" at save time.
+        border = Rectangle(
+            (0.01, 0.01), 0.98, 0.98,
+            transform=ax.transAxes,
+            facecolor="none",
+            edgecolor=tokens.kpi_border_color,
+            linewidth=tokens.kpi_border_width,
+            zorder=1,
+            clip_on=False,
+        )
+        ax.add_patch(border)
+
 
 def _draw_stacked_bar(
     ax, spec: ChartSpec, resolved: list[dict], palette: list[str],
+    tokens: Tokens,
 ) -> None:
     """Stacked bars with positive segments going up and negative going down.
     EUR labels are placed inside each segment, but suppressed for segments
@@ -736,6 +772,7 @@ def _label_clustered_bars(
 
 def _draw_clustered_bar(
     ax, spec: ChartSpec, resolved: list[dict], palette: list[str],
+    tokens: Tokens,
     label_inside_top: bool = False,
 ) -> None:
     """Multiple bar series side-by-side per x category.
@@ -823,18 +860,20 @@ def _draw_clustered_bar(
 
 def _draw_bar_with_line(
     ax, spec: ChartSpec, resolved: list[dict], palette: list[str],
+    tokens: Tokens,
 ) -> None:
     """Clustered bars for all but the last series; last series rendered as
     line on the same axes. Multi-year alignment is inherited from
     _draw_clustered_bar — the line overlay aligns the same way."""
     if len(resolved) < 2:
-        _draw_clustered_bar(ax, spec, resolved, palette)
+        _draw_clustered_bar(ax, spec, resolved, palette, tokens)
         return
 
     bar_resolved = resolved[:-1]
     line_entry = resolved[-1]
 
-    _draw_clustered_bar(ax, spec, bar_resolved, palette, label_inside_top=True)
+    _draw_clustered_bar(ax, spec, bar_resolved, palette, tokens,
+                        label_inside_top=True)
 
     s = line_entry["raw"]
     if not isinstance(s, pd.Series):
@@ -928,6 +967,7 @@ def _draw_bar_with_line(
 
 def _draw_gauge(
     ax, spec: ChartSpec, resolved: list[dict], palette: list[str],
+    tokens: Tokens,
 ) -> None:
     """Half-donut gauge: actual filled fraction of [start, target]. Center
     text shows the actual value. Expected resolved entries:
@@ -1008,6 +1048,7 @@ def _scalar_from(raw: Any) -> float | None:
 
 def _draw_bar_projection(
     ax, spec: ChartSpec, resolved: list[dict], palette: list[str],
+    tokens: Tokens,
 ) -> None:
     """Bars colored by actual vs projected. Two modes:
 
@@ -1089,10 +1130,11 @@ def _draw_bar_projection(
 
 def _draw_donut_pair(
     ax, spec: ChartSpec, resolved: list[dict], palette: list[str],
+    tokens: Tokens,
 ) -> None:
     """Two donut charts side-by-side on the same Axes."""
     if len(resolved) < 2:
-        _draw_donut(ax, spec, resolved, palette)
+        _draw_donut(ax, spec, resolved, palette, tokens)
         return
 
     fig = ax.figure
@@ -1320,7 +1362,7 @@ def render(
     palette = _resolve_palette(spec, ctx.palette)
     figsize = _figsize_for(spec.chart_type)
     fig, ax = plt.subplots(figsize=figsize, dpi=200)
-    _DRAW[spec.chart_type](ax, spec, resolved, palette)
+    _DRAW[spec.chart_type](ax, spec, resolved, palette, ctx.tokens)
     fig.tight_layout(pad=0.4)
     fig.savefig(png_path, bbox_inches="tight", facecolor="white",
                 pad_inches=0.08)
