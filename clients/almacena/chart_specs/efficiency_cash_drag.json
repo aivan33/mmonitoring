@@ -2,6 +2,7 @@
   "chart_id": "efficiency_cash_drag",
   "client": "almacena",
   "title": "Cash Drag %",
+  "display_order": 60,
   "chart_type": "line",
   "source": "custom",
   "entity": "ap_foundation",

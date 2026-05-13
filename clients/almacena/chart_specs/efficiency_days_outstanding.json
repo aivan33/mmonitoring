@@ -1,0 +1,15 @@
+{
+  "chart_id": "efficiency_days_outstanding",
+  "client": "almacena",
+  "title": "Average Days Outstanding",
+  "display_order": 70,
+  "chart_type": "line",
+  "source": "custom",
+  "entity": "ap_foundation",
+  "value_format": "days",
+  "period": {"kind": "ltm", "months": 12},
+  "axes": {"y": {"format": "days"}},
+  "data": [
+    {"label": "Days Outstanding", "query": {"kind": "kpi_trend", "kpi": "Average Days Outstanding"}}
+  ]
+}

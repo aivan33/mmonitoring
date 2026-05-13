@@ -2,6 +2,7 @@
   "chart_id": "econ_fee_mix",
   "client": "almacena",
   "title": "Fee Revenue Mix",
+  "display_order": 30,
   "chart_type": "stacked_bar",
   "source": "custom",
   "entity": "ap_foundation",

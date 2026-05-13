@@ -26,6 +26,7 @@
     "notes":    {"type": "string"},
     "value_format": {"enum": ["eur", "count", "percent_decimal", "days", "ratio"]},
     "show_totals": {"type": "boolean"},
+    "display_order": {"type": "integer"},
 
     "period": {
       "type": "object",

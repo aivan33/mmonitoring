@@ -2,6 +2,7 @@
   "chart_id": "throughput_gmv_funded",
   "client": "almacena",
   "title": "GMV vs Funded Amount",
+  "display_order": 10,
   "chart_type": "line",
   "source": "custom",
   "entity": "ap_foundation",

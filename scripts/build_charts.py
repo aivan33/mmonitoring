@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import html
+import json
 import sys
 from pathlib import Path
 
@@ -74,7 +75,17 @@ def main() -> int:
               file=sys.stderr)
         return 1
 
-    spec_files = sorted(spec_dir.glob("*.json"))
+    # Pre-pass: read each spec's display_order so we can render and index
+    # in narrative order. Specs without display_order land at the end,
+    # alphabetical among themselves.
+    raw_files = sorted(spec_dir.glob("*.json"))
+    def _order_key(p: Path) -> tuple[int, str]:
+        try:
+            raw = json.loads(p.read_text())
+        except json.JSONDecodeError:
+            return (10**6, p.name)
+        return (raw.get("display_order", 10**6), p.name)
+    spec_files = sorted(raw_files, key=_order_key)
     if args.only:
         spec_files = [p for p in spec_files if p.stem == args.only]
         if not spec_files:
@@ -120,17 +131,26 @@ def main() -> int:
 
     # Build index.html browsing the rendered charts.
     if rendered:
-        _write_index_html(out_dir, args.client, args.period)
+        # PNG order = spec render order = display_order from the specs.
+        ordered_pngs = [
+            out_dir / f"{p.stem}.png" for p in spec_files
+            if (out_dir / f"{p.stem}.png").exists()
+        ]
+        _write_index_html(out_dir, args.client, args.period, ordered_pngs)
         print(f"  index: {(out_dir / 'index.html').relative_to(_REPO)}")
 
     return 1 if failed else 0
 
 
-def _write_index_html(out_dir: Path, client: str, period: str) -> None:
+def _write_index_html(
+    out_dir: Path, client: str, period: str,
+    pngs: list[Path] | None = None,
+) -> None:
     """Contact-sheet view: just the rendered PNGs in a clean responsive grid.
     No titles, no metadata, no badges — designed for visual review and
     drag-and-drop into a slide deck."""
-    pngs = sorted(out_dir.glob("*.png"))
+    if pngs is None:
+        pngs = sorted(out_dir.glob("*.png"))
     cards = "\n".join(
         f'    <a href="{html.escape(p.name)}" class="card">'
         f'<img src="{html.escape(p.name)}" alt=""></a>'

@@ -1,0 +1,17 @@
+{
+  "chart_id": "econ_net_interest_breakdown",
+  "client": "almacena",
+  "title": "Interest Spread: Accrued Interest, Cost of Funds, Net Interest",
+  "display_order": 40,
+  "chart_type": "line",
+  "source": "custom",
+  "entity": "ap_foundation",
+  "value_format": "eur",
+  "period": {"kind": "ltm", "months": 12},
+  "axes": {"y": {"format": "EUR_thousands"}},
+  "data": [
+    {"label": "Accrued Interest", "query": {"kind": "kpi_trend", "kpi": "Accrued Interest"}},
+    {"label": "Cost of Funds",    "query": {"kind": "kpi_trend", "kpi": "Cost of Funds"}},
+    {"label": "Net Interest",     "query": {"kind": "kpi_trend", "kpi": "Net Interest"}}
+  ]
+}

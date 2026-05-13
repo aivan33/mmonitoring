@@ -2,6 +2,7 @@
   "chart_id": "throughput_operational",
   "client": "almacena",
   "title": "Operational Volume",
+  "display_order": 20,
   "chart_type": "clustered_bar",
   "source": "custom",
   "entity": "ap_foundation",
