@@ -331,6 +331,9 @@ def kpi_chart_db(tmp_path: Path, monkeypatch) -> Path:
                 ("2026-01-01", "ap_foundation", "# Invoices", 69.0),
                 ("2026-02-01", "ap_foundation", "# Invoices", 75.0),
                 ("2026-03-01", "ap_foundation", "# Invoices", 101.0),
+                ("2026-01-01", "ap_foundation", "Funded Amount", 13_739_974.0),
+                ("2026-02-01", "ap_foundation", "Funded Amount", 17_016_568.0),
+                ("2026-03-01", "ap_foundation", "Funded Amount", 17_221_971.0),
             ],
         )
         conn.commit()
@@ -376,6 +379,22 @@ class TestResolveKPIQueries:
             start=dt.date(2026, 3, 1), end=dt.date(2026, 3, 1),
         )
         assert result is None
+
+    def test_kpi_diff_subtracts_element_wise(self, kpi_chart_db: Path) -> None:
+        # GMV - Funded Amount per month; Mar-26: 20,481,861 - 17,221,971 = 3,259,890
+        result = resolve_query(
+            {"kind": "kpi_diff",
+             "minuend": "GMV",
+             "subtrahend": "Funded Amount"},
+            client="almacena", entity="ap_foundation",
+            start=dt.date(2026, 1, 1), end=dt.date(2026, 3, 1),
+        )
+        import pandas as pd
+        assert isinstance(result, pd.Series)
+        assert list(result.index) == [
+            dt.date(2026, 1, 1), dt.date(2026, 2, 1), dt.date(2026, 3, 1),
+        ]
+        assert result.iloc[-1] == pytest.approx(3_259_890.0, rel=1e-4)
 
 
 def test_render_kpi_chart_end_to_end(kpi_chart_db: Path, tmp_path: Path) -> None:

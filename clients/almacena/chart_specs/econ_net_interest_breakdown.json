@@ -12,6 +12,8 @@
   "data": [
     {"label": "Accrued Interest", "query": {"kind": "kpi_trend", "kpi": "Accrued Interest"}},
     {"label": "Cost of Funds",    "query": {"kind": "kpi_trend", "kpi": "Cost of Funds"}},
-    {"label": "Net Interest",     "query": {"kind": "kpi_trend", "kpi": "Net Interest"}}
+    {"label": "Net Interest",     "query": {"kind": "kpi_diff",
+                                            "minuend": "Accrued Interest",
+                                            "subtrahend": "Cost of Funds"}}
   ]
 }

@@ -189,6 +189,25 @@ def resolve_query(
             query["kpi"], start, client=client, entity=entity,
         )
 
+    if kind == "kpi_diff":
+        # Element-wise subtraction (minuend - subtrahend) of two
+        # operational KPI trends over the same period window. Used for
+        # derived quantities like Net Interest = Accrued Interest -
+        # Cost of Funds when the stored KPI is unreliable.
+        a = get_kpi_trend(
+            query["minuend"], start_date=start, end_date=end,
+            client=client, entity=entity,
+        )
+        b = get_kpi_trend(
+            query["subtrahend"], start_date=start, end_date=end,
+            client=client, entity=entity,
+        )
+        if not isinstance(a, pd.Series) or a.empty:
+            return pd.Series(dtype=float)
+        if not isinstance(b, pd.Series) or b.empty:
+            return pd.Series(dtype=float)
+        return a.sub(b, fill_value=0)
+
     if kind == "kpi_ratio":
         # Element-wise ratio of two operational KPI trends over the same
         # period window. Used for "X as % of Y" framings like Funding
