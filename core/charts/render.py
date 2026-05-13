@@ -467,6 +467,11 @@ def _draw_line(ax, spec: ChartSpec, resolved: list[dict], palette: list[str],
                     above = y >= 0
             else:
                 above = y >= 0
+            label_bbox = (
+                dict(facecolor="white", edgecolor="none",
+                     pad=2, alpha=tokens.label_bbox_alpha)
+                if tokens.label_bbox_alpha > 0 else None
+            )
             ax.annotate(
                 format_value(y, spec.value_format), xy=(x, y),
                 xytext=(0, 10 if above else -10),
@@ -474,6 +479,7 @@ def _draw_line(ax, spec: ChartSpec, resolved: list[dict], palette: list[str],
                 ha="center", va="bottom" if above else "top",
                 fontsize=LABEL_FONTSIZE_DATA,
                 color=c, fontweight="medium",
+                bbox=label_bbox,
             )
 
     # Optional reference lines from the spec — used by the archived cash-
@@ -1311,11 +1317,18 @@ def _figsize_for(chart_type: str) -> tuple[float, float]:
 def _apply_axis_format(ax, spec: ChartSpec) -> None:
     yfmt = spec.axes.get("y", {}).get("format") if spec.axes else None
     if yfmt == "EUR_thousands":
-        ax.yaxis.set_major_formatter(
-            plt.FuncFormatter(
-                lambda v, _: f"€{v / 1000:,.0f}K" if v != 0 else "€0"
-            )
-        )
+        # Auto-scale: anything ≥ €1M shows as €XM, smaller shows as €XK.
+        # Without this, GMV at €12M was rendered as "€12,000K" — visually
+        # heavy and inconsistent with data labels that already auto-scaled
+        # via _format_eur.
+        def _fmt_eur_axis(v: float, _pos: int) -> str:
+            if v == 0:
+                return "€0"
+            if abs(v) >= 1_000_000:
+                m = v / 1_000_000
+                return f"€{m:.1f}M" if abs(m) < 10 else f"€{m:.0f}M"
+            return f"€{v / 1000:,.0f}K"
+        ax.yaxis.set_major_formatter(plt.FuncFormatter(_fmt_eur_axis))
         ax.set_ylabel("")
     elif yfmt == "count":
         ax.yaxis.set_major_formatter(

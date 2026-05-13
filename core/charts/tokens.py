@@ -36,6 +36,7 @@ class Tokens:
     line_width: float
     line_fill_alpha: float
     marker_size: float
+    label_bbox_alpha: float
     kpi_border_color: str
     kpi_border_width: float
     kpi_value_color: str
@@ -61,6 +62,7 @@ DEFAULT = Tokens(
     line_width=1.8,
     line_fill_alpha=0.0,
     marker_size=4.0,
+    label_bbox_alpha=0.0,   # no white box behind data labels by default
     # KPI chrome under DEFAULT keeps the renderer's current behaviour:
     # no explicit border (matplotlib axis-off cards), brand-primary value
     # colour, neutral title colour, render.py's hard-coded delta arrow
@@ -97,6 +99,10 @@ ALMACENA_ARCHIVE = Tokens(
     line_width=3.0,
     line_fill_alpha=0.10,
     marker_size=5.0,
+    # 85% white box behind data labels so the rgba(0,0,0,0.04) grid
+    # doesn't cut visually through "€12.6M" etc. Legacy charts.js does
+    # the same via the datalabels plugin's backgroundColor option.
+    label_bbox_alpha=0.85,
     kpi_border_color="#013E3F",
     kpi_border_width=2.0,
     kpi_value_color="#222222",

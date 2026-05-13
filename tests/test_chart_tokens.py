@@ -31,7 +31,7 @@ class TestTokensDataclass:
         # Line/area visual knobs surfaced as tokens so presets can swap them.
         for field in (
             "line_width", "line_fill_alpha", "marker_size",
-            "tick_color",
+            "tick_color", "label_bbox_alpha",
         ):
             assert hasattr(DEFAULT, field), f"DEFAULT missing token field {field!r}"
             assert hasattr(ALMACENA_ARCHIVE, field)
