@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +32,7 @@ import pandas as pd
 from dateutil.relativedelta import relativedelta
 
 from core.charts.spec import ChartSpec, DataSeries
+from core.charts.tokens import Tokens, resolve as resolve_tokens
 from core.data.query import (
     get_aggregation, get_kpi, get_kpi_trend, get_trend, get_value,
 )
@@ -272,9 +273,26 @@ LABEL_FONTSIZE_LEGEND = 10.5
 LABEL_FONTSIZE_DONUT_CENTER = 26
 
 
-def apply_brand(brand: dict[str, Any]) -> list[str]:
-    """Apply matplotlib rcParams from the brand dict and return the palette
-    that drawing routines should iterate over for series colors."""
+@dataclass(frozen=True)
+class RenderContext:
+    """Resolved styling for one render: the colour list draw routines iterate
+    over plus the design-system tokens for non-palette knobs (text colours,
+    KPI chrome, font sizes). Returned by ``apply_brand``."""
+    palette: list[str]
+    tokens: Tokens
+
+
+def apply_brand(brand: dict[str, Any]) -> RenderContext:
+    """Apply matplotlib rcParams from the brand dict and return a
+    RenderContext bundling the palette + resolved tokens for this render.
+
+    ``brand.tokens_preset`` selects a design preset from
+    ``core.charts.tokens`` (``"almacena_archive"`` etc.). Absent or
+    ``"default"`` returns the renderer's pre-tokens behaviour so existing
+    client output is byte-for-byte unchanged.
+    """
+    tokens = resolve_tokens(brand.get("tokens_preset"))
+
     fallbacks = ["Helvetica Neue", "Helvetica", "Arial", "DejaVu Sans"]
     fonts: list[str] = []
     requested = brand.get("font_body")
@@ -282,10 +300,10 @@ def apply_brand(brand: dict[str, Any]) -> list[str]:
         fonts.append(requested)
     fonts.extend(fallbacks)
     plt.rcParams["font.family"] = fonts
-    plt.rcParams["text.color"] = TEXT_INK
-    plt.rcParams["axes.labelcolor"] = TEXT_INK
-    plt.rcParams["xtick.color"] = TEXT_MUTED
-    plt.rcParams["ytick.color"] = TEXT_MUTED
+    plt.rcParams["text.color"] = tokens.text_ink
+    plt.rcParams["axes.labelcolor"] = tokens.text_ink
+    plt.rcParams["xtick.color"] = tokens.text_muted
+    plt.rcParams["ytick.color"] = tokens.text_muted
     plt.rcParams["axes.spines.top"] = False
     plt.rcParams["axes.spines.right"] = False
     plt.rcParams["axes.spines.left"] = False
@@ -298,7 +316,7 @@ def apply_brand(brand: dict[str, Any]) -> list[str]:
         brand.get("budget"),
     ]
     palette = [c for c in palette if c]
-    return palette + _DEFAULT_PALETTE
+    return RenderContext(palette=palette + list(tokens.palette), tokens=tokens)
 
 
 def _resolve_palette(spec: ChartSpec, brand_palette: list[str]) -> list[str]:
@@ -1298,8 +1316,8 @@ def render(
         )
         resolved.append({"label": d.label, "raw": raw})
 
-    brand_palette = apply_brand(brand)
-    palette = _resolve_palette(spec, brand_palette)
+    ctx = apply_brand(brand)
+    palette = _resolve_palette(spec, ctx.palette)
     figsize = _figsize_for(spec.chart_type)
     fig, ax = plt.subplots(figsize=figsize, dpi=200)
     _DRAW[spec.chart_type](ax, spec, resolved, palette)

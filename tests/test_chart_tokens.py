@@ -114,3 +114,77 @@ class TestLookupByName:
 
         with pytest.raises(ValueError, match="unknown tokens preset"):
             resolve("rainbow_dash")
+
+
+# ---------------------------------------------------------------------------
+# Task 1.2 — apply_brand integration
+# ---------------------------------------------------------------------------
+
+class TestApplyBrandIntegration:
+    """apply_brand reads brand['tokens_preset'] and uses the resolved Tokens
+    instance for matplotlib rcParams and the returned palette. An absent
+    or 'default' preset must reproduce the renderer's pre-tokens behaviour
+    so existing client output stays byte-for-byte identical."""
+
+    def test_returns_render_context_with_palette_and_tokens(self) -> None:
+        from core.charts.render import apply_brand
+
+        ctx = apply_brand({})
+        # Bundles both the colour list and the resolved design tokens.
+        assert hasattr(ctx, "palette")
+        assert hasattr(ctx, "tokens")
+        assert ctx.tokens is DEFAULT
+
+    def test_absent_preset_returns_default_tokens(self) -> None:
+        from core.charts.render import apply_brand
+
+        ctx = apply_brand({"primary": "#1F4D4D", "accent": "#D4A024"})
+        assert ctx.tokens is DEFAULT
+
+    def test_named_preset_returns_resolved_tokens(self) -> None:
+        from core.charts.render import apply_brand
+
+        ctx = apply_brand({"tokens_preset": "almacena_archive"})
+        assert ctx.tokens is ALMACENA_ARCHIVE
+
+    def test_palette_keeps_brand_overrides_first(self) -> None:
+        """primary/accent/budget brand colours still win over the preset
+        palette so per-client identity overrides the design-system fallback."""
+        from core.charts.render import apply_brand
+
+        ctx = apply_brand({
+            "primary": "#1F4D4D", "accent": "#D4A024",
+            "tokens_preset": "almacena_archive",
+        })
+        assert ctx.palette[0] == "#1F4D4D"
+        assert ctx.palette[1] == "#D4A024"
+        # Then the archive palette fills the remainder.
+        assert "#013E3F" in ctx.palette
+        assert "#20D9DC" in ctx.palette
+
+    def test_default_preset_palette_matches_legacy_constant(self) -> None:
+        """Byte-for-byte invariant: with no brand colours and no preset,
+        the returned palette equals the legacy _DEFAULT_PALETTE constant."""
+        from core.charts.render import _DEFAULT_PALETTE, apply_brand
+
+        ctx = apply_brand({})
+        assert ctx.palette == _DEFAULT_PALETTE
+
+    def test_archive_preset_sets_archive_text_ink_rcparam(self) -> None:
+        """Under the archive preset, matplotlib's default text colour is
+        the archive's #222222, not the renderer's legacy #2D2D2D."""
+        import matplotlib.pyplot as plt
+
+        from core.charts.render import apply_brand
+
+        apply_brand({"tokens_preset": "almacena_archive"})
+        assert plt.rcParams["text.color"] == ALMACENA_ARCHIVE.text_ink
+
+        # Reset back to DEFAULT for any test that runs after.
+        apply_brand({})
+
+    def test_unknown_preset_raises(self) -> None:
+        from core.charts.render import apply_brand
+
+        with pytest.raises(ValueError, match="unknown tokens preset"):
+            apply_brand({"tokens_preset": "rainbow_dash"})
