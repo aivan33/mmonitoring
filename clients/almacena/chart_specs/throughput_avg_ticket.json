@@ -1,0 +1,26 @@
+{
+  "chart_id": "throughput_avg_ticket",
+  "client": "almacena",
+  "title": "Average Ticket Size — Deal-Count Growth, Stable Size",
+  "chart_type": "line",
+  "source": "custom",
+  "entity": "ap_foundation",
+  "value_format": "eur",
+  "period": {"kind": "ltm", "months": 12},
+  "axes": {"y": {"format": "EUR_thousands"}},
+  "display_order": 25,
+  "data": [
+    {
+      "label": "Avg Ticket",
+      "query": {
+        "kind": "kpi_ratio",
+        "numerator": "GMV",
+        "denominator": "# Invoices"
+      }
+    }
+  ],
+  "reference_lines": [
+    {"value": 202000, "label": "Apr-25 baseline", "color": "#FF9800", "style": "dashed"}
+  ],
+  "notes": "Proves the Volume thesis: ticket size is flat across the LTM (Apr-25 €202K → Mar-26 €203K) while GMV grew 2.5x. The dashed Apr-25 reference makes the no-inflation point visible at a glance."
+}
