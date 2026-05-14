@@ -1,0 +1,28 @@
+{
+  "chart_id": "cash_position_adjusted",
+  "client": "almacena",
+  "title": "Cash Position — Adjusted (Cash + Intercompany Receivables)",
+  "chart_type": "stacked_bar_with_line",
+  "source": "custom",
+  "entity": "consolidated",
+  "value_format": "eur",
+  "period": {"kind": "ltm", "months": 12},
+  "axes": {"y": {"format": "EUR_thousands"}},
+  "display_order": 80,
+  "compute_total": true,
+  "total_label": "Adjusted Cash",
+  "data": [
+    {"label": "Cash & Cash Equivalents",
+     "query": {"kind": "trend", "data": "Cash and cash equivalents", "scenario": "actual"}},
+    {"label": "Receivables Related Entities",
+     "query": {"kind": "trend", "data": "Current assets", "grp": "Receivables related entities", "scenario": "actual"}}
+  ],
+  "style": {
+    "color_map": {
+      "Cash & Cash Equivalents":      "#20D9DC",
+      "Receivables Related Entities": "#009091",
+      "Adjusted Cash":                "#013E3F"
+    }
+  },
+  "notes": "LTM consolidated cash position with the intercompany receivable from Almacena Holding to AP Foundation treated as a cash equivalent (it represents capital deployed into the lending vehicle and can be recalled if needed). Cash alone is volatile month-to-month; the adjusted total is the right view for burn rate / runway."
+}
