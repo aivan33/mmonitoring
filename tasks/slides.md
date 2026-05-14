@@ -107,14 +107,16 @@ Finance Costs & Income:
 Slide 6 — Cash Position & Cash Flow Analysis (Consolidated)
 ===========================================================
 
-Adjusted Cash — defined as Cash and Cash Equivalents plus Receivables Related Entities (the intercompany loan from Almacena Holding to AP Foundation used to finance deals) — stood at €1.33M in Mar-26, down from the Nov-25 peak of €1.86M as more capital was deployed into the book (Portfolio Outstanding grew €3.7M over the same Nov→Mar window).
+Adjusted Cash — defined as Cash and Cash Equivalents plus Receivables Related Entities (the intercompany loan from Almacena Holding to AP Foundation, treated as a cash equivalent because the capital is recallable and is being used to finance deals on platform) — stood at €1.33M in Mar-26, down from the Nov-25 peak of €1.86M.
 
-Cash-only volatility (€47K to €316K bouncing through LTM) masks this; the intercompany receivable is the larger and more stable component (€600K → €1.5M peak). For burn rate and runway calculations, the adjusted figure is the correct read.
+The €600K drawdown over those four months is not burn. Over the same Nov-25 → Mar-26 window, Average Portfolio Outstanding grew from €7.4M to €14.8M (+€7.4M of capital deployed into the lending book). Cash is moving from the holding's balance sheet into the foundation's deployed book — exactly the intended use of the intercompany facility — not being consumed by operations.
+
+Cash-only volatility (€47K to €316K bouncing through LTM) masks this dynamic, which is why the adjusted view is the correct read for burn rate and runway. The intercompany receivable is the larger and more stable component (€604K Apr-25 → €1.54M Nov-25 peak), and its drawdown into the book is what the Mar-26 figure of €1.14M reflects.
 
 Operating Activities:
-[TBD — Q1 operating cash flow commentary]
+[TBD — Q1 operating cash flow commentary; separate the operating burn from the capital-deployment drawdown above]
 
-New chart to build: cash_position_adjusted (stacked_bar_with_line, LTM-12, Cash + Receivables stacked + Adjusted Cash overlay line)
+Charts: cash_position_adjusted · (existing source: consolidated CF chart)
 
 
 ===========================================================
@@ -152,8 +154,8 @@ The corporate structure consists of 5 entities:
 Open items before publication
 ===========================================================
 
-- Build cash_position_adjusted chart (Slide 6) — spec proposed, awaiting sign-off.
 - Refresh budget/realistic-scenario data and complete Slide 4 budget-variance commentary.
+- Separate operating burn from capital-deployment drawdown on Slide 6 once the consolidated CF data is mapped.
 - Verify OpEx detail for Slide 5 (R&D / S&M / G&A) and write below-GP commentary.
 - Resolve services-revenue collapse with business (Slide 2 discussion point #1).
 - Confirm Mar-26 Days Outstanding driver (Slide 2 discussion point #2).
