@@ -48,7 +48,7 @@ Average Portfolio Outstanding reached EUR 14.8M in Mar-26, 3.3x the Apr-25 basel
 
 Cash Drag bottomed at 0.8% in Mar-26 — the LTM low and well under the 15% operational target — reflecting capital utilization that held above 90% across the entire quarter despite the rapid book growth. Available capital stood at EUR 15.5M against EUR 14.8M outstanding in Mar-26, putting deployment at ~96%, a meaningful shift from the 14-33% drag readings recorded through most of 2025.
 
-Average Days Outstanding rose to 26.6 days in Mar-26, above the ~18-day LTM mean — the most likely driver is a tenor mix shift toward longer-settling deals as the platform's book composition evolves; worth confirming next month before reading it as a trend.
+Average Days Outstanding rose to 26.6 days in Mar-26, above the ~19-day LTM mean — the most likely driver is a tenor mix shift toward longer-settling deals as the platform's book composition evolves; worth confirming next month before reading it as a trend.
 
 Charts: efficiency_cash_drag · efficiency_portfolio_outstanding · efficiency_days_outstanding
 
@@ -57,15 +57,13 @@ Charts: efficiency_cash_drag · efficiency_portfolio_outstanding · efficiency_d
 Slide 5 — Revenue Analysis
 ===========================================================
 
-During Q1 2026, the AP foundation generated EUR 206.8K of revenue, comprising Flat Fee EUR 181.7K, Net Interest Revenue EUR 20.0K, and Other Sales EUR 5.1K. MTD the foundation generated EUR 78.0K (Flat Fee EUR 60.5K + NIR EUR 17.5K), a -16% decline MoM driven by lower Flat Fee, but with NIR up 145% MoM as the interest spread widened.
+During Q1 2026, the AP foundation generated EUR 201.8K of revenue, comprising Flat Fee EUR 181.7K and Net Interest Revenue EUR 20.0K. MTD the foundation generated EUR 78.0K (Flat Fee EUR 60.5K + NIR EUR 17.5K), a +5.4% increase MoM versus February's EUR 74.0K — Net Interest Revenue jumped +146% MoM in March and more than offset a -9.5% MoM decline in Flat Fee.
 
-The key Q1 narrative on Net Interest Revenue is the cross-over: NIR was negative at EUR -4.6K in January, turned positive at EUR +7.1K in February, and reached EUR +17.5K in March. This reflects Accrued Interest growing faster than Cost of Funds as Average Portfolio Outstanding scaled from EUR 8.4M to EUR 14.8M over the quarter. For the first time in the LTM window, the lending economics are generating positive interest margin on a monthly basis.
+The key Q1 narrative on Net Interest Revenue is the cross-over: NIR was negative at EUR -4.6K in January, turned positive at EUR +7.1K in February, and reached EUR +17.5K in March. This reflects Gross Interest Revenue growing faster than Funding Cost as Average Portfolio Outstanding scaled from EUR 8.4M to EUR 14.8M over the quarter (Q1 totals: Gross Interest EUR 273.1K, Funding Cost EUR 253.1K, Net EUR 20.0K). For the first time in the LTM window, the lending economics are generating positive interest margin on a monthly basis.
 
-Flat Fee was EUR 60.5K in Mar-26, -9.5% MoM versus February's EUR 66.9K and within the typical EUR 54-67K monthly range observed across Q1. Q1 Flat Fee of EUR 181.7K aligns with continued deal-volume growth and remains the largest single revenue stream.
+Flat Fee was EUR 60.5K in Mar-26, -9.5% MoM versus February's EUR 66.9K and within the typical EUR 54-67K monthly range observed across Q1. Q1 Flat Fee of EUR 181.7K aligns with continued deal-volume growth and remains the largest single revenue stream for the Foundation.
 
 Revenue from Services — there was no revenue recorded across Q1 2026 in any of the four service categories (Logistic, Cargo Insurance, Handling & Warehouse Destination, Docs Management), continuing a step-down that began in Dec-25. Historically these streams contributed EUR 15-40K per month combined through mid-2025. To confirm whether this is a real product change, an unbundling of the service offer, or a classification shift in revenue recognition. Note that EUR 27.6K of transportation costs were incurred at Almacena BV during Q1 (booked as CoS Other) without matching service revenue at the consolidated level — see Slide 6.
-
-Other Sales — Q1 includes EUR 5.1K of "Other" revenue in January which ties to the Almacena Bulgaria IT-services invoice (Bulgaria-side revenue confirmed against the BG IS). The matching expense at Almacena BV (account 7160) is recorded as a cash movement rather than P&L, so the intercompany pair does not fully eliminate in consolidation. Carrying the EUR 5K in this cycle; to be cleaned up on the BG side in the next reporting refresh.
 
 *Note: Net Interest Revenue is the result of subtracting Funding Cost (interest owed to investors) from the Gross Interest Revenue the company has accumulated from its financial service on deals throughout the period.*
 
@@ -78,12 +76,14 @@ Slide 6 — Income Statement Analysis (Consolidated Report)
 
 Q1 2026 commentary covers operating expenses, finance items, and below-GP lines. The top of the P&L (revenue, CoS, gross profit) is detailed on Slides 3 and 5.
 
+Note on consolidated Sales vs Foundation Sales: the consolidated IS carries an additional EUR 5.1K of "Other" revenue in January that does not belong to the AP Foundation — it ties to the Almacena Bulgaria IT-services invoice. The matching BV-side expense (account 7160) is recorded as a cash movement rather than P&L, so the BV/BG intercompany pair does not fully eliminate in consolidation. Carrying the EUR 5K in this cycle; to be cleaned up on the BG side in the next reporting refresh.
+
 CoS:
-Cost of Sales totalled EUR 32.2K in Q1 2026 (Jan EUR 7.9K · Feb EUR 21.1K · Mar EUR 3.3K). The "Other" CoS bucket maps 1:1 to account 7010 Transportation expenses in Almacena BV — Jan EUR 6.4K, Feb EUR 19.6K, Mar EUR 1.7K. These are logistics costs incurred during platform operations; the Feb spike is concentrated entirely in this account. There is no offsetting Revenue from Services at the consolidated level for Q1, so the logistics activity is currently running as a pure net cost. Production Payroll held steady at ~EUR 1.25K/month across the quarter, and Infrastructure stayed in a tight EUR 244-270 range. To rename "Other" to "Transportation/Logistics" in the taxonomi mapping and align with accounting ahead of further reporting.
+Cost of Sales totalled EUR 32.2K in Q1 2026 (Jan EUR 7.9K · Feb EUR 21.1K · Mar EUR 3.2K). The "Other" CoS bucket maps 1:1 to account 7010 Transportation expenses in Almacena BV — Jan EUR 6.4K, Feb EUR 19.6K, Mar EUR 1.7K. These are logistics costs incurred during platform operations; the Feb spike is concentrated entirely in this account. There is no offsetting Revenue from Services at the consolidated level for Q1, so the logistics activity is currently running as a pure net cost. Production Payroll held steady at ~EUR 1.25K/month across the quarter, and Infrastructure stayed in a tight EUR 244-270 range. To rename "Other" to "Transportation/Logistics" in the taxonomi mapping and align with accounting ahead of further reporting.
 
 OPEX (R&D / S&M / G&A):
 
-G&A Professional Services — Q1 2026 totalled EUR ~126K across BV and Holding, broken down as:
+G&A Professional Services — Q1 2026 totalled EUR ~124K across BV and Holding, broken down as:
 - Consulting (BV account 5582 Advisory + 5538 Re-charged): ~EUR 83K (66%) — the dominant component; consistent with the Dec-25 observation that contractor costs were being lumped here.
 - Legal (Holding 4820 + BV 5583): ~EUR 24K (19%).
 - Bookkeeping & Administrative (Holding 4810 + BV 5580): ~EUR 17K (14%).
@@ -178,7 +178,7 @@ Discussion Points:
 - Review categorization of Revenue from Services — confirm whether the Dec-25 onward collapse reflects a real product change, an unbundling, or a classification shift. Note that EUR 27.6K of transportation costs (CoS Other) were incurred in Q1 without matching service revenue — confirm whether the revenue is being booked at the Foundation rather than at Almacena BV, or whether this is genuine net cost.
 - Align HR expenses with accounting; in 2025 contractor costs were coupled into Professional Services, inflating G&A and depreciating personnel payments. Confirm whether Q1 2026 reflects the corrected categorization (Q1 Consulting still represents ~66% of Professional Services).
 - Comment on the process of recognizing revenue from deals in Almacena (vs. at the Foundation), as flagged in Dec-25.
-- Mar-26 Days Outstanding spike (26.6 days vs ~18-day LTM mean) — confirm whether tenor mix shift or operational timing.
+- Mar-26 Days Outstanding spike (26.6 days vs ~19-day LTM mean) — confirm whether tenor mix shift or operational timing.
 - Almacena N.V. (Belgium) write-off: EUR 179.8K P&L loss recorded in January per the Cession and waiver agreement. Discuss the impact on Q1 reported numbers and whether to present an Adjusted view excluding this and the General insurance prepay (EUR 44.9K Jan) so investors see the operating run-rate.
 - BV→BG intercompany IT line (EUR 10K Jan) is currently a cash movement rather than a P&L expense, and the Bulgaria IT-services revenue (EUR 5.1K Jan) is not fully eliminated on the consolidated IS — to resolve the classification and elimination in the next reporting cycle.
 - Annual insurance treatment (BV account 5551, EUR 44.9K booked in January only) — confirm whether to amortise across the year rather than expense in full at the start of the period.
