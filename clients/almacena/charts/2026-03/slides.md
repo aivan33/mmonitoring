@@ -9,154 +9,170 @@ March 2026
 
 
 ===========================================================
-Slide 2 — Highlights and Recommendations
+Slide 2 — KPIs — Volume
 ===========================================================
 
-Q1 2026 was the inflection point. Gross Profit turned positive and ramped from €47K in Jan to €73K in Mar after eleven months of negative interest spread, while Mar-26 set the LTM record on GMV (€20.5M), deal count (101), and average deployed capital (€14.8M).
+GMV reached EUR 20.5M in Mar-26, an LTM record and a 2.5x increase versus the Apr-25 baseline of EUR 8.3M. The trajectory accelerated through Q1, with February and March both setting back-to-back monthly records.
 
-Capital scale and capital efficiency moved together. Average Portfolio Outstanding tripled over LTM (€4.4M → €14.8M) and Cash Drag bottomed at 0.8% in Mar-26 — the LTM low and well under the 15% operational target — meaning fund growth is being matched by deal pipeline rather than stranded as idle cash.
+Growth is broad-based rather than ticket-driven. Mar-26 also set the LTM record for deal count at 101 invoices and 162 boxes, while average ticket held at EUR 203K — below the EUR 224K LTM mean and effectively unchanged from the Apr-25 baseline of EUR 202K.
 
-Discussion Points:
-- Confirm whether the Q4 25 onward collapse of service-fee streams (Logistic, Cargo Insurance, Handling, Docs Management) reflects a real product change, an unbundling of the service offer, or a classification shift in revenue recognition.
-- Review the Mar-26 Days Outstanding spike (26.6 days vs ~18-day LTM mean) — most likely a tenor mix shift, but worth confirming before the next report.
-- Comment on cash drag expectations for the rest of 2026 given Q1's ~96% deployment level.
+Q1 2026 in total delivered EUR 56M of GMV across roughly 245 deals — that single quarter is already ~35% of the full LTM throughput and ~90% above the equivalent Q2 2025 period (EUR 30M), signalling that the acceleration is structural rather than seasonal.
 
-Note: Highlighted results are consolidated accounting data for Almacena BG, NV, BV and the Holding, along with combined Revenue between Almacena and Stichting AP Foundation. For more details, please refer to the appendix.
-
-
-===========================================================
-Slide 3A — KPIs — Volume
-===========================================================
-
-- GMV reached €20.5M in Mar-26, an LTM record and a 2.5× increase versus the Apr-25 baseline of €8.3M, with the trajectory accelerating into Q1.
-
-- Growth is broad-based and not driven by ticket inflation — Mar-26 also set the LTM record for deal count at 101 invoices and 162 boxes, while average ticket held at €203K, just below the €224K LTM mean.
-
-- Q1 2026 alone delivered €56M of GMV across roughly 245 deals — that single quarter is already ~35% of the full LTM throughput and ~90% above the equivalent Q2 2025 period (€30M), signalling that the acceleration is structural rather than seasonal.
+Funded Amount tracked the move closely at EUR 17.2M in Mar-26, holding the platform's ~85% funded share through the quarter.
 
 Charts: throughput_gmv_funded · throughput_operational · throughput_avg_ticket
 
 
 ===========================================================
-Slide 3B — KPIs — Economics
+Slide 3 — KPIs — Economics
 ===========================================================
 
-- After eleven months of compression, with Cost of Funds exceeding Accrued Interest by €11K–€30K every month through 2025, the interest spread finally crossed over in Feb-26 and widened to €13K by Mar-26 — the structural inversion of the platform's economics.
+After eleven months of compression, with Cost of Funds exceeding Accrued Interest by EUR 11K-30K every month through 2025, the interest spread crossed over in Feb-26 and widened to EUR 13K by Mar-26 — the structural inversion of the platform's economics. LTM Accrued Interest grew 3.3x (EUR 39K → 128K) while Cost of Funds grew only 2.0x (EUR 56K → 115K), meaning each additional euro of GMV is now earning a wider net spread than at the start of the period.
 
-- LTM Accrued Interest grew 3.3× (€39K → €128K) while Cost of Funds grew only 2.0× (€56K → €115K), meaning each additional euro of GMV is now earning a wider net spread than at the start of the period.
+Q1 2026 Gross Profit turned positive and accelerated month-over-month at EUR 47K in Jan, EUR 57K in Feb, and EUR 73K in Mar — March is already 1.5x January's level, with the widening interest spread doing the heavy lifting rather than fee growth.
 
-- Q1 2026 Gross Profit turned positive and accelerated month-over-month at €47K in Jan, €57K in Feb, and €73K in Mar — March is already 1.5× January's level, with the widening interest spread doing the heavy lifting rather than fee growth.
+Arrangement Fees remain the backbone of the gross profit build at EUR 60-73K per month, but Net Interest's share of Gross Profit moved from -9% in Jan to +7% in Feb to +17% in Mar — the spread component is becoming a meaningful contribution.
 
-- Arrangement Fees remain the backbone of the build at €60–73K per month, but Net Interest's share of Gross Profit moved from −9% in Jan to +7% in Feb to +17% in Mar — the spread component is becoming a meaningful contribution.
+Service fee streams (Logistic, Cargo Insurance, Handling, Docs Management) declined to ~EUR 0 from Dec-25 onward — to be confirmed whether this is a real product change, an unbundling of the service offer, or a classification shift in revenue recognition.
 
-- Service fee streams (Logistic, Cargo Insurance, Handling, Docs Management) declined to ~€0 from Dec-25 onward — to be confirmed whether this is a real product change, an unbundling of the service offer, or a classification shift in revenue recognition.
+Charts: econ_fee_mix (Revenue Mix) · econ_gross_profit_q1_build (Gross Profit)
 
-Charts: econ_fee_mix · econ_net_interest_breakdown · econ_gross_profit_q1_build
+Note: the spread crossover story is currently told via the Gross Profit build (Accrued Interest and Funding Cost are visible as separate stacks). Re-add econ_net_interest_breakdown only if a standalone view of the spread is wanted.
 
 
 ===========================================================
-Slide 3C — KPIs — Efficiency
+Slide 4 — KPIs — Efficiency
 ===========================================================
 
-- Average Portfolio Outstanding reached €14.8M in Mar-26, 3.3× the Apr-25 baseline of €4.4M — an absolute increase of €10.4M in deployed capital over twelve months, with the steepest gains concentrated in Q1 (€8.4M → €11.1M → €14.8M).
+Average Portfolio Outstanding reached EUR 14.8M in Mar-26, 3.3x the Apr-25 baseline of EUR 4.4M — an absolute increase of EUR 10.4M in deployed capital over twelve months, with the steepest gains concentrated in Q1 (EUR 8.4M → 11.1M → 14.8M).
 
-- Cash Drag bottomed at 0.8% in Mar-26 — the LTM low and well under the 15% operational target — reflecting capital utilization that held above 90% across the entire quarter despite the rapid book growth.
+Cash Drag bottomed at 0.8% in Mar-26 — the LTM low and well under the 15% operational target — reflecting capital utilization that held above 90% across the entire quarter despite the rapid book growth. Available capital stood at EUR 15.5M against EUR 14.8M outstanding in Mar-26, putting deployment at ~96%, a meaningful shift from the 14-33% drag readings recorded through most of 2025.
 
-- Available capital stood at €15.5M against €14.8M outstanding in Mar-26, putting deployment at ~96% — fund growth is being matched by deal pipeline rather than stranded as idle cash, a meaningful shift from the 14–33% drag readings recorded through most of 2025.
-
-- Average Days Outstanding rose to 26.6 days in Mar-26, above the ~18-day LTM mean — the most likely driver is a tenor mix shift toward longer-settling deals as the platform's book composition evolves; worth a closer look next month before reading it as a trend.
+Average Days Outstanding rose to 26.6 days in Mar-26, above the ~18-day LTM mean — the most likely driver is a tenor mix shift toward longer-settling deals as the platform's book composition evolves; worth confirming next month before reading it as a trend.
 
 Charts: efficiency_cash_drag · efficiency_portfolio_outstanding · efficiency_days_outstanding
 
 
 ===========================================================
-Slide 4 — Revenue Analysis
+Slide 5 — Revenue Analysis
 ===========================================================
 
-Q1 2026 revenue from fees and interest reached €358K combined (Jan €131K · Feb €167K · Mar €192K), driven by Arrangement Fees holding a steady €60–73K monthly base and Net Interest contribution growing from -€5K in Jan to +€13K in Mar.
+During Q1 2026, the AP foundation generated EUR 206.8K of revenue, comprising Flat Fee EUR 181.7K, Net Interest Revenue EUR 20.0K, and Other Sales EUR 5.1K. MTD the foundation generated EUR 78.0K (Flat Fee EUR 60.5K + NIR EUR 17.5K), a -16% decline MoM driven by lower Flat Fee, but with NIR up 145% MoM as the interest spread widened.
 
-The monthly revenue dynamics chart shows arrangement fees as the dominant and most stable revenue stream, with the gross-interest line accelerating sharply through Q1 as the book grew and finally outpacing the funding-cost line in Feb-26. Service revenues (logistics, insurance, handling, docs management) — historically €15–40K combined per month through most of 2025 — have stepped down to essentially zero from Dec-25 onward and require business clarification.
+The key Q1 narrative on Net Interest Revenue is the cross-over: NIR was negative at EUR -4.6K in January, turned positive at EUR +7.1K in February, and reached EUR +17.5K in March. This reflects Accrued Interest growing faster than Cost of Funds as Average Portfolio Outstanding scaled from EUR 8.4M to EUR 14.8M over the quarter. For the first time in the LTM window, the lending economics are generating positive interest margin on a monthly basis.
 
-Versus the realistic budget, Q1 actuals are [TBD pending budget data refresh — leave for next report cycle if not yet available].
+Flat Fee was EUR 60.5K in Mar-26, -9.5% MoM versus February's EUR 66.9K and within the typical EUR 54-67K monthly range observed across Q1. Q1 Flat Fee of EUR 181.7K aligns with continued deal-volume growth and remains the largest single revenue stream.
 
-Note: Net Interest Revenue is the result of subtracting Funding Cost (interest owed to investors) from the Gross Interest Revenue the company has accumulated from its financial service on deals throughout the period.
+Revenue from Services — there was no revenue recorded across Q1 2026 in any of the four service categories (Logistic, Cargo Insurance, Handling & Warehouse Destination, Docs Management), continuing a step-down that began in Dec-25. Historically these streams contributed EUR 15-40K per month combined through mid-2025. To confirm whether this is a real product change, an unbundling of the service offer, or a classification shift in revenue recognition.
 
-Charts: econ_fee_mix · econ_net_interest_breakdown · (optional) revenue_variance_q1
+*Note: Net Interest Revenue is the result of subtracting Funding Cost (interest owed to investors) from the Gross Interest Revenue the company has accumulated from its financial service on deals throughout the period.*
+
+Charts: econ_fee_mix · econ_net_interest_breakdown · (existing source: revenue variance / monthly revenue dynamics)
 
 
 ===========================================================
-Slide 5 — Income Statement Analysis (Consolidated Report)
+Slide 6 — Income Statement Analysis (Consolidated Report)
 ===========================================================
 
-The top of the P&L (revenue, CoS, gross profit) is covered in detail on Slide 3B. This slide focuses on operating expenses, finance items, and below-GP lines.
+Q1 2026 commentary covers operating expenses, finance items, and below-GP lines. The top of the P&L (revenue, CoS, gross profit) is detailed on Slides 3 and 5.
 
 CoS:
-Cost of Sales for Q1 2026 totalled €32K (Jan €7.9K · Feb €21.1K · Mar €3.3K). The Feb-26 spike was driven by €19.6K in the "Other" CoS bucket — to verify whether this is a one-off or a categorisation question.
+Cost of Sales totalled EUR 32.2K in Q1 2026 (Jan EUR 7.9K · Feb EUR 21.1K · Mar EUR 3.3K). The Feb spike was concentrated in the "Other" CoS bucket (EUR 19.6K) — to verify whether this is one-off cost recognition or a categorisation question. Production Payroll held steady at ~EUR 1.25K/month across the quarter, and Infrastructure stayed in a tight EUR 244-270 range. The "Other" category remains misclassified per the 2025 carry-forward note; to be aligned with accounting under "Cost of Service" ahead of further reporting.
 
 OPEX (R&D / S&M / G&A):
-[TBD — pull R&D contractor mix, S&M activity, G&A breakdown from consolidated IS for Q1 commentary]
+[TBD — pull R&D contractor activity, S&M spend if any, and G&A breakdown for Q1 commentary. The Dec-25 deck flagged G&A as 94% of total OPEX driven by Professional Services / Consultants; verify whether the planned recategorization of contractor costs has taken effect in Q1.]
 
 Depreciation & Amortization:
-[TBD — Q1 D&A trend vs budget]
+[TBD — Q1 D&A trend; Dec-25 was flat at EUR 18.6K monthly.]
 
 Finance Costs & Income:
-[TBD — non-funding finance line commentary]
+[TBD — non-funding finance line commentary, vs budget.]
 
 
 ===========================================================
-Slide 6 — Cash Position & Cash Flow Analysis (Consolidated)
+Slide 7 — Cash Flow Analysis (consolidated)
 ===========================================================
 
-Adjusted Cash — defined as Cash and Cash Equivalents plus Receivables Related Entities (the intercompany loan from Almacena Holding to AP Foundation, treated as a cash equivalent because the capital is recallable and is being used to finance deals on platform) — stood at €1.33M in Mar-26, down from the Nov-25 peak of €1.86M.
+Cash Position:
+Adjusted Cash — defined as Cash and Cash Equivalents plus Receivables Related Entities (the intercompany loan from Almacena Holding to AP Foundation, treated as a cash equivalent because the capital is recallable and is being used to finance deals on platform) — stood at EUR 1.33M in Mar-26, drawing down from the Nov-25 peak of EUR 1.86M.
 
-The €600K drawdown over those four months is not burn. Over the same Nov-25 → Mar-26 window, Average Portfolio Outstanding grew from €7.4M to €14.8M (+€7.4M of capital deployed into the lending book). Cash is moving from the holding's balance sheet into the foundation's deployed book — exactly the intended use of the intercompany facility — not being consumed by operations.
+The EUR 530K drawdown over those four months is not burn. Over the same Nov-25 → Mar-26 window, Average Portfolio Outstanding grew from EUR 7.4M to EUR 14.8M (+EUR 7.4M of capital deployed into the lending book). Cash is moving from the holding's balance sheet into the foundation's deployed book — exactly the intended use of the intercompany facility — and is not being consumed by operations.
 
-Cash-only volatility (€47K to €316K bouncing through LTM) masks this dynamic, which is why the adjusted view is the correct read for burn rate and runway. The intercompany receivable is the larger and more stable component (€604K Apr-25 → €1.54M Nov-25 peak), and its drawdown into the book is what the Mar-26 figure of €1.14M reflects.
+Cash-only volatility (EUR 47K to EUR 318K bouncing through LTM) masks this dynamic, which is why the adjusted view is the correct read for runway. With the EUR 1.14M of receivables to related entities recognized as cash-equivalent and the average yearly operating burn, runway extends well beyond the cash-only view; the foundation's deal cash receipts would further extend liquidity if folded into the calculation.
 
 Operating Activities:
-[TBD — Q1 operating cash flow commentary; separate the operating burn from the capital-deployment drawdown above]
+[TBD — Q1 operating cash flow walk: separate the operating burn from the capital-deployment drawdown above. Confirm whether deal cash receipts are now recognized at Almacena rather than at the Foundation, as flagged in the Dec-25 deck.]
 
-Charts: cash_position_adjusted · (existing source: consolidated CF chart)
+Investing Activities:
+[TBD — intercompany funding to the Bulgarian entity for R&D, Q1 figure.]
 
+Financing Activities:
+[TBD — Q1 financing flows, vs budget.]
 
-===========================================================
-Slide 7 — Cash Flow Analysis (AP Foundation)
-===========================================================
-
-The AP Foundation's cash flow highlights all fund movements in its capacity as the primary lending vehicle on the Almacena platform — tracking loan disbursements, interest and principal repayments, and intercompany funding flows from the Holding.
-
-[TBD — Q1 foundation-specific cash flow commentary once underlying data is verified]
+Charts: cash_position_adjusted · (existing source: consolidated CF picture)
 
 
 ===========================================================
-Slide 8 — Appendix: Corporate Structure
+Slide 8 — Cash Flow Analysis (AP Foundation)
+===========================================================
+
+The AP Foundation's cash flow tracks all fund movements in its capacity as the primary lending vehicle on the Almacena platform — loan disbursements, interest and principal repayments, and the collection of fees, which are then remitted to Almacena.
+
+[TBD — Q1 foundation-specific cash flow commentary once the underlying data is mapped.]
+
+
+===========================================================
+Slide 9 — Appendix: Corporate Structure (hidden)
 ===========================================================
 
 Basis of consolidation:
-There are two levels of consolidation within the Almacena Group:
+There are two levels of consolidation within the Almacena Group.
 
 Almacena BV Level (Operational Consolidation):
-Almacena BV consolidates Almacena Bulgaria EOOD due to their integrated operations and shared cost base for the platform.
+Almacena BV consolidates Almacena Bulgaria EOOD due to their intercompany agreement; this consolidation reflects the integration of core operations and platform development within the operational entity.
 
-Almacena Holding BV Level:
-The Holding consolidates Almacena BV (Operational) along with its other holdings.
+Almacena Holding BV Level (Group Consolidation):
+At the group level, Almacena Holding BV consolidates Almacena BV (which already includes Bulgaria) and Almacena NV. The consolidation includes all fully owned subsidiaries under the Holding, with the exception of the AP Foundation, which is excluded as it is not part of the corporate group.
 
 Corporate Structure Overview:
 The corporate structure consists of 5 entities:
-- Almacena Holding BV (NL) — Dutch financial holding, owns 100% of Almacena BV.
-- Almacena BV (NL) — operational entity, 100% owner of Almacena Bulgaria EOOD.
-- Almacena Bulgaria EOOD (BG) — R&D and operations hub.
-- Stichting AP Foundation (NL) — primary lending vehicle, funded via intercompany receivable from the Holding.
-- [Add fifth entity per source — verify name]
+- Almacena Holding BV (NL) — Dutch financial holding, owns 100% of Almacena BV. Finances Almacena BV through loans under a Loan agreement.
+- Almacena BV (NL) — operational entity, responsible for operations and sales.
+- Almacena Bulgaria EOOD (BG) — subsidiary of Almacena BV, R&D hub for the group, responsible for platform development and servicing.
+- Almacena NV (BE) — established in Antwerp to handle Latin America operations; not currently active and may be liquidated.
+- Stichting AP Foundation (NL) — not linked to the Group; operates as a stand-alone entity, receiving loans from shareholders of the group and providing financing to clients.
+
+
+===========================================================
+Slide 10 — Highlights and Recommendations (hidden)
+===========================================================
+
+Highlighted results are consolidated accounting data for Almacena BG, NV, BV and the Holding, along with combined Revenue between Almacena and Stichting AP Foundation. For more details, please refer to Corporate Structure in the Appendix.
+
+Discussion Points:
+- Comment on expectations for Cash Drag for the rest of 2026 given Q1's ~96% deployment level.
+- Review categorization of Revenue from Services — confirm whether the Dec-25 onward collapse reflects a real product change, an unbundling, or a classification shift.
+- Align HR expenses with accounting; in 2025 contractor costs were coupled into Professional Services, inflating G&A and depreciating personnel payments. Confirm whether Q1 2026 reflects the corrected categorization.
+- Comment on the process of recognizing revenue from deals in Almacena (vs. at the Foundation), as flagged in Dec-25.
+- Mar-26 Days Outstanding spike (26.6 days vs ~18-day LTM mean) — confirm whether tenor mix shift or operational timing.
 
 
 ===========================================================
 Open items before publication
 ===========================================================
 
-- Refresh budget/realistic-scenario data and complete Slide 4 budget-variance commentary.
-- Separate operating burn from capital-deployment drawdown on Slide 6 once the consolidated CF data is mapped.
-- Verify OpEx detail for Slide 5 (R&D / S&M / G&A) and write below-GP commentary.
-- Resolve services-revenue collapse with business (Slide 2 discussion point #1).
-- Confirm Mar-26 Days Outstanding driver (Slide 2 discussion point #2).
-- Verify the fifth corporate entity name on Slide 8 from source.
+Deck-level fixes:
+- Slide 1 title: "March 2025" → "March 2026".
+- Slide 2 (Volume) is empty in the working deck; Slide 4 (Efficiency) currently shows Volume charts and subtitles. Either swap content (Volume → Slide 2, Efficiency → Slide 4) or rename Slide 4 to Volume and add the Efficiency content elsewhere.
+- Slide 3 (Economics) currently has 2 charts (Revenue Mix + Gross Profit); confirm whether to add econ_net_interest_breakdown back, or rely on the GP build to carry the spread story.
+- Slides 5/6/7 body text in the working deck is still Dec-25 framing; refresh per the Q1 narratives above.
+
+Data refreshes:
+- Budget / Realistic scenario for Slide 5 variance lines (vs Budget Q1 totals).
+- OpEx detail for Slide 6 (R&D / S&M / G&A activity, Finance costs, D&A).
+- Foundation cash flow detail for Slide 8.
+
+Open business questions:
+- Services revenue collapse — real product change vs categorisation shift?
+- Mar-26 Days Outstanding driver — tenor mix vs operational delay?
+- Recognition of deal cash receipts (Almacena vs Foundation) — progress check.
