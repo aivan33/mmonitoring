@@ -33,7 +33,7 @@ Q1 2026 Gross Profit turned positive and accelerated month-over-month at EUR 47K
 
 Arrangement Fees remain the backbone of the gross profit build at EUR 60-73K per month, but Net Interest's share of Gross Profit moved from -9% in Jan to +7% in Feb to +17% in Mar — the spread component is becoming a meaningful contribution.
 
-Service fee streams (Logistic, Cargo Insurance, Handling, Docs Management) declined to ~EUR 0 from Dec-25 onward — to be confirmed whether this is a real product change, an unbundling of the service offer, or a classification shift in revenue recognition.
+Service fee streams stepped down sharply from mid-2025 levels (EUR 15-40K/month combined) to negligible through Q1 — the operational KPI sheet shows EUR 4.2K of service fees collected in January (Logistic EUR 1.7K, Cargo Insurance EUR 2.4K, Docs Management EUR 0.1K), trailing to EUR 0.1K in February and zero in March; the Foundation IS recognises zero across all three months. To be confirmed whether this reflects a real product change, an unbundling of the service offer, or a classification gap between the operational and accounting feeds.
 
 Charts: econ_fee_mix (Revenue Mix) · econ_gross_profit_q1_build (Gross Profit)
 
@@ -63,7 +63,7 @@ The key Q1 narrative on Net Interest Revenue is the cross-over: NIR was negative
 
 Flat Fee was EUR 60.5K in Mar-26, -9.5% MoM versus February's EUR 66.9K and within the typical EUR 54-67K monthly range observed across Q1. Q1 Flat Fee of EUR 181.7K aligns with continued deal-volume growth and remains the largest single revenue stream for the Foundation.
 
-Revenue from Services — there was no revenue recorded across Q1 2026 in any of the four service categories (Logistic, Cargo Insurance, Handling & Warehouse Destination, Docs Management), continuing a step-down that began in Dec-25. Historically these streams contributed EUR 15-40K per month combined through mid-2025. To confirm whether this is a real product change, an unbundling of the service offer, or a classification shift in revenue recognition. Note that EUR 27.6K of transportation costs were incurred at Almacena BV during Q1 (booked as CoS Other) without matching service revenue at the consolidated level — see Slide 6.
+Revenue from Services — the Foundation IS recognises zero service revenue across Q1 2026 in any of the four categories (Logistic, Cargo Insurance, Handling & Warehouse Destination, Docs Management). The operational KPI sheet does show small service-fee collections in January: Logistic EUR 1.7K (with matching pass-through cost), Cargo Insurance EUR 2.4K (with EUR 1.7K cost, ~EUR 0.7K net margin), Docs Management EUR 0.1K — total EUR 4.2K of fees with EUR 2.5K net of pass-through costs. February drops to EUR 0.1K, March to zero. Historically these streams contributed EUR 15-40K per month combined through mid-2025. The gap between operational collections and accounting recognition is a Q1 reconciliation item: confirm whether the four service streams have been wound down operationally or simply re-categorised in the accounting. Also note EUR 27.6K of transportation costs at Almacena BV during Q1 (booked as CoS Other) — see Slide 6.
 
 *Note: Net Interest Revenue is the result of subtracting Funding Cost (interest owed to investors) from the Gross Interest Revenue the company has accumulated from its financial service on deals throughout the period.*
 
@@ -175,7 +175,7 @@ Highlighted results are consolidated accounting data for Almacena BG, NV, BV and
 
 Discussion Points:
 - Comment on expectations for Cash Drag for the rest of 2026 given Q1's ~96% deployment level.
-- Review categorization of Revenue from Services — confirm whether the Dec-25 onward collapse reflects a real product change, an unbundling, or a classification shift. Note that EUR 27.6K of transportation costs (CoS Other) were incurred in Q1 without matching service revenue — confirm whether the revenue is being booked at the Foundation rather than at Almacena BV, or whether this is genuine net cost.
+- Review categorization of Revenue from Services — confirm whether the sharp step-down (EUR 15-40K/mo through mid-2025 → EUR 4.2K Jan-26 → essentially zero Feb-Mar 26) reflects a real product change, an unbundling, or a classification shift. Foundation IS recognises zero in Q1 even though the operational sheet shows EUR 4.2K in January (Logistic, Cargo Insurance, Docs Management); also EUR 27.6K of transportation costs (CoS Other) hit Almacena BV during Q1 without matching service revenue at the consolidated level.
 - Align HR expenses with accounting; in 2025 contractor costs were coupled into Professional Services, inflating G&A and depreciating personnel payments. Confirm whether Q1 2026 reflects the corrected categorization (Q1 Consulting still represents ~66% of Professional Services).
 - Comment on the process of recognizing revenue from deals in Almacena (vs. at the Foundation), as flagged in Dec-25.
 - Mar-26 Days Outstanding spike (26.6 days vs ~19-day LTM mean) — confirm whether tenor mix shift or operational timing.
