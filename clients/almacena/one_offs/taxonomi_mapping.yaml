@@ -1,0 +1,175 @@
+# Almacena taxonomi mapping — raw monthly statements -> canonical taxonomi.
+#
+# Two tracked entities. NOTE the raw filenames are crossed vs the stream they
+# feed (see one_offs/APR_BUILD_NOTES.md): the operating-group consolidation lives
+# in `src_consolidated_apr.xlsx`, the AP-financing foundation in
+# `src_ap_foundation_apr.xlsx`.
+#
+# Each entity: a `template` (the prior canonical workbook — also the Q1
+# reproduction reference), the output basename, named source sheets, and per
+# taxonomi-sheet row mappings. A row maps to one or more source terms summed:
+#   r: [[sheet_alias, src_row, "expected label", sign], ...]
+#   r: const0   -> write literal 0 (canonical line with no source line)
+#   r: none     -> leave blank (derived/KPI row, filled downstream)
+# Sign flips (e.g. Funding Cost, D&A, CF outflows) and cross-entity revenue
+# sourcing are explicit. `src_row` is the 1-based row in the source sheet; the
+# builder asserts the row's label still matches "expected label" and WARNs on
+# drift (an accountant reorder), so re-anchor before trusting a new month.
+
+entities:
+
+  consolidated:
+    template: taxonomi_act_q1.xlsx
+    output: taxonomi_consolidated_{mm}.xlsx
+    sheets:
+      c_is: {file: src_consolidated_apr.xlsx, sheet: "IS Conso", label_col: 1, jan_col: 3}
+      c_cf: {file: src_consolidated_apr.xlsx, sheet: "CF Conso", label_col: 2, jan_col: 3}
+      c_bs: {file: src_consolidated_apr.xlsx, sheet: "BS Conso", label_col: 1, jan_col: 2, stride: 4, voff: 3}
+      a_is: {file: src_ap_foundation_apr.xlsx, sheet: "IS", label_col: 1, jan_col: 3}
+    statements:
+      "IS (Actual)":
+        - {k: [Sales, Net Interest Revenue, Net Interest Revenue], r: [[a_is, 7, "Net Interest Revenue", 1]]}   # cross-sourced from AP
+        - {k: [Sales, Flat Fee, Flat Fee], r: [[a_is, 8, "Flat Fee", 1]]}                                       # cross-sourced from AP
+        - {k: [Sales, Revenue from Services, Logistics], r: [[c_is, 9, "Logistics", 1]]}
+        - {k: [Sales, Revenue from Services, Insurance], r: [[c_is, 10, "Credit insurance", 1]]}
+        - {k: [Sales, Revenue from Services, FX], r: [[c_is, 11, "FX", 1]]}
+        - {k: [Sales, Other, Other], r: [[c_is, 7, "IT services", 1]]}
+        - {k: [Cost of Sales, Production Payroll, Production Payroll], r: [[c_is, 13, "CoS Personnel", 1]]}
+        - {k: [Cost of Sales, Infrastructure, Infrastructure], r: [[c_is, 14, "Intfrastructure costs", 1]]}
+        - {k: [Cost of Sales, KYC & Compliance, KYC & Compliance], r: [[c_is, 16, "KYC & Compliance", 1]]}
+        - {k: [Cost of Sales, Travel, Travel], r: [[c_is, 17, "Travel", 1]]}
+        - {k: [Cost of Sales, Cost of Service, Cost of Service], r: const0}                                     # no source line
+        - {k: [Cost of Sales, CS Software & Tools, CS Software & Tools], r: [[c_is, 15, "CS Software & Tools", 1]]}
+        - {k: [Cost of Sales, Other, Other], r: [[c_is, 18, "Other", 1]]}
+        - {k: [R&D, R&D Payroll, R&D Payroll], r: [[c_is, 45, "R&D Personnel", 1]]}
+        - {k: [R&D, Contractors, Contractors], r: [[c_is, 46, "Contrctors", 1]]}
+        - {k: [R&D, Software & Tools, Software & Tools], r: [[c_is, 47, "RD Software & Tools", 1]]}
+        - {k: [R&D, Other, Other], r: [[c_is, 49, "Other", 1]]}
+        - {k: [S&M, S&M Payroll, S&M Payroll], r: [[c_is, 23, "S&M Personnel", 1]]}
+        - {k: [S&M, Direct Marketing & Advertisement, Direct Marketing & Advertisement], r: [[c_is, 24, "Direct Marketing & Advertisement", 1]]}
+        - {k: [S&M, External Contractors, External Contractors], r: [[c_is, 25, "External Contractors", 1]]}
+        - {k: [S&M, Events, Events], r: [[c_is, 26, "Events & Conferences", 1]]}
+        - {k: [S&M, Travel, Travel], r: [[c_is, 27, "Travel", 1]]}
+        - {k: [S&M, Software & Tools, Software & Tools], r: [[c_is, 28, "SM Software & Tools", 1]]}
+        - {k: [S&M, Other, Other], r: [[c_is, 29, "Other", 1]]}
+        - {k: [G&A, G&A Payroll, G&A Payroll], r: [[c_is, 31, "G&A Personnel", 1]]}
+        - {k: [G&A, Rent & Utilities, Rent & Utilities], r: [[c_is, 32, "Rent & Utilities", 1]]}
+        - {k: [G&A, IT & Software Subscriptions, IT & Software Subscriptions], r: [[c_is, 33, "IT & Software Subscriptions", 1]]}
+        - {k: [G&A, Professional Services, Professional Services], r: [[c_is, 34, "Professional Services", 1]]}
+        - {k: [G&A, Communication, Communication], r: [[c_is, 38, "Communication", 1]]}
+        - {k: [G&A, Travel, Travel], r: [[c_is, 39, "Travel & Representative", 1]]}
+        - {k: [G&A, Team Development, Team Development], r: [[c_is, 41, "Lease", 1]]}                            # label drift: Lease -> Team Development
+        - {k: [G&A, Other, Other], r: [[c_is, 42, "Other", 1]]}                                                 # BG Invoice (r43, capitalised) excluded
+        - {k: [Finance income, Finance income, Finance income], r: [[c_is, 56, "Finance income", 1]]}
+        - {k: [Finance costs, Finance costs, Finance costs], r: [[c_is, 57, "Finance costs", -1]]}
+        - {k: [Depreciation and amortization, Depreciation and amortization, Depreciation and amortization], r: [[c_is, 52, "Depreciation and amortization", -1]]}
+        - {k: [Other non operational revenues, Other non operational revenues, Other non operational revenues], r: [[c_is, 53, "Other non-operational results", 1]]}
+        - {k: [Income tax (expense), Income tax (expense), Income tax (expense)], r: [[c_is, 60, "Income tax (expense)", 1]]}
+      "CF Indirect (Actual)":
+        - {k: [Cash Flow from Operating Activities, Cash received from Deals, Cash received from Deals], r: [[c_cf, 4, "Cash received from Deals", 1]]}
+        - {k: [Cash Flow from Operating Activities, Cash paid to Suppliers, Cash paid to Suppliers], r: [[c_cf, 8, "Cash paid to suppliers", 1]]}
+        - {k: [Cash Flow from Operating Activities, Payment to personnel, Payment to personnel], r: [[c_cf, 11, "Payment for personnel", 1]]}
+        - {k: [Cash Flow from Operating Activities, "Corporate and other taxes, net", "Corporate and other taxes, net"], r: [[c_cf, 12, "Corporate and other taxes, net", 1]]}
+        - {k: [Cash Flow from Operating Activities, Bank charges paid, Bank charges paid], r: [[c_cf, 13, "Bank charges paid", 1]]}
+        - {k: [Cash Flow from Operating Activities, Recovery/(repayment) of VAT, Recovery/(repayment) of VAT], r: [[c_cf, 14, "Recovery/(repayment) of VAT", 1]]}
+        - {k: [Cash Flow from Operating Activities, Intercompany funding, Intercompany funding], r: [[c_cf, 15, "Intercompany funding", 1]]}
+        - {k: [Cash Flow from Operating Activities, NV, NV], r: const0}
+        - {k: [Cash Flow from Operating Activities, Other, Other], r: [[c_cf, 16, "Other", 1]]}
+        - {k: [Cash Flow from Investing Activities, CAPEX, CAPEX], r: [[c_cf, 18, "CAPEX", 1]]}
+        - {k: [Cash Flow from Investing Activities, R&D, R&D], r: [[c_cf, 20, "Software", 1]]}
+        - {k: [Cash Flow from Investing Activities, Other, Other], r: none}
+        - {k: [Cash Flow from Financing Activities, Capital Increase, Capital Increase], r: [[c_cf, 22, "Capital Increase", 1]]}
+        - {k: [Cash Flow from Financing Activities, Loan facility financing, Loan facility financing], r: [[c_cf, 23, "Loan facility financing", 1]]}
+        - {k: [Cash Flow from Financing Activities, Other Financing, Other Financing], r: [[c_cf, 24, "Other Financing", 1]]}
+        - {k: [Cash Flow from Financing Activities, Repayment of debt obligations, Repayment of debt obligations], r: [[c_cf, 25, "Repayment of debt obligations", 1]]}
+        - {k: [Cash Flow from Financing Activities, Factoring payments, Factoring payments], r: [[c_cf, 26, "Factoring payments", 1]]}
+        - {k: [Cash Flow from Financing Activities, "Other payments/proceeds, net", "Other payments/proceeds, net"], r: [[c_cf, 27, "Other payments/ proceeds, net", 1], [c_cf, 31, "Non-cash Adjustments", 1]]}
+        - {k: [Beginning Cash Balance, Opening Balance, Opening Balance], r: [[c_cf, 30, "Beginning Cash Balance", 1]]}
+        - {k: ["% Change in cash", "% Change in cash", "% Change in cash"], r: none}
+        - {k: [Capex, Capex, Capex], r: none}
+        - {k: [Gross Fixed assets, Gross Fixed assets, Gross Fixed assets], r: none}
+      "BS (Actual)":
+        - {k: [Non-current assets, R&D, R&D], r: [[c_bs, 7, "Research and Development Asset", 1], [c_bs, 8, "Software", 1]]}
+        - {k: [Non-current assets, Patents & Trademarks, Patents & Trademarks], r: [[c_bs, 9, "Patents & Trademarks", 1], [c_bs, 10, "Intellectual property", 1]]}
+        - {k: [Non-current assets, Financial Assets, Financial Assets], r: [[c_bs, 12, "Financial assets: subsidiary", 1], [c_bs, 13, "Financial assets: loan", 1], [c_bs, 14, "Financial assets: loan", 1], [c_bs, 15, "Financial assets: other", 1]]}
+        - {k: [Non-current assets, Goodwill, Goodwill], r: [[c_bs, 11, "Goodwill", 1]]}
+        - {k: [Non-current assets, Equipment, Equipment], r: [[c_bs, 17, "Business inventory", 1], [c_bs, 18, "Equipment", 1]]}
+        - {k: [Current assets, Loan facility financing accounting, Loan facility financing accounting], r: [[c_bs, 21, "Loan facility financing account", 1]]}
+        - {k: [Current assets, Receivables related entities, Receivables related entities], r: [[c_bs, 23, "Receivables related entities", 1]]}
+        - {k: [Current assets, Other receivables, Other receivables], r: [[c_bs, 24, "Other receivables", 1]]}
+        - {k: [Current assets, Prepaid expenses, Prepaid expenses], r: [[c_bs, 29, "Pre-paid expenses", 1]]}
+        - {k: [Current assets, Factoring, Factoring], r: [[c_bs, 25, "Factoring", 1]]}
+        - {k: [Current assets, VAT, VAT], r: [[c_bs, 26, "VAT", 1], [c_bs, 27, "VAT previous years", 1]]}
+        - {k: [Current assets, Stock of trade goods, Stock of trade goods], r: [[c_bs, 28, "Stock of trade goods", 1]]}
+        - {k: [Cash and cash equivalents, Cash and Cash equivalents, Cash and Cash equivalents], r: [[c_bs, 20, "Cash& Cash equivalents", 1]]}
+        - {k: [Trade receivables, Trade receivables, Trade receivables], r: [[c_bs, 22, "Trade receivables", 1]]}
+        - {k: [Equity, Share capital, Share capital], r: [[c_bs, 34, "Share capital", 1]]}
+        - {k: [Equity, Share premium, Share premium], r: [[c_bs, 35, "Share premium", 1]]}
+        - {k: [Equity, Legal reserves, Legal reserves], r: [[c_bs, 36, "Revaluation reserves Almacena BV", 1], [c_bs, 37, "Revaluation reserves Almacena NV", 1]]}
+        - {k: [Equity, Retained earnings, Retained earnings], r: [[c_bs, 38, "Retained earnings", 1]]}
+        - {k: [Equity, Current result, Current result], r: [[c_bs, 39, "Current result", 1]]}
+        - {k: [Non-Current Liabilities, Loan facility financing, Loan facility financing], r: [[c_bs, 41, "Loan facility financing", 1]]}
+        - {k: [Current Liabilities, Intercompany payables, Intercompany payables], r: [[c_bs, 45, "Intercompany payables", 1]]}
+        - {k: [Current Liabilities, Personnel & social security payables, Personnel & social security payables], r: [[c_bs, 46, "Personnel & social security payables", 1]]}
+        - {k: [Current Liabilities, Short term loans, Short term loans], r: [[c_bs, 43, "Net Factoring balance", 1]]}   # drift: Net Factoring balance -> Short term loans
+        - {k: [Current Liabilities, Deferred Revenue, Deferred Revenue], r: [[c_bs, 48, "Deferred Revenue", 1]]}
+        - {k: [Current Liabilities, Tax Payables, Tax Payables], r: [[c_bs, 49, "VAT current year", 1], [c_bs, 50, "Tax Payables", 1]]}
+        - {k: [Current Liabilities, Accrual expenses, Accrual expenses], r: [[c_bs, 51, "Other Payables", 1]]}        # drift: Other Payables -> Accrual expenses
+        - {k: [Trade payables, Trade payables, Trade payables], r: [[c_bs, 44, "Trade payables", 1]]}
+        - {k: [Accounts payable turnover, Accounts payable turnover, Accounts payable turnover], r: none}
+        - {k: [Account receivable turnover, Account receivable turnover, Account receivable turnover], r: none}
+        - {k: [Working Capital, Working Capital, Working Capital], r: [[c_bs, 19, "Current assets", 1], [c_bs, 42, "Current liabilities", -1]]}
+
+  ap_foundation:
+    template: foundation_q1.xlsx
+    output: taxonomi_ap_foundation_{mm}.xlsx
+    sheets:
+      a_is: {file: src_ap_foundation_apr.xlsx, sheet: "IS", label_col: 1, jan_col: 3}
+      a_cf: {file: src_ap_foundation_apr.xlsx, sheet: "CF", label_col: 2, jan_col: 3}
+      a_bs: {file: src_ap_foundation_apr.xlsx, sheet: "BS", label_col: 1, jan_col: 2}
+    statements:
+      "IS (Actual)":
+        - {k: [Sales, Net Interest Revenue, Gross Interest Revenue], r: [[a_is, 5, "Gross interest revenue", 1]]}
+        - {k: [Sales, Net Interest Revenue, Funding Cost], r: [[a_is, 6, "Funding cost", -1]]}
+        - {k: [Sales, Flat Fee, Flat Fee], r: [[a_is, 8, "Flat Fee", 1]]}
+        - {k: [Sales, Revenue from Services, Revenue from Services], r: [[a_is, 9, "Revenue from services", 1]]}
+        - {k: [Cost of Sales, BV service agreement, BV service agreement], r: [[a_is, 11, "BV service agreement", 1]]}
+        - {k: [G&A, Rent & Utilities, Rent & Utilities], r: [[a_is, 13, "Office rent", 1]]}
+        - {k: [G&A, Professional Services, Accounting], r: [[a_is, 15, "Accounting", 1]]}
+        - {k: [G&A, Professional Services, Legal], r: [[a_is, 16, "Legal", 1]]}
+        - {k: [G&A, Other, Other], r: [[a_is, 17, "Other misc expenses", 1]]}
+        - {k: [Finance income, Finance Income, Finance Income], r: [[a_is, 19, "Finance Income", 1]]}
+        - {k: [Finance costs, Finance Costs, Finance Costs], r: [[a_is, 20, "Finance Cost", 1]]}
+        - {k: [Income tax (expense), Income tax (expense), Income tax (expense)], r: [[a_is, 23, "Income tax (expense)", 1]]}
+      "CF (Actual)":
+        - {k: [Cash sales, Cash from Deal Financing, Cash from Deal Financing], r: [[a_cf, 5, "Cash from Deal Financing", 1]]}
+        - {k: [Financing inflows, Funding from Stakeholders, Funding from Stakeholders], r: [[a_cf, 4, "Funding from stakeholders", 1]]}
+        - {k: [Financing inflows, Bank Loans, Bank Loans], r: [[a_cf, 7, "Bank loans", 1]]}
+        - {k: [Money in, "Corporate and other taxes, net", "Corporate and other taxes, net"], r: [[a_cf, 6, "Corporate and other taxes, net", 1]]}
+        - {k: [Money in, Recovery/(repayment) of VAT, Recovery/(repayment) of VAT], r: [[a_cf, 8, "Recovery/(repayment) of VAT", 1]]}
+        - {k: [Money in, Other, Other], r: [[a_cf, 9, "Other", 1]]}
+        - {k: [CoS, BV Agreement, BV Agreement], r: [[a_cf, 13, "Payment to BV agreement", 1]]}
+        - {k: [Money out, Deal Financing, Deal Financing], r: [[a_cf, 11, "Deal Financing", -1]]}
+        - {k: [Money out, Payments to Suppliers, Payments to Suppliers], r: [[a_cf, 14, "Payments to suppliers", -1]]}
+        - {k: [Money out, Other, Other], r: [[a_cf, 21, "Non-cash Adjustments", -1]]}
+        - {k: [Financing outflows, Funding Cost to Stakeholders, Funding Cost to Stakeholders], r: [[a_cf, 12, "Funding Cost to stakeholders", -1]]}
+        - {k: [Financing outflows, Repayment of Debt Obligations, Repayment of Debt Obligations], r: [[a_cf, 15, "Repayment of debt obligations", 1]]}
+        - {k: [Financing outflows, Bank Charges, Bank Charges], r: [[a_cf, 16, "Bank charges paid", -1]]}
+        - {k: [Cash and cash equivalents at beginning, Cash and cash equivalents at beginning, Cash and cash equivalents at beginning], r: [[a_cf, 20, "Beginning Cash Balance", 1]]}
+        - {k: ["% Change in cash", "% Change in cash", "% Change in cash"], r: none}
+      "BS (Actual)":
+        - {k: [Current assets, Receivables related entities, Receivables related entities], r: [[a_bs, 9, "Receivables related entities", 1]]}
+        - {k: [Current assets, Other receivables, Other receivables], r: [[a_bs, 10, "VAT Receivable", 1], [a_bs, 11, "Other receivables", 1]]}
+        - {k: [Current assets, Pre-paid expenses, Pre-paid expenses], r: [[a_bs, 12, "Pre-paid expenses", 1]]}
+        - {k: [Cash and cash equivalents, Cash and cash equivalents, Cash and cash equivalents], r: [[a_bs, 7, "Cash & Cash equivalents", 1]]}
+        - {k: [Trade receivables, Trade receivables (Factored repayments), Trade receivables (Factored repayments)], r: [[a_bs, 8, "Trade receivables", 1]]}
+        - {k: [Equity, Share capital, Share capital], r: [[a_bs, 17, "Foundation capital", 1]]}
+        - {k: [Equity, Reserves, Reserves], r: [[a_bs, 18, "Reserves", 1]]}
+        - {k: [Equity, Retained earnings, Retained earnings], r: [[a_bs, 19, "Retained earnings", 1]]}
+        - {k: [Non-Current Liabilities, Loan facility financing, Loan facility financing], r: [[a_bs, 21, "Loan facility financing", 1]]}
+        - {k: [Current Liabilities, Short-term loans (inter-company), Short-term loans (inter-company)], r: [[a_bs, 24, "Short-term loans (inter-company)", 1]]}
+        - {k: [Current Liabilities, Other payables, Other payables], r: [[a_bs, 25, "Other payables", 1]]}
+        - {k: [Trade payables, Trade payables, Trade payables], r: [[a_bs, 23, "Trade payables", 1]]}
+        - {k: [Accounts payable turnover, Accounts payable turnover, Accounts payable turnover], r: none}
+        - {k: [Account receivable turnover, Accounts receivable turnover, Accounts receivable turnover], r: none}
+        - {k: [Working Capital, Working Capital, Working Capital], r: [[a_bs, 6, "Current assets", 1], [a_bs, 22, "Current liabilities", -1]]}
