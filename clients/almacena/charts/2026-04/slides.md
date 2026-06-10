@@ -3,13 +3,13 @@ Almacena Management Report — April 2026
 
 Reading note on figures: platform KPIs (GMV, Funded Amount, Accrued Interest, Cost
 of Funds, Portfolio Outstanding, etc.) are reported by the platform in USD and shown
-here in EUR at the April 2026 monthly-average rate of 1.1686 USD/EUR. This rate
-supersedes the 1.087 used in the March pack — the euro strengthened materially over
-the period — so EUR KPI values across the whole series are ~7% lower than the March
-deck showed for the same months; trends and ratios are unaffected. Foundation revenue
-(Flat Fee, Net Interest Revenue) and all accounting lines come from the EUR financial
-statements and are not converted. The platform also restated Jan–Mar volumes slightly
-versus the Q1 pack.
+here in EUR at 1.087 USD/EUR — the same rate used in prior packs, held constant so the
+trend stays comparable and previously-published EUR figures are not retroactively
+restated. (The April monthly average was actually ~1.17; applying it to April alone
+would have added a ~6-point artificial FX drop to the volume trend, so the prior rate
+is held — see Slide 10.) Foundation revenue (Flat Fee, Net Interest Revenue) and all
+accounting lines come from the EUR financial statements and are not converted. Note the
+platform restated March volumes slightly versus the Q1 pack.
 
 
 ===========================================================
@@ -23,13 +23,13 @@ April 2026
 Slide 2 — KPIs — Volume
 ===========================================================
 
-GMV was EUR 15.5M in Apr-26. After back-to-back records in Feb-26 (EUR 18.4M) and a near-record Mar-26 (EUR 18.0M), April stepped down ~14% month-on-month — a normalisation off the Q1 peak rather than a reversal: April still sits ~50% above the Apr-25 baseline and is the platform's fourth-highest month on record. Funded Amount tracked at EUR 13.5M, holding the platform's ~87% funded share.
+GMV was EUR 16.7M in Apr-26. After back-to-back records in Feb-26 (EUR 19.8M) and a near-record Mar-26 (EUR 19.4M), April stepped down ~14% month-on-month — a normalisation off the Q1 peak rather than a reversal: April still sits ~2x the Apr-25 baseline and is the platform's fourth-highest month on record. Funded Amount tracked at EUR 14.5M, holding the platform's ~87% funded share.
 
-The book remains broad-based. April carried 95 invoices and 147 boxes (vs 97 / 155 in March), with average ticket at EUR 163K — below the LTM mean and consistent with the volume mix rather than a few large deals.
+The book remains broad-based. April carried 95 invoices and 147 boxes (vs 97 / 155 in March), with average ticket at EUR 176K — below the LTM mean and consistent with the volume mix rather than a few large deals.
 
 Origin concentration is worth flagging this month: April GMV was led by Colombia (38%) and Guatemala (34%) — the top two origins account for ~72% of the month, with Panama (13%) and Honduras (8%) making up most of the rest. The book is geographically concentrated in two corridors.
 
-Year-to-date GMV through April reached roughly EUR 67M across ~356 deals, already tracking well ahead of the equivalent 2025 period — the Q1 acceleration has held into April even as the monthly run-rate cooled from the February peak.
+Year-to-date GMV through April reached roughly EUR 71.5M across ~336 deals, already tracking well ahead of the equivalent 2025 period — the Q1 acceleration has held into April even as the monthly run-rate cooled from the February peak.
 
 Charts: throughput_gmv_funded · throughput_operational · throughput_avg_ticket
 
@@ -38,11 +38,11 @@ Charts: throughput_gmv_funded · throughput_operational · throughput_avg_ticket
 Slide 3 — KPIs — Economics
 ===========================================================
 
-The interest-spread crossover that began in February widened decisively in April. Net Interest moved from EUR -4.7K in Jan to +6.3K in Feb, +10.9K in Mar, and +29.3K in Apr — April alone is larger than the whole of Q1 combined. Accrued Interest set another record at EUR 129K (vs EUR 118K in March) while Cost of Funds eased to EUR 100K (from EUR 107K), so the spread widened from both sides at once.
+The interest-spread crossover that began in February widened decisively in April. Net Interest moved from EUR -5.0K in Jan to +6.7K in Feb, +11.7K in Mar, and +31.5K in Apr — April alone (EUR 31.5K) is larger than the whole of Q1 combined (EUR 13.4K). Accrued Interest set another record at EUR 139K (vs EUR 127K in March) while Cost of Funds eased to EUR 107K (from EUR 115K), so the spread widened from both sides at once.
 
-The Cost-of-Funds easing is structural, not one-off: the funding book's blended rate is now ~9.1% (principal-weighted across the 24 loans active in April), as older 11–12% facilities mature and roll into ~9% replacements. The funding stack is concentrated — the five largest active lenders (JSKR EUR 5.0M, Quizea EUR 3.2M, Godelax EUR 2.0M, AI EUR 1.4M, Nicolas Tjandramaga EUR 1.0M) supply the bulk of deployable capital.
+The Cost-of-Funds easing is structural, not one-off: the funding book's blended rate is now ~9.1% (principal-weighted across the 24 loans active in April), as older 11–12% facilities mature and roll into ~9% replacements. The funding stack is concentrated — the five largest active lenders (JSKR EUR 4.6M, Quizea EUR 2.9M, Godelax EUR 1.8M, AI EUR 1.3M, Nicolas Tjandramaga EUR 0.9M) supply the bulk of deployable capital.
 
-Gross Profit held at ~EUR 72K in April (vs ~EUR 75K in March on the same build), with the mix shifting under the surface: the widening interest spread is now carrying the profit even as Arrangement Fees stepped down to EUR 50K (from EUR 67K) in line with the lower April GMV. Net Interest's contribution to Gross Profit has gone from negative in January to a meaningful positive driver by April — the economics are no longer fee-only.
+Gross Profit held at ~EUR 78K in April (vs ~EUR 81K in March on the same build), with the mix shifting under the surface: the widening interest spread is now carrying the profit even as Arrangement Fees stepped down to EUR 54K (from EUR 72K) in line with the lower April GMV. Net Interest's contribution to Gross Profit has gone from negative in January to a meaningful positive driver by April — the economics are no longer fee-only.
 
 Charts: econ_fee_mix (Revenue Mix) · econ_gross_profit_q1_build (Gross Profit Build-up, now YTD) · econ_net_interest_breakdown (spread)
 
@@ -51,13 +51,13 @@ Charts: econ_fee_mix (Revenue Mix) · econ_gross_profit_q1_build (Gross Profit B
 Slide 4 — KPIs — Efficiency
 ===========================================================
 
-Average Portfolio Outstanding reached EUR 14.9M in Apr-26, a fresh high and up from EUR 13.6M in March — the deployed book kept growing even as new GMV cooled, because deals are settling more slowly (see below). That is 3.4x the Apr-25 baseline.
+Average Portfolio Outstanding reached EUR 16.0M in Apr-26, a fresh high and up from EUR 14.6M in March — the deployed book kept growing even as new GMV cooled, because deals are settling more slowly (see below). That is ~3.6x the Apr-25 baseline.
 
-Capital is now essentially fully deployed. Available Funds stood at EUR 13.3M against EUR 14.9M of average outstanding — the book is running at or above the available-capital line, i.e. deployment is effectively 100% with no idle-cash drag. NOTE: the platform's "Cash Drag %" metric was not included in the April profitability export (nor was "Gross Profit %"), so the Cash Drag chart shows the 2025 history and then stops at year-end; the 2026 deployment story is told here from Available Funds vs Outstanding instead. This is flagged as a data-feed gap to confirm with the platform (see Slide 10) — not a change in the underlying metric.
+Capital is now essentially fully deployed. Average outstanding (EUR 16.0M) sat above Available Funds (EUR 14.3M) for the month — the lending book is running at or beyond the available-capital line, i.e. deployment is effectively 100% with no idle-cash drag. NOTE: the platform's "Cash Drag %" metric (and "Gross Profit %") was dropped from the April profitability feed; it can't be reliably reconstructed from the available inputs (it reproduces January but not Feb–Mar, and goes negative for April under a simple idle-funds formula), so the Cash Drag chart is omitted this cycle and deployment is narrated directly from Available Funds vs Outstanding. See Slide 10.
 
 Average Days Outstanding rose again to 33.2 days in Apr-26 (from 27.1 in March and ~19 across Jan–Feb). Two consecutive months of lengthening now confirm this as a genuine tenor-mix shift rather than a one-month blip — the book is rotating toward longer-settling deals, which is what is pushing Average Portfolio Outstanding up even as monthly GMV eased. This is the single metric to watch: longer tenors lift deployed capital and interest earned, but also tie up the funding line for longer.
 
-Charts: efficiency_cash_drag (2025 history; 2026 deployment narrated above) · efficiency_portfolio_outstanding · efficiency_days_outstanding
+Charts: efficiency_portfolio_outstanding · efficiency_days_outstanding
 
 
 ===========================================================
@@ -111,7 +111,7 @@ Slide 7 — Cash Flow Analysis (consolidated)
 Cash Position:
 Adjusted Cash — Cash and Cash Equivalents plus Receivables Related Entities (the intercompany loan from Almacena Holding to the AP Foundation, treated as a cash equivalent because the capital is recallable and is being used to finance deals on platform) — stood at EUR 1.39M in Apr-26 (Cash EUR 0.10M + Receivables Related Entities EUR 1.29M), broadly stable versus March's EUR 1.33M.
 
-The composition shift is the point: cash-on-hand fell to EUR 0.10M while the intercompany receivable rose to EUR 1.29M, as more of the holding's liquidity moved into the deployed lending book. Over the same window Average Portfolio Outstanding grew to EUR 14.9M. This is capital rotation into the book — the intended use of the intercompany facility — not operating burn; the adjusted-cash view held roughly flat even as headline cash thinned.
+The composition shift is the point: cash-on-hand fell to EUR 0.10M while the intercompany receivable rose to EUR 1.29M, as more of the holding's liquidity moved into the deployed lending book. Over the same window Average Portfolio Outstanding grew to EUR 16.0M. This is capital rotation into the book — the intended use of the intercompany facility — not operating burn; the adjusted-cash view held roughly flat even as headline cash thinned.
 
 Investing / Financing (carry-forward context from Q1):
 Q1 saw EUR 130K of share-premium injections, a EUR 50K convertible loan, and the non-cash N.V. write-off reshaping the balance sheet. [April-specific operating cash-flow walk and financing movements to be added from the April GL once parsed — the platform CF export (month-apr-alm) gives the statement-level picture in the meantime.]
@@ -123,7 +123,7 @@ Slide 8 — Cash Flow Analysis (AP Foundation)
 
 The AP Foundation's cash flow tracks all fund movements in its capacity as the primary lending vehicle on the platform — loan disbursements, interest and principal repayments, and the collection of fees remitted to Almacena.
 
-In April the Foundation deployed against an average outstanding book of EUR 14.9M, funded by the 24 active lender facilities (EUR ~13.3M available, blended ~9.1%). Funding cost paid in the month was EUR 99.5K against EUR 128.8K of gross interest earned — the Foundation is now cash-generative on net interest, before flat fees. The funding maturity profile is the item to watch: several large facilities roll within the next two quarters, and the cost-of-funds trajectory depends on the replacement rate (the recent rolls have come in cheaper, at ~9%).
+In April the Foundation deployed against an average outstanding book of EUR 16.0M, funded by the 24 active lender facilities (EUR ~14.3M available, blended ~9.1%). Funding cost paid in the month was EUR 99.5K against EUR 128.8K of gross interest earned — the Foundation is now cash-generative on net interest, before flat fees. The funding maturity profile is the item to watch: several large facilities roll within the next two quarters, and the cost-of-funds trajectory depends on the replacement rate (the recent rolls have come in cheaper, at ~9%).
 
 [Detailed Foundation cash-flow walk to be completed from the platform CF export (month-apr-ap) and the lender-loan schedule.]
 
@@ -157,14 +157,14 @@ Slide 10 — Highlights and Recommendations (hidden)
 Highlighted results are consolidated accounting data for Almacena BG, NV, BV and the Holding, along with combined Revenue between Almacena and Stichting AP Foundation. For more details, please refer to Corporate Structure in the Appendix.
 
 Discussion Points:
-- Data-feed gap (new this month): the April profitability export dropped the "Cash Drag %" and "Gross Profit %" rows that the Q1 file carried. Confirm whether the platform retired these metrics or moved them to another export, and whether to restore them or compute Cash Drag % internally from Available Funds vs Outstanding going forward.
+- Cash Drag %: dropped from the April profitability feed (along with "Gross Profit %") and not reliably reconstructable — the idle-funds formula reproduces January but diverges in Feb–Mar and turns negative in April (average outstanding now exceeds available funds). The chart is omitted this cycle. Provide the platform input to restore it, or agree a definition we can compute consistently.
 - Days Outstanding trend: now 33.2 days (two consecutive months of lengthening). Confirm the tenor-mix driver and whether to expect it to plateau — it is the main lever on deployed capital and funding-line tenor for the rest of 2026.
 - Origin concentration: ~72% of April GMV in Colombia + Guatemala. Discuss appetite / limits for corridor concentration.
 - Funding maturity wall: several of the largest lender facilities roll within two quarters; confirm the refinancing plan and the assumed replacement rate (recent rolls ~9% vs maturing 11–12%).
 - Revenue from Services: still zero in the Foundation IS while small collections appear operationally — confirm wind-down vs re-categorisation. Cross-check against YTD transportation cost (CoS Other, EUR 33.3K) with no offsetting service revenue.
 - Almacena N.V. write-off (EUR 179.8K, January) and General insurance prepay (EUR 44.9K, January): confirm presentation of an Adjusted view excluding these so investors see the operating run-rate.
 - BG intercompany IT line (EUR 5.1K revenue / EUR 10K cost, January) — resolve classification and consolidation elimination.
-- FX presentation: KPIs now shown at the April average (1.1686). Confirm whether to fix a single rate per pack or per-month rates going forward.
+- FX presentation: KPIs are held at 1.087 (the prior-pack rate) for trend comparability; the real April average (~1.17) was not applied because, on April alone, it distorted the volume trend by ~6 points (April GMV MoM would read -20% vs the real -14%). Decide whether to adopt a per-month FX presentation in future packs (which would also restate the historical EUR series).
 
 
 ===========================================================

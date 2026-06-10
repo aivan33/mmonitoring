@@ -13,12 +13,15 @@ entities:
 # USD; financial taxonomies (taxonomi_*, ap_12_act) are EUR.
 #
 # Convention: fx_rate = source units per 1 EUR; the loaders divide the source
-# value by the rate (EUR = USD / rate). Rate = the April 2026 EUR/USD monthly
-# average, 1.1686 (X-Rates; March avg 1.1571). This supersedes the prior 1.087
-# — the euro strengthened materially, so EUR KPI values are ~7% lower than the
-# old rate would give. Single file-level rate applied to all months (Jan–Apr).
+# value by the rate (EUR = USD / rate). HELD at 1.087 across the whole series for
+# trend comparability — prior packs reported at 1.087, so re-converting history at
+# a new rate would silently restate previously-published EUR numbers. The April
+# monthly average was actually ~1.1686 (euro strengthened); applying it to April
+# alone introduced a ~6pp artificial FX step into the volume trend (real April
+# GMV MoM −13.9% would have read −19.9%), so per management direction April is
+# also held at 1.087. Revisit if a per-month FX presentation is adopted.
 currencies:
-  USD: 1.1686   # USD per EUR — April 2026 monthly average (X-Rates)
+  USD: 1.087    # USD per EUR — held constant with prior packs (see note above)
 
 # Files load in the order listed. On overlap, last loaded wins.
 financial_sources:
