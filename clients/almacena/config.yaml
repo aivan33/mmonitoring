@@ -1,7 +1,7 @@
 client_name: Almacena
 fiscal_year_start_month: 1
 currency: EUR
-as_of_date: 2026-03-01
+as_of_date: 2026-04-01
 
 use_cases: [charts]
 
@@ -9,25 +9,23 @@ entities:
   - consolidated
   - ap_foundation
 
-# Currency conversion rates. profitability_q1.xlsx is platform KPIs in USD;
-# financial taxonomies (taxonomi_act_*, foundation_q1, ap_12_act) are EUR.
+# Currency conversion rates. The profitability KPI file is platform metrics in
+# USD; financial taxonomies (taxonomi_*, ap_12_act) are EUR.
 #
-# Convention: fx_rate = source units per 1 EUR; the loaders divide the
-# source value by the rate. So for USD the rate is ~1.087 (today's
-# EUR/USD), NOT 0.92. The archived config carried 0.92 which would have
-# produced EUR values ~36% too large under the divide convention.
-#
-# **TODO** confirm with the team: (1) is profitability_q1 actually USD,
-# (2) what FX rate to lock in (today's quote, period-end, average, etc.).
+# Convention: fx_rate = source units per 1 EUR; the loaders divide the source
+# value by the rate (EUR = USD / rate). Rate = the April 2026 EUR/USD monthly
+# average, 1.1686 (X-Rates; March avg 1.1571). This supersedes the prior 1.087
+# — the euro strengthened materially, so EUR KPI values are ~7% lower than the
+# old rate would give. Single file-level rate applied to all months (Jan–Apr).
 currencies:
-  USD: 1.087    # USD per EUR — flag for team confirmation
+  USD: 1.1686   # USD per EUR — April 2026 monthly average (X-Rates)
 
 # Files load in the order listed. On overlap, last loaded wins.
 financial_sources:
   - { file: raw/taxonomi_act_12.xlsx, year: 2025, entity: consolidated,  currency: EUR }
   - { file: raw/ap_12_act.xlsx,       year: 2025, entity: ap_foundation, currency: EUR }
-  - { file: raw/taxonomi_act_q1.xlsx, year: 2026, entity: consolidated,  currency: EUR }
-  - { file: raw/foundation_q1.xlsx,   year: 2026, entity: ap_foundation, currency: EUR }
+  - { file: raw/taxonomi_consolidated_04.xlsx,  year: 2026, entity: consolidated,  currency: EUR }
+  - { file: raw/taxonomi_ap_foundation_04.xlsx, year: 2026, entity: ap_foundation, currency: EUR }
 
 # Operational KPIs (platform metrics — GMV, Funded Amount, Days Outstanding,
 # etc.). Format: kpi_wide = rows are KPI names, columns are months.
@@ -48,7 +46,12 @@ operational_sources:
       - "Average Days Outstanding"
       - "Cash Drag %"
       - "% GMV Insured"
-  - file: raw/profitability_q1.xlsx
+  # April main profitability — same kpi_wide shape, Jan–Apr 2026, RESTATES
+  # Jan–Mar vs the old profitability_q1 (GMV, Net Interest, Gross Profit,
+  # Available Funds all recomputed). Note this file DROPPED the "Cash Drag %"
+  # and "Gross Profit %" rows the Q1 file had — those KPIs have no 2026 data
+  # here (see APR build notes; cash-drag is derived downstream if needed).
+  - file: raw/04/profitability_main_apr.xlsx
     year: 2026
     entity: ap_foundation
     currency: USD
