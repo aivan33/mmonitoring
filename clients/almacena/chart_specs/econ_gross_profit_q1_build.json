@@ -1,11 +1,11 @@
 {
   "chart_id": "econ_gross_profit_q1_build",
   "client": "almacena",
-  "title": "Gross Profit Build-up — Q1 2026",
+  "title": "Gross Profit Build-up — 2026 YTD",
   "chart_type": "stacked_bar_with_line",
   "source": "custom",
   "value_format": "eur",
-  "period": {"kind": "range", "start": "2026-01-01", "end": "2026-03-31"},
+  "period": {"kind": "ytd"},
   "axes": {"y": {"format": "EUR_thousands"}},
   "display_order": 50,
   "compute_total": true,

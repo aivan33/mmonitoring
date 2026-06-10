@@ -14,5 +14,6 @@
   ],
   "reference_lines": [
     {"value": 0.15, "label": "Target (15%)", "color": "#FF9800", "style": "dashed"}
-  ]
+  ],
+  "notes": "SOURCE GAP (Apr-26): profitability_main_apr.xlsx dropped the 'Cash Drag %' row the Q1 file carried, so 2026 (Jan–Apr) has no platform value — the LTM line shows the 2025 tail then a gap. 'Gross Profit %' was dropped likewise. Flagged to confirm whether the platform retired these metrics or moved them; do not fabricate. Deployment can be narrated from Available Funds vs Average Portfolio Outstanding instead (see analysis.md)."
 }
