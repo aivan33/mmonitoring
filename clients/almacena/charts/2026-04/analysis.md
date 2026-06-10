@@ -31,9 +31,10 @@ earnings improved, capital efficiency is maxed, watch tenor and the funding matu
    `(Available − Outstanding)/Available`: it reproduces January (0.155 vs platform 0.155) but
    **not** Feb (0.123 vs 0.131) or Mar (0.019 vs 0.008), and goes **negative** for April
    (−0.118, since Avg Portfolio Outstanding €16.0M > Available Funds €14.3M). Not reliable →
-   per direction, the `efficiency_cash_drag` spec was deleted and Slide 4 narrates deployment
-   directly. **Not fabricated.** Decision: provide the platform input, or agree a computable
-   definition.
+   per direction, the `efficiency_cash_drag` spec was deleted. **Not fabricated.** The
+   efficiency slot is now filled by a new **Funding Maturity Wall** (`efficiency_funding_maturity`,
+   from the lender file). Decision still open: provide the Cash Drag % input, or agree a
+   computable definition, if the metric is wanted back.
 
 2. **FX held at 1.087 (NOT 1.1686).** The April monthly average was ~1.1686, but applying it
    to April alone (history at 1.087) distorted the GMV trend: real April MoM is −13.9% (USD),
@@ -68,7 +69,7 @@ funding stack. Several large facilities carry repayment dates within the next tw
 **maturity wall** worth a refinancing-plan discussion; recent rolls priced ~9% vs maturing
 11–12%, which is what is bringing Cost of Funds down.
 
-## Per-chart status (9 carry-forward charts rendered; cash-drag removed)
+## Per-chart status (10 charts; cash-drag replaced by funding maturity)
 
 | Chart | April status |
 |---|---|
@@ -77,7 +78,8 @@ funding stack. Several large facilities carry repayment dates within the next tw
 | econ_gross_profit_q1_build | period extended Q1→**YTD**; title updated; April present |
 | efficiency_portfolio_outstanding · _days_outstanding | OK |
 | cash_position_adjusted | OK (Cash €0.10M + Recv. related €1.29M = €1.39M adj.) |
-| ~~efficiency_cash_drag~~ | **REMOVED** — `Cash Drag %` dropped from feed, not reconstructable (flag #1) |
+| ~~efficiency_cash_drag~~ | **REPLACED** by `efficiency_funding_maturity` (flag #1) |
+| **efficiency_funding_maturity** (NEW) | bar wall, principal maturing Apr–Oct 2026 from the lender file via `one_offs/build_funding_maturity.py`; Jun €6.2M / Aug €4.5M peaks; €92K tails to 2027 (not charted) |
 
 ## Open / deferred (needs more source)
 

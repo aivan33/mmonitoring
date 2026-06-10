@@ -1573,6 +1573,11 @@ def _draw_stacked_bar_with_line(
                 else:
                     y_anchor = rect.get_y()
                     yoff, va = -4, "top"
+                # A small segment's outside label can land over an adjacent
+                # (often dark) stacked segment — e.g. the thin bottom Cash
+                # segment's label sitting on the teal Receivables band above
+                # it. A subtle white pill keeps it legible on any bar colour
+                # (mirrors the overlay-line labels) instead of dark-on-dark.
                 ax.annotate(
                     text,
                     xy=(xc, y_anchor),
@@ -1580,6 +1585,8 @@ def _draw_stacked_bar_with_line(
                     ha="center", va=va,
                     fontsize=LABEL_FONTSIZE_DATA - 1,
                     color=tokens.text_ink, fontweight="medium", zorder=6,
+                    bbox=dict(boxstyle="round,pad=0.15", facecolor="white",
+                              edgecolor="none", alpha=0.85),
                 )
         ax.bar_label(
             bars, labels=inside_labels,

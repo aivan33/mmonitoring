@@ -57,7 +57,9 @@ Capital is now essentially fully deployed. Average outstanding (EUR 16.0M) sat a
 
 Average Days Outstanding rose again to 33.2 days in Apr-26 (from 27.1 in March and ~19 across Jan–Feb). Two consecutive months of lengthening now confirm this as a genuine tenor-mix shift rather than a one-month blip — the book is rotating toward longer-settling deals, which is what is pushing Average Portfolio Outstanding up even as monthly GMV eased. This is the single metric to watch: longer tenors lift deployed capital and interest earned, but also tie up the funding line for longer.
 
-Charts: efficiency_portfolio_outstanding · efficiency_days_outstanding
+On the funding side there is a near-term maturity wall: of the 24 active lender facilities, EUR 6.2M of principal matures in June and a further EUR 4.5M in August — together more than half the funding book — with smaller rolls in May (EUR 2.1M) and September (EUR 1.1M). Refinancing has been accretive so far (recent rolls priced at ~9% versus maturing facilities at 11–12%, pulling the blended cost of funds down to ~9.1%), but the June/August concentration is the treasury item to plan against. Pairs with the lengthening Days Outstanding above: a longer-settling book funded by a stack that reprices in mid-year.
+
+Charts: efficiency_portfolio_outstanding · efficiency_days_outstanding · efficiency_funding_maturity
 
 
 ===========================================================

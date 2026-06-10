@@ -67,6 +67,15 @@ operational_sources:
       - "Cash Drag %"
       - "Gross Profit %"
       - "% GMV Insured"
+  # Funding maturity wall — principal of the active lender book by repayment
+  # month (Apr–Dec 2026), derived from the lender schedule by
+  # one_offs/build_funding_maturity.py. Forward-dated KPI rows; only the
+  # Funding Maturity chart queries them, so they don't affect LTM trend charts.
+  - file: raw/04/funding_maturity_apr.xlsx
+    year: 2026
+    entity: ap_foundation
+    currency: USD
+    format: kpi_wide
 
 # Brand — legacy dashboard's design system (tokens.json's deep-teal palette).
 # tokens_preset wires KPI border colour, value text colour, trend arrow

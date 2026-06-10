@@ -1,0 +1,20 @@
+{
+  "chart_id": "efficiency_funding_maturity",
+  "client": "almacena",
+  "title": "Funding Maturity Profile — Principal Maturing by Month",
+  "chart_type": "bar",
+  "source": "custom",
+  "entity": "ap_foundation",
+  "value_format": "eur",
+  "period": {"kind": "range", "start": "2026-04-01", "end": "2026-10-01"},
+  "axes": {"y": {"format": "EUR_thousands"}},
+  "display_order": 60,
+  "data": [
+    {"label": "Maturing Principal",
+     "query": {"kind": "kpi_trend", "kpi": "Maturing Principal"}}
+  ],
+  "style": {
+    "color_map": {"Maturing Principal": "#009091"}
+  },
+  "notes": "Replaces the dropped Cash Drag chart (efficiency slot). Principal of the 24 active lender facilities by repayment month, from one_offs/build_funding_maturity.py via the lender schedule. Near-term wall Apr–Oct 2026 (Jun and Aug are the rollover peaks); a EUR ~92K facility tails into 2027 (not shown). Blended replacement rate ~9.1%."
+}
