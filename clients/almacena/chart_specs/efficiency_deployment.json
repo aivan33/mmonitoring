@@ -1,0 +1,25 @@
+{
+  "chart_id": "efficiency_deployment",
+  "client": "almacena",
+  "title": "Capital Deployment — Outstanding vs Available Funds",
+  "chart_type": "bar_with_line",
+  "source": "custom",
+  "entity": "ap_foundation",
+  "value_format": "eur",
+  "period": {"kind": "ytd"},
+  "axes": {"y": {"format": "EUR_thousands"}},
+  "display_order": 60,
+  "data": [
+    {"label": "Average Portfolio Outstanding",
+     "query": {"kind": "kpi_trend", "kpi": "Average Portfolio Outstanding"}},
+    {"label": "Available Funds",
+     "query": {"kind": "kpi_trend", "kpi": "Available Funds"}}
+  ],
+  "style": {
+    "color_map": {
+      "Average Portfolio Outstanding": "#009091",
+      "Available Funds": "#E1AA12"
+    }
+  },
+  "notes": "Replaces the dropped Cash Drag chart (efficiency slot). Bars = Average Portfolio Outstanding (deployed book); line = Available Funds (lender capacity). The two cross in 2026: Available > Outstanding in Jan–Feb (idle capacity) flips to Outstanding > Available by April (book fully deployed / fully utilising the funding line) — the positive framing of cash drag. YTD only because Available Funds is reported from 2026; Outstanding has full LTM history but is clipped here so both series align."
+}

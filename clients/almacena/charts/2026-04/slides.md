@@ -53,13 +53,13 @@ Slide 4 — KPIs — Efficiency
 
 Average Portfolio Outstanding reached EUR 16.0M in Apr-26, a fresh high and up from EUR 14.6M in March — the deployed book kept growing even as new GMV cooled, because deals are settling more slowly (see below). That is ~3.6x the Apr-25 baseline.
 
-Capital is now essentially fully deployed. Average outstanding (EUR 16.0M) sat above Available Funds (EUR 14.3M) for the month — the lending book is running at or beyond the available-capital line, i.e. deployment is effectively 100% with no idle-cash drag. NOTE: the platform's "Cash Drag %" metric (and "Gross Profit %") was dropped from the April profitability feed; it can't be reliably reconstructed from the available inputs (it reproduces January but not Feb–Mar, and goes negative for April under a simple idle-funds formula), so the Cash Drag chart is omitted this cycle and deployment is narrated directly from Available Funds vs Outstanding. See Slide 10.
+Capital has gone from idle to fully deployed over the year. Available Funds sat comfortably above Average Portfolio Outstanding in January–February (EUR 9.9M vs 8.4M in Jan — spare lender capacity), the two converged through March, and by April the deployed book (EUR 16.0M) overtook Available Funds (EUR 14.3M) — the lending book is now running at or beyond the available-capital line, i.e. ~100% deployed with no idle-cash drag. (The platform's "Cash Drag %" metric was dropped from the April feed and isn't reliably reconstructable, so deployment is shown directly as Outstanding vs Available Funds — see Slide 10.)
 
 Average Days Outstanding rose again to 33.2 days in Apr-26 (from 27.1 in March and ~19 across Jan–Feb). Two consecutive months of lengthening now confirm this as a genuine tenor-mix shift rather than a one-month blip — the book is rotating toward longer-settling deals, which is what is pushing Average Portfolio Outstanding up even as monthly GMV eased. This is the single metric to watch: longer tenors lift deployed capital and interest earned, but also tie up the funding line for longer.
 
-On the funding side there is a near-term maturity wall: of the 24 active lender facilities, EUR 6.2M of principal matures in June and a further EUR 4.5M in August — together more than half the funding book — with smaller rolls in May (EUR 2.1M) and September (EUR 1.1M). Refinancing has been accretive so far (recent rolls priced at ~9% versus maturing facilities at 11–12%, pulling the blended cost of funds down to ~9.1%), but the June/August concentration is the treasury item to plan against. Pairs with the lengthening Days Outstanding above: a longer-settling book funded by a stack that reprices in mid-year.
+(The lender-book maturity wall — the June/August refinancing concentration — is covered with the AP Foundation cash flow on Slide 8.)
 
-Charts: efficiency_portfolio_outstanding · efficiency_days_outstanding · efficiency_funding_maturity
+Charts: efficiency_portfolio_outstanding · efficiency_days_outstanding · efficiency_deployment
 
 
 ===========================================================
@@ -136,7 +136,7 @@ The lending book is sustained by rolling existing loans, not new capital. Despit
 
 What to watch. With stakeholders on the sidelines, growth beyond the current ~EUR 15M book, and the refinancing of the June (EUR 6.2M) and August (EUR 4.5M) maturity wall, both rest on continued lender rollovers (see Slide 4). The book is comfortably cash-generative on net interest today, but a stall in rollovers — or any need to step up the book size — would require either new lenders or a return of stakeholder funding.
 
-Charts: efficiency_funding_maturity · (platform export: AP Foundation cash flow, month-apr-ap)
+Charts: (platform export: AP Foundation cash flow, month-apr-ap)
 
 
 ===========================================================
