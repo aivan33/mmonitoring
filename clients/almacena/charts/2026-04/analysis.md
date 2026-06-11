@@ -65,7 +65,11 @@ scope — carry-forward chart set only).
 = $116.4K = €107.1K (@1.087) = the month's Cost of Funds (ties to the KPI). **24 loans active
 in April**; principal-weighted **blended rate ~9.08%**. Largest active facilities (EUR @1.087):
 JSKR €4.6M, Quizea €2.9M, Godelax €1.8M, AI €1.3M, Nicolas Tjandramaga €0.9M — a concentrated
-funding stack. Several large facilities carry repayment dates within the next two quarters → a
+funding stack. **Funding-model shift (Slide 8):** no stakeholder funding in Mar–Apr (after
+€5.5M in Jan–Feb; €1.0M funding cost paid back to stakeholders in March), yet the active book
+grew — 84% written in 2026, €12.9M new/renewed vs €7.0M matured in Q1, with AI/JSKR/KH/PS/Quizea
+rolling rather than exiting. The book is now lender-funded and self-funding on deal turnover
+(€15.4M in / €14.7M out in April), not stakeholder-dependent — until the Jun/Aug maturity wall. Several large facilities carry repayment dates within the next two quarters → a
 **maturity wall** worth a refinancing-plan discussion; recent rolls priced ~9% vs maturing
 11–12%, which is what is bringing Cost of Funds down.
 

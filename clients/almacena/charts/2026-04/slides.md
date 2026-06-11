@@ -123,11 +123,17 @@ Q1 saw EUR 130K of share-premium injections, a EUR 50K convertible loan, and the
 Slide 8 — Cash Flow Analysis (AP Foundation)
 ===========================================================
 
-The AP Foundation's cash flow tracks all fund movements in its capacity as the primary lending vehicle on the platform — loan disbursements, interest and principal repayments, and the collection of fees remitted to Almacena.
+The AP Foundation's cash flow tracks all fund movements in its capacity as the primary lending vehicle on the platform — loan disbursements, interest and principal repayments, and the collection of fees remitted to Almacena. Two things stand out this period: the deal book is now self-funding month to month, and the funding model has shifted from stakeholder capital to a rolling lender base.
 
-In April the Foundation deployed against an average outstanding book of EUR 16.0M, funded by the 24 active lender facilities (EUR ~14.3M available, blended ~9.1%). Funding cost paid in the month was EUR 99.5K against EUR 128.8K of gross interest earned — the Foundation is now cash-generative on net interest, before flat fees. The funding maturity profile is the item to watch: several large facilities roll within the next two quarters, and the cost-of-funds trajectory depends on the replacement rate (the recent rolls have come in cheaper, at ~9%).
+Self-funding deal turnover. The Foundation cycled EUR 15.4M of deal-financing cash in against EUR 14.7M deployed back out in April — roughly balanced, with collections on settling deals funding the next disbursements. This is the bulk of the Foundation's cash movement and it now broadly recycles on its own, a change from the capital-hungry early-Q1 months.
 
-[Detailed Foundation cash-flow walk to be completed from the platform CF export (month-apr-ap) and the lender-loan schedule.]
+Stakeholder funding has stopped. After EUR 5.5M of stakeholder injections early in the year (EUR 1.9M in January, EUR 3.6M in February), there has been no new stakeholder funding in either March or April — and in March the Foundation paid EUR 1.0M of funding cost back out to stakeholders. The capital base is no longer being topped up from shareholders; it is being carried by lender debt.
+
+The lending book is sustained by rolling existing loans, not new capital. Despite the stakeholder pause, the active funding book grew to 24 facilities totalling ~EUR 14.7M (blended ~9.1%). It has been almost entirely refreshed in 2026: EUR 12.9M of new or renewed facilities were drawn this year against EUR 7.0M that matured in Q1, and ~84% of the current book was written in 2026 — only ~EUR 2.4M of 2024–2025 vintage remains. Crucially, this is rollover rather than churn: the largest lenders (AI, JSKR, KH, PS, Quizea) each let an old facility mature and replaced it with a new one, and the new paper has priced cheaper (~9% vs maturing facilities at 11–12%), which is what pulled blended cost of funds down to ~9.1% and lifted Net Interest into clearly positive territory. So the existing-loan base is healthy — lenders are renewing on better terms — but the funding model is now lender-dependent rather than stakeholder-funded.
+
+What to watch. With stakeholders on the sidelines, growth beyond the current ~EUR 15M book, and the refinancing of the June (EUR 6.2M) and August (EUR 4.5M) maturity wall, both rest on continued lender rollovers (see Slide 4). The book is comfortably cash-generative on net interest today, but a stall in rollovers — or any need to step up the book size — would require either new lenders or a return of stakeholder funding.
+
+Charts: efficiency_funding_maturity · (platform export: AP Foundation cash flow, month-apr-ap)
 
 
 ===========================================================
