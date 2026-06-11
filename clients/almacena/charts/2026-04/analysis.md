@@ -85,8 +85,20 @@ rolling rather than exiting. The book is now lender-funded and self-funding on d
 | ~~efficiency_cash_drag~~ | **REPLACED** by `efficiency_funding_maturity` (flag #1) |
 | **efficiency_funding_maturity** (NEW) | bar wall, principal maturing Apr–Oct 2026 from the lender file via `one_offs/build_funding_maturity.py`; Jun €6.2M / Aug €4.5M peaks; €92K tails to 2027 (not charted) |
 
+## GL verification (April, traced to BV ledger `gl-bv.xlsx`)
+
+- **Factoring inflow €139.3K = account 1310** "Factored pre-payments USD – Inflow": a USD
+  164,044.80 receipt on 15 Apr (~1.18) into BV's USD ING account. Confirmed.
+- **CF "Other" outflow €130.9K is a platform bucket, not one line** — dominated by a
+  €129,254.63 current-account settlement with the AP Foundation (account 1420), ~€1.7K
+  residual. So factoring-in ≈ Foundation-settlement-out (net ~+€8K) = routine platform↔Foundation
+  cash cycle, not burn. Slide 7 updated.
+- **Receivables Related Entities €1.29M corroborated** by Holding GL intercompany accounts
+  1410/1411 (the Jan €123,098 "debt assumption" = the consolidation elimination). No chart change.
+- Holding GL/cash-movements were Holding B.V.-only; the operating items live in BV (entity 4).
+
 ## Open / deferred (needs more source)
 
-- April GL parse → Slide 6 finance lines, Slide 7 operating cash-flow walk.
+- April GL parse → Slide 6 finance lines (Slide 7 operating walk now done from BV GL).
 - Budget/Realistic scenario not loaded → no variance commentary yet.
 - Foundation cash-flow detail (Slide 8) from `month-apr-ap` + lender schedule.

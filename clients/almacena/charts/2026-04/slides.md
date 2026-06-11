@@ -115,8 +115,11 @@ Adjusted Cash — Cash and Cash Equivalents plus Receivables Related Entities (t
 
 The composition shift is the point: cash-on-hand fell to EUR 0.10M while the intercompany receivable rose to EUR 1.29M, as more of the holding's liquidity moved into the deployed lending book. Over the same window Average Portfolio Outstanding grew to EUR 16.0M. This is capital rotation into the book — the intended use of the intercompany facility — not operating burn; the adjusted-cash view held roughly flat even as headline cash thinned.
 
-Investing / Financing (carry-forward context from Q1):
-Q1 saw EUR 130K of share-premium injections, a EUR 50K convertible loan, and the non-cash N.V. write-off reshaping the balance sheet. [April-specific operating cash-flow walk and financing movements to be added from the April GL once parsed — the platform CF export (month-apr-alm) gives the statement-level picture in the meantime.]
+April operating cash flow (traced to the BV ledger):
+The month's two largest operating movements net against each other and reflect the platform↔Foundation cash cycle rather than burn. BV received a USD 164.0K factored pre-payment (EUR 139.3K at ~1.18; account 1310 "Factored pre-payments USD") on 15 April — monetising its fee receivable — shown as the EUR 139.3K factoring inflow. Against it, the EUR ~130.9K "Other" outflow is predominantly a EUR 129.3K current-account settlement with the Stichting AP Foundation (account 1420); the two roughly offset (net ~EUR +8K). The remaining operating cash was small and ordinary: a EUR 59.2K Q1 VAT remittance to the tax authority, ~EUR 10K to Nua Holding, transport and insurance (Suhara, Molenbergnatie, Filhet-Allard), software and advisory subscriptions, plus EUR 17.9K of non-cash software amortisation.
+
+Investing / Financing:
+A EUR 40K intercompany top-up came in from the Holding in April (reconciles on both ledgers). Carry-forward Q1 context: EUR 130K of share-premium injections, a EUR 50K convertible loan, and the non-cash N.V. write-off reshaped the balance sheet earlier in the year.
 
 
 ===========================================================
