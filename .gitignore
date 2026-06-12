@@ -28,6 +28,9 @@ clients/*/chart_specs/*
 clients/*/one_offs/*
 !clients/*/one_offs/*.py
 !clients/*/one_offs/*.md
+# loansdb: self-contained loan-book tool (py + generated html + notebook + docs) — tracked
+!clients/*/loansdb/
+!clients/*/loansdb/*
 
 # 2. Repo-wide deny for sensitive file types so an accidentally-misplaced
 #    file outside clients/ still can't be committed. If a legitimate need
