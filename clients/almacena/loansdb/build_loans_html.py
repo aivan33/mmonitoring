@@ -66,18 +66,23 @@ TEMPLATE = """<!doctype html>
   .pill.new{background:#e3f3ef;color:var(--up)} .pill.mat{background:#fbe9e3;color:var(--down)}
   tbody tr:hover{background:#f6fafa}
   .foot{flex:0 0 auto;padding:4px 18px 8px;color:var(--muted);font-size:10px}
+  .cur{background:#fff;color:var(--teal);border:none;border-radius:6px;padding:5px 12px;font-weight:700;cursor:pointer;font-size:12px}
+  .tab .chip{display:block;font-size:8px;font-weight:700;letter-spacing:.4px;margin-top:2px}
+  .chip.src{color:var(--up)} .chip.der{color:var(--coral)}
+  .rate{font-size:10px;color:var(--muted);font-weight:600}
 </style></head>
 <body>
 <header>
   <h1>Almacena — Lender Loan Book</h1>
-  <span class="badge">DERIVED</span>
+  <button class="cur" id="curToggle" title="Toggle currency">USD</button>
+  <span class="rate" id="rateNote"></span>
   <span class="sub">__SUB__</span>
 </header>
 <div class="tabs" id="tabs"></div>
 <main>
   <div class="col">
     <div class="card"><h2>Selected month — <span id="mlabel"></span></h2><div class="kpis" id="kpis"></div></div>
-    <div class="card"><h2>Month-over-month book (USD)</h2><table class="matrix" id="matrix"></table></div>
+    <div class="card"><h2>Month-over-month book (<span id="matCur">USD</span>)</h2><table class="matrix" id="matrix"></table></div>
     <div class="card"><h2>What changed this month</h2><div class="changes" id="changes"></div></div>
   </div>
   <div class="col">
@@ -101,52 +106,67 @@ TEMPLATE = """<!doctype html>
 <script id="data" type="application/json">__DATA__</script>
 <script>
 const D=JSON.parse(document.getElementById('data').textContent);
-let sel=D.months.length-1;
-const usd=v=>'$'+Math.round(v).toLocaleString('en-US');
-const usdM=v=>Math.abs(v)>=1e6?'$'+(v/1e6).toFixed(2)+'M':(Math.abs(v)>=1e3?'$'+Math.round(v/1e3)+'k':'$'+Math.round(v));
+let sel=D.months.length-1, CUR='USD';
+const FX=m=>m.fx_usd_per_eur||1;                 // USD per EUR
+const conv=(usd,m)=>CUR==='EUR'?usd/FX(m):usd;   // value in active currency
+const sym=()=>CUR==='EUR'?'\\u20AC':'$';
+const money=(usd,m)=>{const v=conv(usd,m),a=Math.abs(v);
+  return sym()+(a>=1e6?(v/1e6).toFixed(2)+'M':(a>=1e3?Math.round(v/1e3)+'k':Math.round(v)));};
+const moneyAbs=v=>{const a=Math.abs(v);return sym()+(a>=1e6?(a/1e6).toFixed(2)+'M':(a>=1e3?Math.round(a/1e3)+'k':Math.round(a)));};
 const pct=v=>(v*100).toFixed(2)+'%';
 const arrow=d=>d>0?'\\u25B2':(d<0?'\\u25BC':'\\u2013');
-const cls=(d,goodUp=true)=>d===0?'flat':((d>0)===goodUp?'up':'down');
-const KPI=[['available','Available Funds',usdM,true],['cost','Cost of Funds',usdM,false],
-  ['blended_rate','Blended Rate',pct,false],['n_loans','Active Loans',v=>v,true],
-  ['n_lenders','Lenders',v=>v,true],['principal','Total Principal',usdM,true]];
+const cls=(d,goodUp=true)=>!d?'flat':((d>0)===goodUp?'up':'down');
+// type: money | pct | count
+const KPI=[['available','Available Funds','money',true],['cost','Cost of Funds','money',false],
+  ['blended_rate','Blended Rate','pct',false],['n_loans','Active Loans','count',true],
+  ['n_lenders','Lenders','count',true],['principal','Total Principal','money',true]];
+const fmtKPI=(k,t,m)=>t==='money'?money(m[k],m):(t==='pct'?pct(m[k]):m[k]);
+function delta(k,t,m,prev){if(!prev)return null;
+  return t==='money'?conv(m[k],m)-conv(prev[k],prev):m[k]-prev[k];}
+function deltaStr(k,t,m,prev,gu){const d=delta(k,t,m,prev);if(d==null||d===0)return '';
+  const s=t==='money'?moneyAbs(d):(t==='pct'?(Math.abs(d)*100).toFixed(2)+'pp':Math.abs(d));
+  return `<span class="d ${cls(d,gu)}">${arrow(d)} ${s}</span>`;}
 
-function tabs(){document.getElementById('tabs').innerHTML=D.months.map((m,i)=>
-  `<div class="tab ${i===sel?'on':''}" onclick="pick(${i})">${m.label}</div>`).join('');}
-function kpis(){const m=D.months[sel];document.getElementById('mlabel').textContent=m.label;
-  document.getElementById('kpis').innerHTML=KPI.map(([k,lbl,fmt,gu])=>{
-    const d=m.mom?m.mom[k]:null;const dd=d==null?'':`<div class="d ${cls(d,gu)}">${arrow(d)} ${k==='blended_rate'?(d*100).toFixed(2)+'pp':(typeof m[k]==='number'&&Math.abs(m[k])>1000?usd(Math.abs(d)):Math.abs(d))}</div>`;
-    return `<div class="kpi"><div class="lbl">${lbl}</div><div class="val">${fmt(m[k])}</div>${dd}</div>`;}).join('');}
+function tabs(){document.getElementById('tabs').innerHTML=D.months.map((m,i)=>{
+  const chip=m.is_source?'<span class="chip src">SOURCE</span>':'<span class="chip der">DERIVED</span>';
+  return `<div class="tab ${i===sel?'on':''}" onclick="pick(${i})">${m.label}${chip}</div>`;}).join('');}
+function kpis(){const m=D.months[sel],prev=D.months[sel-1];
+  document.getElementById('mlabel').innerHTML=m.label+(m.is_source?' <span class="chip src" style="display:inline">· source</span>':' <span class="chip der" style="display:inline">· derived</span>');
+  document.getElementById('kpis').innerHTML=KPI.map(([k,lbl,t,gu])=>
+    `<div class="kpi"><div class="lbl">${lbl}</div><div class="val">${fmtKPI(k,t,m)}</div>${deltaStr(k,t,m,prev,gu)}</div>`).join('');}
 function matrix(){let h='<thead><tr><th class="l">KPI</th>'+D.months.map((m,i)=>
   `<th class="${i===sel?'sel':''}">${m.label.split(' ')[0]}</th>`).join('')+'</tr></thead><tbody>';
-  KPI.forEach(([k,lbl,fmt,gu])=>{h+=`<tr><td class="l mlab">${lbl}</td>`+D.months.map((m,i)=>{
-    const d=m.mom?m.mom[k]:null;const dl=d==null||d===0?'':`<span class="delta ${cls(d,gu)}">${arrow(d)}</span>`;
-    return `<td class="${i===sel?'sel':''}">${fmt(m[k])}${dl}</td>`;}).join('')+'</tr>';});
+  KPI.forEach(([k,lbl,t,gu])=>{h+=`<tr><td class="l mlab">${lbl}</td>`+D.months.map((m,i)=>{
+    const d=delta(k,t,m,D.months[i-1]);const dl=!d?'':`<span class="delta ${cls(d,gu)}">${arrow(d)}</span>`;
+    return `<td class="${i===sel?'sel':''}">${fmtKPI(k,t,m)}${dl}</td>`;}).join('')+'</tr>';});
   document.getElementById('matrix').innerHTML=h+'</tbody>';}
 function changes(){const m=D.months[sel];document.getElementById('changes').innerHTML=
-  `<div class="chg"><div class="lbl" style="color:var(--up)">NEW THIS MONTH</div><div class="n">${m.n_new}</div><div>${usd(m.new_principal)} principal</div></div>
-   <div class="chg"><div class="lbl" style="color:var(--down)">MATURING THIS MONTH</div><div class="n">${m.n_maturing}</div><div>${usd(m.maturing_principal)} principal</div></div>`;}
+  `<div class="chg"><div class="lbl" style="color:var(--up)">NEW THIS MONTH</div><div class="n">${m.n_new}</div><div>${money(m.new_principal,m)} principal</div></div>
+   <div class="chg"><div class="lbl" style="color:var(--down)">MATURING THIS MONTH</div><div class="n">${m.n_maturing}</div><div>${money(m.maturing_principal,m)} principal</div></div>`;}
 function rateBand(r){return r<0.09?'lo':(r<0.10?'mid':'hi');}
 function table(){const m=D.months[sel];
   const fL=fLender.value,fS=fStatus.value,fR=fRate.value,sk=fSort.value;
   let rows=m.loans.filter(r=>(!fL||r.lender===fL)&&(!fS||r[fS])&&(!fR||rateBand(r.rate)===fR));
   rows.sort((a,b)=>sk==='repay'?a.repay.localeCompare(b.repay):(b[sk]-a[sk]));
-  const COL=[['lender','Lender','l'],['ref','Ref','l'],['repay','Repays','l'],
-    ['principal','Principal',''],['rate','Rate',''],['days_active','Days',''],
-    ['available','Available',''],['accrued','Accrued','']];
-  let h='<thead><tr>'+COL.map(c=>`<th class="${c[2]}">${c[1]}</th>`).join('')+'</tr></thead><tbody>';
+  const COL=[['Lender','l'],['Ref','l'],['Repays','l'],['Principal',''],['Rate',''],['Days',''],['Available',''],['Accrued','']];
+  let h='<thead><tr>'+COL.map(c=>`<th class="${c[1]}">${c[0]}</th>`).join('')+'</tr></thead><tbody>';
   rows.forEach(r=>{const tag=r.new?'<span class="pill new">NEW</span> ':(r.maturing?'<span class="pill mat">MAT</span> ':'');
     h+=`<tr><td class="l">${tag}${r.lender}</td><td class="l">${r.ref||''}</td><td class="l">${r.repay}</td>
-    <td>${usd(r.principal)}</td><td>${pct(r.rate)}</td><td>${r.days_active}</td>
-    <td>${usd(r.available)}</td><td>${usd(r.accrued)}</td></tr>`;});
+    <td>${money(r.principal,m)}</td><td>${pct(r.rate)}</td><td>${r.days_active}</td>
+    <td>${money(r.available,m)}</td><td>${money(r.accrued,m)}</td></tr>`;});
   document.getElementById('loans').innerHTML=h+'</tbody>';
-  document.getElementById('tcount').textContent=rows.length+' loans · '+usd(rows.reduce((s,r)=>s+r.available,0))+' available';}
+  document.getElementById('tcount').textContent=rows.length+' loans · '+money(rows.reduce((s,r)=>s+r.available,0),m)+' available';}
 function lenders(){const set=[...new Set(D.months.flatMap(m=>m.loans.map(r=>r.lender)))].sort();
   fLender.innerHTML='<option value="">All</option>'+set.map(l=>`<option>${l}</option>`).join('');}
 function pick(i){sel=i;render();}
-function render(){tabs();kpis();matrix();changes();table();}
+function render(){const m=D.months[sel];
+  document.getElementById('curToggle').textContent=CUR;
+  document.getElementById('matCur').textContent=CUR;
+  document.getElementById('rateNote').textContent=CUR==='EUR'?('@ '+FX(m).toFixed(4)+' USD/EUR ('+m.label+' avg)'):'';
+  tabs();kpis();matrix();changes();table();}
+document.getElementById('curToggle').onclick=()=>{CUR=CUR==='USD'?'EUR':'USD';render();};
 ['fLender','fStatus','fRate','fSort'].forEach(id=>document.getElementById(id).onchange=table);
-document.getElementById('foot').textContent=D.derived_note+'  ·  Source: '+D.source_file+'  ·  '+D.scope+'  ·  '+D.currency;
+document.getElementById('foot').textContent=D.derived_note+'  ·  FX: '+D.fx_source+'  ·  Source: '+D.source_file+'  ·  '+D.scope;
 lenders();render();
 </script>
 </body></html>
@@ -155,7 +175,7 @@ lenders();render();
 
 def main() -> int:
     data = loan_book.build()
-    sub = f"{data['currency']} · {data['scope']} · reconstructed from {data['source_file']}"
+    sub = f"{data['scope']} · native USD + EUR overlay · Apr = source, Jan–Mar = derived"
     html = (TEMPLATE
             .replace("__SUB__", sub)
             .replace("__DATA__", json.dumps(data)))

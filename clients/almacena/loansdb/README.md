@@ -3,10 +3,12 @@
 A small, self-contained tool to explore Almacena's **lender funding book** month-by-month,
 separate from the monthly deck.
 
-> ⚠️ **DERIVED, not raw.** There is only one lender file (the April export). Every loan
-> carries its start + repayment dates, so the monthly book is **reconstructed** by replaying
-> each loan's active window. Scope is **2026 (Jan–Apr)** and everything is in **USD** (the
-> lender data's native currency). These are derived snapshots, not raw monthly statements.
+> ⚠️ **April = source · Jan–Mar = derived.** The lender file *is* the April export, so April
+> is the **actual/source** month (real day-counts and accruals; the reconstruction reproduces
+> them exactly). **Jan–Mar are derived** — reconstructed by replaying each loan's active
+> window from that one schedule. Scope is **2026 (Jan–Apr)**. Native currency is **USD**, with
+> an optional **EUR overlay** (toggle in the dashboard) at authoritative monthly rates.
+> The per-month source/derived status is flagged on every tab and KPI.
 
 ## What's here
 
@@ -31,6 +33,20 @@ Available Funds **$15,590,305**, Cost of Funds **$116,409**, **24** active loans
 blended. As an extra check, the reconstructed Available Funds *and* Cost of Funds also match
 the platform's reported KPIs (`profitability_main_apr.xlsx`, ÷1.087) for **every** month
 Jan–Apr — so the derivation is trustworthy across 2026, not just at the April anchor.
+
+## Currency (USD native + EUR overlay)
+
+The book is native **USD**. The dashboard's EUR toggle converts each month at **that month's
+average USD/EUR rate** (not a single flat rate), so the overlay is as accurate as possible:
+
+| | Jan | Feb | Mar | Apr |
+|---|---|---|---|---|
+| USD per EUR | 1.1731 | 1.1828 | 1.1571 | 1.1686 |
+
+Monthly averages from X-Rates, cross-checked against ECB daily rates (the two agree within
+rounding → high confidence). Defined in `loan_book.py::FX_USD_PER_EUR`. **Note:** these are
+the *real* monthly rates, so the EUR figures here differ from the management deck, which
+deliberately *held* a single 1.087 rate for trend comparability.
 
 ## Use
 

@@ -5,11 +5,11 @@ start and repayment dates, so the book for any month is *derived* by replaying
 each loan's active window. This module is the single source of that derivation;
 both the HTML builder and the exploration notebook import it.
 
-DERIVED, not raw: these are reconstructed monthly snapshots, scoped to 2026
-(Jan–Apr) and reported in USD (the lender data's native currency). The only
-month we can check against source figures is April; ``--check`` proves the
-reconstruction reproduces the file's own Available Funds / Cost of Funds /
-active-loan count exactly.
+Source vs derived: **April is the source/actual month** (the file is the April
+export, so its day-counts and accruals are real and ``--check`` reproduces them
+exactly). **Jan–Mar are derived** — reconstructed by replaying the schedule.
+Scope is 2026 (Jan–Apr), native currency USD, with an optional EUR overlay at
+authoritative monthly rates (``FX_USD_PER_EUR``).
 
 Conventions (tuned to reproduce April's AccruedDaysInMonth / contributions):
 - A loan is active in a month if its [start, repayment] window overlaps the
@@ -33,6 +33,21 @@ SRC = Path(__file__).resolve().parents[1] / "raw/04/lender_loans_accrued_interes
 MONTHS_2026 = [(2026, m) for m in range(1, 5)]   # Jan–Apr 2026
 MON_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
             "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+# The lender file IS the April export, so April is the *source/actual* month;
+# Jan–Mar are reconstructed (derived) by replaying the schedule.
+SOURCE_MONTH = (2026, 4)
+
+# USD per 1 EUR, monthly averages. Two independent sources agree within rounding
+# (X-Rates monthly average + ECB daily averages via freecurrencyrates) → high
+# confidence. Used only for the optional EUR overlay; the book is native USD.
+FX_USD_PER_EUR = {
+    (2026, 1): 1.173094,
+    (2026, 2): 1.182764,
+    (2026, 3): 1.157143,
+    (2026, 4): 1.168636,
+}
+FX_SOURCE = "Monthly avg USD/EUR (X-Rates; cross-checked vs ECB) — Jan–Apr 2026"
 
 
 def _load_loans(path: Path = SRC) -> list[dict]:
@@ -94,6 +109,8 @@ def month_book(loans: list[dict], year: int, month: int) -> dict:
     return {
         "key": f"{year}-{month:02d}",
         "label": f"{MON_ABBR[month - 1]} {year}",
+        "is_source": (year, month) == SOURCE_MONTH,
+        "fx_usd_per_eur": FX_USD_PER_EUR.get((year, month)),
         "days_in_month": dim,
         "n_loans": len(rows),
         "n_lenders": len({r["lender"] for r in rows}),
@@ -122,12 +139,12 @@ def build(path: Path = SRC) -> dict:
         }
     return {
         "currency": "USD",
-        "derived": True,
-        "derived_note": ("Reconstructed from the April loan schedule "
-                         "(lender_loans_accrued_interest.xlsx) — monthly "
-                         "snapshots are derived, not raw."),
+        "derived_note": ("April is the source export; Jan–Mar are reconstructed "
+                         "from the April loan schedule (lender_loans_accrued_interest.xlsx) "
+                         "by replaying each loan's active window."),
         "scope": "2026 (Jan–Apr)",
         "source_file": SRC.name,
+        "fx_source": FX_SOURCE,
         "months": months,
     }
 
