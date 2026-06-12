@@ -1052,9 +1052,10 @@ def _draw_bar_with_line(
         x = list(range(len(all_idx)))
         values = [s.get(d, float("nan")) for d in all_idx]
 
-    line_color = palette[len(bar_resolved) % len(palette)]
+    color_map = (spec.style or {}).get("color_map") or {}
+    line_color = color_map.get(line_entry["label"]) or palette[len(bar_resolved) % len(palette)]
     smooth_x, smooth_y = _catmull_rom_smooth(x, values)
-    ax.plot(smooth_x, smooth_y, linewidth=1.8,
+    ax.plot(smooth_x, smooth_y, linewidth=2.4,
             color=line_color, zorder=4,
             solid_capstyle="round", solid_joinstyle="round")
     ax.plot(x, values, linestyle="None", marker="o", markersize=4.0,
@@ -1870,7 +1871,7 @@ def render(
 
     ctx = apply_brand(brand)
     palette = _resolve_palette(spec, ctx.palette)
-    figsize = _figsize_for(spec.chart_type)
+    figsize = tuple(spec.figsize) if spec.figsize else _figsize_for(spec.chart_type)
     fig, ax = plt.subplots(figsize=figsize, dpi=200)
     _DRAW[spec.chart_type](ax, spec, resolved, palette, ctx.tokens)
     fig.tight_layout(pad=0.4)

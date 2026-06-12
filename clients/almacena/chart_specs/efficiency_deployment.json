@@ -8,6 +8,7 @@
   "value_format": "eur",
   "period": {"kind": "ytd"},
   "axes": {"y": {"format": "EUR_thousands"}},
+  "figsize": [9.0, 5.1],
   "display_order": 60,
   "data": [
     {"label": "Average Portfolio Outstanding",

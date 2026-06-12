@@ -57,6 +57,7 @@ class ChartSpec:
     display_order: int | None = None
     compute_total: bool = False
     total_label: str = ""
+    figsize: tuple[float, float] | None = None
 
     @property
     def is_platform(self) -> bool:
@@ -142,4 +143,5 @@ def load_spec(path: str | Path) -> ChartSpec:
         display_order=raw.get("display_order"),
         compute_total=bool(raw.get("compute_total", False)),
         total_label=raw.get("total_label", ""),
+        figsize=tuple(raw["figsize"]) if raw.get("figsize") else None,
     )

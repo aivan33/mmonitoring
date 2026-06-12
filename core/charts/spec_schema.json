@@ -30,6 +30,8 @@
     "display_order": {"type": "integer"},
     "compute_total": {"type": "boolean"},
     "total_label": {"type": "string"},
+    "figsize": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2,
+                "description": "Optional [width, height] in inches overriding the per-type default; use a less-wide aspect for charts placed in squarer deck slots."},
 
     "period": {
       "type": "object",
