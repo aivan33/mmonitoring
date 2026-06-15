@@ -53,6 +53,24 @@ taxonomi cells.
 | Finance costs | −22,760 | −14,979 | FX | INTERNAL | re-model as FX |
 | Other non-operational revenues | −179,790 | 0 | **NEW** large; actual −179,790 vs budget 0 | NEEDS-CLIENT | client must explain (write-off / reclass / clawback) |
 
+## Loan book — roll-overs & phantom cash flow (decided)
+
+The ledger pre-books **roll-overs** as separate loans (old matures → renewal starts
+next day, principal = old + capitalized interest). The model's `Investor Payment
+Schedule` books principal **draw at start** + **repayment at maturity** per loan
+(`SUMIFS`/`IF` on `Loans Database` dates; one row per `LN-###`), so a roll shows a
+**phantom repay-out + redraw-in** that isn't real cash. Interest is separate (the
+schedule + `Inputs!J191` derive a date-weighted/average rate off the book — evergreen-safe).
+
+**Decision:** model the current book as **evergreen** — push every live loan's
+Repayment date past the model horizon (Dec-2028) so it stays live/accruing at its
+**current** rate and no principal repayment lands in the forecast. Rate *did* change
+historically (older ~10–14% → ~9% now), but forward we use the current ~9%, so a
+single-line-with-extended-tenor per loan is correct. **One row per loan** (no
+row-count change → `Investor Payment Schedule` LN-rows stay aligned). Build:
+`build_loans_db_update.py --roll-to 2029-12-31` → `budget/loans_db_update_<m>_evergreen.csv`.
+Genuine new draws / real exits are still scheduled normally.
+
 ## NEEDS-CLIENT summary (the client ask — only what we cannot infer)
 
 1. **Loan schedule rebuild (`Loans Database`) — CLEAN-SLATE approach (decided).**
