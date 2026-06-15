@@ -42,6 +42,16 @@ def test_keeps_only_loans_outstanding_at_asof(mod):
     assert [r["Lender Name"] for r in rows] == ["Y"]
 
 
+def test_excludes_loans_not_yet_drawn_at_asof(mod):
+    # a loan that STARTS after month-end is a future draw, not outstanding yet
+    recs = [
+        _rec("now", dt.datetime(2026, 2, 1), dt.datetime(2026, 9, 1), 100, 0.09, 5),   # live
+        _rec("future", dt.datetime(2026, 5, 19), dt.datetime(2026, 8, 1), 200, 0.09, 9),  # starts after Apr-30
+    ]
+    rows = mod.to_model_rows(recs, asof=dt.datetime(2026, 4, 30))
+    assert [r["Lender Name"] for r in rows] == ["now"]
+
+
 def test_maps_to_model_columns(mod):
     recs = [_rec("JSKR", dt.datetime(2026, 1, 23), dt.datetime(2026, 5, 25), 2_000_000, 0.09, 75_000)]
     r = mod.to_model_rows(recs, asof=dt.datetime(2026, 4, 30))[0]
@@ -67,6 +77,6 @@ def test_april_book_reconciles(mod):
     rows = mod.to_model_rows(mod.read_ledger(APRIL), asof=dt.datetime(2026, 4, 30))
     total = sum(r["Principal Amount (EUR)"] for r in rows)
     blended = sum(r["Principal Amount (EUR)"] * r["r (% p.a)"] for r in rows) / total
-    assert len(rows) == 25
-    assert abs(total - 16_209_684) < 1
-    assert abs(blended - 0.0908) < 0.0005
+    assert len(rows) == 21          # outstanding at 30-Apr (excludes 4 future-dated draws)
+    assert abs(total - 15_447_201) < 1
+    assert abs(blended - 0.0909) < 0.0005

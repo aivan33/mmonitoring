@@ -74,8 +74,16 @@ def _tenor_months(start, repayment) -> int | None:
 
 
 def to_model_rows(records: list[dict], asof: dt.datetime, freq: int = DEFAULT_FREQ) -> list[dict]:
-    """Map active (outstanding at ``asof``) ledger records to model-schema rows."""
-    active = [r for r in records if r["repayment"] and r["repayment"] > asof]
+    """Map active (outstanding at ``asof``) ledger records to model-schema rows.
+
+    A loan is outstanding at ``asof`` only if it has already been drawn
+    (``start <= asof``) and not yet repaid (``repayment > asof``) — future-dated
+    draws are excluded.
+    """
+    active = [
+        r for r in records
+        if r["start"] and r["start"] <= asof and r["repayment"] and r["repayment"] > asof
+    ]
     active.sort(key=lambda r: (str(r["lender"]).lower(), -r["principal"]))
     rows = []
     for i, r in enumerate(active, 1):

@@ -57,8 +57,10 @@ taxonomi cells.
 
 1. **Loan schedule rebuild (`Loans Database`) — CLEAN-SLATE approach (decided).**
    Replace the whole schedule with the verified April book rather than reconciling
-   row-by-row. Actual outstanding @ 30-Apr-2026 = **€16,209,684 / 25 loans / 15
-   lenders @ blended 9.08%** (precise; supersedes the earlier ~€13.7M estimate).
+   row-by-row. Actual outstanding @ 30-Apr-2026 = **€15,447,201 / 21 loans / 14
+   lenders @ blended 9.09% (EUR)** — drawn on/before month-end and not yet repaid.
+   Currency confirmed EUR: reconciles to the BS "Loan facility financing" line
+   (€13.66M foundation + €2.16M consolidated = €15.82M, ~1.0×, not 1.087 USD).
    Founder snapshot to confirm + say what to add: `budget/LOANS_APRIL_SNAPSHOT.md`
    (local, not committed — loan-level detail). Founder asks: confirm completeness;
    full legal names for coded lenders (JSKR, KH, PB, PS, VD, IA, MMB, AI, AS);
