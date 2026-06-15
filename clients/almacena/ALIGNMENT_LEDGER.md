@@ -55,12 +55,15 @@ taxonomi cells.
 
 ## NEEDS-CLIENT summary (the client ask — only what we cannot infer)
 
-1. **Loan schedule rebuild (`Loans Database`)** — actual book ~€13.7M / 24 loans @ ~9.08%:
-   - **JSKR ~€4.3M** — largest actual lender, **absent from the budget** (likely the realised "Senior Debt").
-   - **Godelax ~€1.7M** — active in reality but flagged matured (Active=0) → renew.
-   - **AI / Anthony Ivanov** — €895k budget vs €1.2M actual → update principal.
-   - **New lenders** — VD €0.6M, KH €0.4M (missing from budget).
-   - **Senior Debt €120M + Venture Debt €30M** — the *unclosed fundraise*, flagged Active=1 → re-date / condition on close (they inflate the budgeted book to €159M).
+1. **Loan schedule rebuild (`Loans Database`) — CLEAN-SLATE approach (decided).**
+   Replace the whole schedule with the verified April book rather than reconciling
+   row-by-row. Actual outstanding @ 30-Apr-2026 = **€16,209,684 / 25 loans / 15
+   lenders @ blended 9.08%** (precise; supersedes the earlier ~€13.7M estimate).
+   Founder snapshot to confirm + say what to add: `budget/LOANS_APRIL_SNAPSHOT.md`
+   (local, not committed — loan-level detail). Founder asks: confirm completeness;
+   full legal names for coded lenders (JSKR, KH, PB, PS, VD, IA, MMB, AI, AS);
+   what to add; and whether **Senior Debt €120M / Venture Debt €30M** are committed
+   (model separately, NOT in the current book — they inflated the old model to €159M).
 2. **Other non-operational revenues −179,790** — what is it?
 3. **Sign-off on forward assumptions we set** — flat-fee run-rate sustainability; raised professional-services forecast.
 
