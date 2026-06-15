@@ -9,7 +9,7 @@ The engine knows the *generic* financial conventions (taxonomi / yearly /
 actuals / IS-CF-BS statements); the client config carries the specifics — entity
 name patterns, exact-name role overrides, the separator marker, and the taxonomi
 month-axis. See ``clients/almacena/model_rules.yaml`` and
-``clients/almacena/budget/MODEL_CONTRACT.md``.
+``clients/almacena/MODEL_CONTRACT.md``.
 """
 
 from __future__ import annotations
