@@ -7,11 +7,15 @@ driver feeds). This is the mechanic behind variance->driver tracing.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from openpyxl import Workbook
 
 from core.model.cells import read_cells
 from core.model.flow import build_flow
+
+ALMACENA = Path("clients/almacena/budget/Almacena-26_AprActuals.xlsx")
 
 
 @pytest.fixture
@@ -77,3 +81,13 @@ def test_trace_dependents_crosses_sheets(flow):
 
 def test_precedents_of_a_leaf_is_empty(flow):
     assert flow.precedents("PF", "C1") == []
+
+
+@pytest.mark.skipif(not ALMACENA.exists(), reason="gitignored client model absent")
+def test_almacena_budget_line_traces_to_source_leaves():
+    """Golden (graph, not values): the consolidated Sales budget line traces
+    through IS back to the actuals_found source sheet."""
+    flow = build_flow(read_cells(ALMACENA))
+    result = flow.trace_precedents("is_cons_taxonomi", "D2")  # Sales, Jan-2026
+    leaf_sheets = {sheet for sheet, _ in result.leaves}
+    assert "actuals_found" in leaf_sheets
