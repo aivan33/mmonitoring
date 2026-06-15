@@ -1,0 +1,47 @@
+# Almacena — model-pillar contract rules (consumed by core/model/contract.py).
+#
+# The classifier engine is general; this file carries the client-specific bits:
+# which substrings mark each entity, exact-name role overrides, the separator
+# marker, and the taxonomi month-axis. Generic role detection (taxonomi / yearly
+# / actuals / statement) lives in the engine, not here.
+#
+# Sheet-name note: some Almacena tabs carry leading/trailing spaces
+# (" Inputs", "HR ", " BS_BV_Yearly") — match overrides on the exact name.
+
+model:
+  # A sheet whose name contains this marker is a section separator (skipped).
+  separator_marker: ">>>"
+
+  # Entity by case-insensitive substring; first match wins (order matters).
+  # bvnv uses *delimited* tokens (e.g. "_bv", "nv ") so "Investor" (i-NV-estor)
+  # is not mis-tagged as the BV/NV entity.
+  entity_patterns:
+    foundation: ["found", "foundation"]
+    bg: ["bg"]
+    bvnv: ["_bv", "bv_", "bv ", " bv", "_nv", "nv_", "nv ", " nv", "bvnv"]
+    consolidated: ["cons", "consolidated"]
+
+  # Statement-like sheets (IS/CF/BS, taxonomi, yearly, actuals) with no entity
+  # marker default to the operating group.
+  default_entity: consolidated
+
+  # Exact-name role overrides. Entity is still derived from entity_patterns, so
+  # e.g. "Inputs_Foundation" -> role engine, entity foundation.
+  role_overrides:
+    " Inputs": engine
+    "Pro Forma": engine
+    "Inputs_Foundation": engine
+    "HR": driver
+    "Loans Database": driver
+    "Investor Payment Schedule": driver
+    "KPIs": driver
+    "BG Accounting Data 10.24": other
+    "Data Validation": other
+
+  # The budget taxonomi tabs (is/cf/bs_<entity>_taxonomi) share one axis:
+  # row 1 = Data | Group | Subgroup | Jan..Dec, months in columns D..O, FY2026.
+  taxonomi_axis:
+    header_row: 1
+    first_month_col: D
+    months: 12
+    year: 2026
