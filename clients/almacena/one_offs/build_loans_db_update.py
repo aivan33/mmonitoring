@@ -77,8 +77,14 @@ def to_model_rows(records: list[dict], asof: dt.datetime, freq: int = DEFAULT_FR
     """Map active (outstanding at ``asof``) ledger records to model-schema rows.
 
     A loan is outstanding at ``asof`` only if it has already been drawn
-    (``start <= asof``) and not yet repaid (``repayment > asof``) — future-dated
-    draws are excluded.
+    (``start <= asof``) and not yet repaid (``repayment > asof``).
+
+    Why both bounds matter: the ledger is the full schedule, not a month snapshot —
+    it pre-books **roll-overs** as new loans that start the day after the maturing
+    loan, with principal = old principal + capitalized interest. Those renewals are
+    dated into the next month (or later) and carry zero accrued interest at this
+    month-end; the ``start <= asof`` bound excludes them here and the same filter
+    rolls them in automatically next month (no double-count).
     """
     active = [
         r for r in records
