@@ -72,6 +72,30 @@ def test_ids_are_sequential(mod):
     assert [r["Loan ID"] for r in rows] == ["LN-001", "LN-002"]
 
 
+def test_roll_to_makes_loans_evergreen(mod):
+    # roll horizon past the forecast: repayment pushed out, principal/rate kept,
+    # so no maturity lands in-window (no phantom repay+redraw)
+    recs = [_rec("JSKR", dt.datetime(2026, 1, 23), dt.datetime(2026, 5, 25), 2_000_000, 0.09, 75_000)]
+    roll = dt.datetime(2029, 12, 31)
+    r = mod.to_model_rows(recs, asof=dt.datetime(2026, 4, 30), roll_to=roll)[0]
+    assert r["Repayment date"] == roll
+    assert r["Principal Amount (EUR)"] == 2_000_000   # principal unchanged
+    assert r["r (% p.a)"] == 0.09                       # current rate kept
+    assert r["Active (T/F)"] == 1
+    # repayment amount grows with the extended tenor (principal + interest to horizon)
+    assert r["Repayment Amount"] > 2_000_000
+
+
+def test_roll_to_keeps_the_same_loans_as_actual(mod):
+    # filtering still uses ACTUAL dates; only the output repayment date is rolled
+    recs = [
+        _rec("live", dt.datetime(2026, 2, 1), dt.datetime(2026, 9, 1), 100, 0.09, 5),
+        _rec("future", dt.datetime(2026, 5, 19), dt.datetime(2026, 8, 1), 200, 0.09, 9),
+    ]
+    rows = mod.to_model_rows(recs, asof=dt.datetime(2026, 4, 30), roll_to=dt.datetime(2029, 12, 31))
+    assert [r["Lender Name"] for r in rows] == ["live"]
+
+
 @pytest.mark.skipif(not APRIL.exists(), reason="gitignored client data absent")
 def test_april_book_reconciles(mod):
     rows = mod.to_model_rows(mod.read_ledger(APRIL), asof=dt.datetime(2026, 4, 30))

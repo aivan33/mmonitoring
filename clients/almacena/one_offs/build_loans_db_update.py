@@ -73,7 +73,10 @@ def _tenor_months(start, repayment) -> int | None:
     return round((repayment - start).days / 30.4375)
 
 
-def to_model_rows(records: list[dict], asof: dt.datetime, freq: int = DEFAULT_FREQ) -> list[dict]:
+def to_model_rows(
+    records: list[dict], asof: dt.datetime, freq: int = DEFAULT_FREQ,
+    roll_to: dt.datetime | None = None,
+) -> list[dict]:
     """Map active (outstanding at ``asof``) ledger records to model-schema rows.
 
     A loan is outstanding at ``asof`` only if it has already been drawn
@@ -85,6 +88,13 @@ def to_model_rows(records: list[dict], asof: dt.datetime, freq: int = DEFAULT_FR
     dated into the next month (or later) and carry zero accrued interest at this
     month-end; the ``start <= asof`` bound excludes them here and the same filter
     rolls them in automatically next month (no double-count).
+
+    ``roll_to``: if set, treat the book as **evergreen** — push every loan's
+    Repayment date out to ``roll_to`` (a date past the model's forecast horizon).
+    The book then stays live and accruing across the whole forecast, so no principal
+    repayment lands in-window and the model never books the phantom repay+redraw that
+    a real mid-forecast maturity would create. Filtering still uses the *actual*
+    dates; only the output repayment date / tenor / repayment amount are rolled.
     """
     active = [
         r for r in records
@@ -93,16 +103,22 @@ def to_model_rows(records: list[dict], asof: dt.datetime, freq: int = DEFAULT_FR
     active.sort(key=lambda r: (str(r["lender"]).lower(), -r["principal"]))
     rows = []
     for i, r in enumerate(active, 1):
+        repay = roll_to or r["repayment"]
+        if roll_to:
+            years = (roll_to - r["start"]).days / 365.0
+            repay_amt = round(r["principal"] * (1 + (r["rate"] or 0) * years), 2)
+        else:
+            repay_amt = round(r["principal"] + r["total_interest"], 2)
         rows.append({
             "Loan ID": f"LN-{i:03d}",
             "Lender Name": r["lender"],
             "Principal Amount (EUR)": r["principal"],
             "Start Date": r["start"],
-            "Tenor (M) Testing": _tenor_months(r["start"], r["repayment"]),
+            "Tenor (M) Testing": _tenor_months(r["start"], repay),
             "r (% p.a)": r["rate"],
             "Payment Frequency (M)": freq,
-            "Repayment date": r["repayment"],
-            "Repayment Amount": round(r["principal"] + r["total_interest"], 2),
+            "Repayment date": repay,
+            "Repayment Amount": repay_amt,
             "Active (T/F)": 1,
         })
     return rows
@@ -117,18 +133,24 @@ def _fmt(v):
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("period", help="month to build, YYYY-MM (e.g. 2026-04)")
+    ap.add_argument("--roll-to", metavar="YYYY-MM-DD",
+                    help="evergreen mode: push every repayment to this date (past the model "
+                         "horizon, e.g. 2029-12-31 — the model runs to Dec-2028) so no "
+                         "principal repayment lands in the forecast (no phantom roll CF)")
     args = ap.parse_args()
     year, month = (int(x) for x in args.period.split("-"))
     asof = dt.datetime(year, month, calendar.monthrange(year, month)[1])
+    roll_to = dt.datetime(*(int(x) for x in args.roll_to.split("-"))) if args.roll_to else None
 
     ledger = CLIENT / "raw" / f"{month:02d}" / "lender_loans_accrued_interest.xlsx"
     if not ledger.exists():
         print(f"ledger not found: {ledger}", file=sys.stderr)
         return 1
 
-    rows = to_model_rows(read_ledger(ledger), asof=asof)
+    rows = to_model_rows(read_ledger(ledger), asof=asof, roll_to=roll_to)
 
-    out = CLIENT / "budget" / f"loans_db_update_{args.period}.csv"
+    suffix = "_evergreen" if roll_to else ""
+    out = CLIENT / "budget" / f"loans_db_update_{args.period}{suffix}.csv"
     with out.open("w", newline="") as f:
         w = csv.writer(f)
         w.writerow(COLUMNS)
