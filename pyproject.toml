@@ -19,6 +19,9 @@ dev = [
     "xlrd>=2.0.2",
 ]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
