@@ -14,6 +14,7 @@ a formula cell's ``value`` is ``None`` while its ``formula`` string is present.
 from __future__ import annotations
 
 import datetime as dt
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -70,6 +71,14 @@ class Cells:
 
     def sheets(self) -> list[str]:
         return list(self._formulas.sheetnames)
+
+    def iter_formula_cells(self) -> Iterator[Cell]:
+        """Yield every formula cell in the workbook (for building a reverse index)."""
+        for sheet in self._formulas.sheetnames:
+            for row in self._formulas[sheet].iter_rows():
+                for c in row:
+                    if c.data_type == "f":
+                        yield self.cell(sheet, c.coordinate)
 
     def cell(self, sheet: str, coord: str) -> Cell:
         if sheet not in self._formulas.sheetnames:
