@@ -87,11 +87,31 @@ Genuine new draws / real exits are still scheduled normally.
 2. **Other non-operational revenues −179,790** — what is it?
 3. **Sign-off on forward assumptions we set** — flat-fee run-rate sustainability; raised professional-services forecast.
 
-## What we fix internally (no client needed) — to apply at T6
+## Driver-sheet wiring (CORRECTED via core/model parser, 2026-06-15)
 
-- `Inputs_Foundation`: book size → realized; funding-cost rate 10% → ~9%.
-- `KPIs`: populate the blank pricing rows (gross interest, funding cost, net interest, flat fee) from realized economics.
-- Account-level forecast trims/raises: transport (7010), R&D contractors (5582), G&A professional services (5580/82/83), zero the un-realized "Other services" revenue.
+**Earlier "fix Inputs_Foundation / KPIs" was WRONG — both are ORPHAN sheets** (no
+formula references them; editing them changes nothing). The live wiring:
+
+- **` Inputs`** (leading space) is the single live driver sheet → feeds IS, CF, BS,
+  IS_Found, Pro Forma, KPIs, HR, Loans Database.
+- **`Pro Forma`** (10k formulas) is the forecast engine → feeds every statement.
+- **`Loans Database` → ` Inputs`!J191** (`AVERAGEIFS` = derived blended funding cost,
+  currently 0.0999 off the OLD book) → so the loan-book update **auto-propagates** the
+  funding-cost rate once saved (J191 should drop to ~9%).
+- Foundation revenue lines (`IS_Found` → `Pro Forma`) trace to **`actuals_found`** in
+  the forecast months → the foundation forecast is **partly actuals-anchored**; the
+  exact ` Inputs` revenue driver (GMV/funded-volume × gross-interest rate ~10.2%) is
+  not yet pinned — map it before editing.
+
+## What we fix internally (no client needed)
+
+- **Funding cost / blended rate** → auto-fixes from the `Loans Database` update via
+  ` Inputs`!J191 (verify it lands at ~9%). *Do NOT edit `Inputs_Foundation` (orphan).*
+- **Revenue ramp (Gross Interest +218k, Flat Fee +87k)** → ` Inputs` gross-interest
+  rate + GMV/funded-volume ramp. **Map the forecast path first** (foundation lines are
+  actuals-anchored). *Do NOT edit `KPIs` (orphan).*
+- Account-level forecast trims/raises: transport (7010), R&D contractors (5582), G&A
+  professional services (5580/82/83), zero the un-realized "Other services" revenue.
 - Re-model finance income/costs as **FX** (accts 9300/9301), not interest.
 - Resolve **G&A Other +47k** via GL trace, then adjust.
 
