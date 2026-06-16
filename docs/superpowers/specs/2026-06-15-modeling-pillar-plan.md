@@ -257,6 +257,24 @@ driver-traced variance read for Almacena, confirming the doc is sufficient.
 - **M2 — Variance-to-driver report:** automate the `APR_BUDGET_VS_ACTUAL.md` output —
   budget-taxonomi vs actuals-taxonomi, mapped to INPUT·LOAN·ACCOUNT drivers.
 - **M3 — Generate / scaffold:** author a model of the Almacena shape from drivers/taxonomi.
+- **M4 — Diagnostic (model-doctor):** a full health check on a model workbook,
+  built on the existing `core/model` flow graph. Surfaced by the Almacena founder
+  review (week of 2026-06-16): the model carries **orphaned inputs** (`Inputs_Foundation`,
+  `KPIs` — nothing references them) and **potentially orphaned drivers inside
+  `Pro Forma`**. The diagnostic should report, at minimum:
+  - **Orphans** — input/driver cells (and Pro Forma blocks) with no dependents
+    (`trace_dependents` empty) → dead inputs that mislead edits.
+  - **Broken/ error formulas** — cells evaluating to `#REF!`/`#DIV0!`/`#VALUE!`,
+    and references the flow parser cannot resolve (already flagged as `dynamic`).
+  - **Common-sense / logic checks** — e.g. statement cross-ties that don't foot
+    (BS balance, CF→cash reconciliation), sign/units anomalies, hardcoded numbers
+    inside otherwise-formula columns, stale/forked driver blocks.
+  - Output: a per-model diagnostic report (like the alignment ledger), structural
+    findings only (no financial values pinned in tests).
+  **Build approach:** *not* a standalone push — grow it incrementally while doing
+  the **Almacena budget alignment later this week** (the real work case), then
+  harvest the reusable checks into `core/model` + the skill. Partly enabled today
+  by `flow.trace_dependents` / the `dynamic`-ref flagging.
 
 ## Risks and Mitigations
 

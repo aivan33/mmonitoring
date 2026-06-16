@@ -103,5 +103,18 @@ change, and ends with the distilled client ask. Review it before any model edit;
 nothing in the workbook changes until then. See Almacena's for a worked example:
 `clients/almacena/ALIGNMENT_LEDGER.md`.
 
+## Diagnostic (forthcoming)
+
+Beyond aligning to actuals, this skill is growing a **model-doctor** pass: a full
+health check that flags **orphaned inputs/drivers** (cells with no dependents —
+e.g. Almacena's `Inputs_Foundation`/`KPIs`, and suspected dead blocks inside
+`Pro Forma`), **broken/error formulas** and unresolved references, and
+**common-sense/logic errors** (statements that don't foot, hardcodes in formula
+columns, sign/unit anomalies). It is being built incrementally through real work
+cases (starting with the Almacena budget alignment). Scope and checks:
+`docs/superpowers/specs/2026-06-15-modeling-pillar-plan.md` (M4). The flow graph
+(`build_flow`, `Flow.trace_dependents`) already provides the orphan/precedent
+primitives it needs.
+
 For the client-specific contract, drivers, quirks, and worked example, read
 `references/almacena.md`.
