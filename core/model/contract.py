@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 
 import yaml
@@ -54,12 +55,19 @@ def _generic_role(name: str) -> str | None:
 
 @dataclass(frozen=True)
 class TaxonomiAxis:
-    """Where the months live on the budget taxonomi tabs."""
+    """Where the months live on the budget taxonomi tabs.
+
+    Two modes. *Positional* (``first_month_col`` + ``months`` + ``year``) keys
+    months by column position — robust to mislabeled header years (Almacena,
+    cupffee). *Date-header* (``header_dates=True``) reads the real ISO dates out
+    of ``header_row`` — for clients with no single-year taxonomi tab whose bare
+    IS/CF/BS span several years (honey, farada)."""
 
     header_row: int
-    first_month_col: str
-    months: int
-    year: int
+    first_month_col: str | None = None
+    months: int | None = None
+    year: int | None = None
+    header_dates: bool = False
 
 
 @dataclass
@@ -180,10 +188,30 @@ class ModelContract:
         ax = self.rules.taxonomi_axis
         if ax is None:
             return {}
+        if ax.header_dates:
+            return self._date_header_axis(ax)
         start = column_index_from_string(ax.first_month_col)
         return {
             get_column_letter(start + i): f"{ax.year}-{i + 1:02d}"
             for i in range(ax.months)
+        }
+
+    def _date_header_axis(self, ax: TaxonomiAxis) -> dict[str, str]:
+        """Read column->period from the real dates in ``ax.header_row`` of the
+        first budget sheet (all budget sheets share the same header layout)."""
+        budget = self.budget()
+        if not budget:
+            return {}
+        wb = load_workbook(self._path, read_only=True, data_only=True)
+        try:
+            ws = wb[budget[0].name]
+            header = next(ws.iter_rows(min_row=ax.header_row, max_row=ax.header_row))
+        finally:
+            wb.close()
+        return {
+            get_column_letter(cell.column): f"{cell.value.year}-{cell.value.month:02d}"
+            for cell in header
+            if isinstance(cell.value, datetime)
         }
 
     def seams(self) -> dict[str, dict[str, list[str]]]:
@@ -197,29 +225,38 @@ class ModelContract:
         }
 
     def last_populated_month(self, sheet_name: str) -> str | None:
-        """The last month column on a taxonomi sheet that holds any value."""
+        """The last month column on a taxonomi sheet that holds any value.
+
+        Axis-agnostic: works off :meth:`month_axis` (column->period), so it
+        serves both the positional and date-header axes."""
         ax = self.rules.taxonomi_axis
         if ax is None:
             return None
+        axis = self.month_axis()
+        if not axis:
+            return None
+        cols = list(axis)
+        periods = list(axis.values())
+        idx = [column_index_from_string(c) for c in cols]
+        base = min(idx)
         wb = load_workbook(self._path, read_only=True, data_only=True)
         try:
             ws = wb[sheet_name]
-            start = column_index_from_string(ax.first_month_col)
             rows = list(
                 ws.iter_rows(
                     min_row=ax.header_row + 1,
-                    min_col=start,
-                    max_col=start + ax.months - 1,
+                    min_col=base,
+                    max_col=max(idx),
                     values_only=True,
                 )
             )
         finally:
             wb.close()
         last = None
-        for i in range(ax.months):
-            if any(row[i] is not None for row in rows):
-                last = i
-        return None if last is None else f"{ax.year}-{last + 1:02d}"
+        for k, ci in enumerate(idx):
+            if any(row[ci - base] is not None for row in rows):
+                last = k
+        return None if last is None else periods[last]
 
 
 def read_contract(path: str | Path, rules: Rules) -> ModelContract:
@@ -242,9 +279,10 @@ def load_rules(path: str | Path) -> Rules:
     axis = (
         TaxonomiAxis(
             header_row=ax["header_row"],
-            first_month_col=ax["first_month_col"],
-            months=ax["months"],
-            year=ax["year"],
+            first_month_col=ax.get("first_month_col"),
+            months=ax.get("months"),
+            year=ax.get("year"),
+            header_dates=ax.get("header_dates", False),
         )
         if ax
         else None

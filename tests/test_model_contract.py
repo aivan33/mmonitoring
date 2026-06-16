@@ -7,6 +7,7 @@ and exposes the actuals/budget/driver seams plus the taxonomi month-axis.
 
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -217,7 +218,52 @@ def test_budget_prefers_taxonomi_and_ignores_platform_variants(tmp_path, rules):
     assert {s.name for s in c.budget("consolidated")} == {"CF"}
 
 
+# ---- date-header month axis (honey/farada keep no single-year taxonomi tab;
+#      their bare IS/CF/BS carry real ISO dates in the header row) ----
+
+def test_date_header_axis_reads_periods_from_the_sheet(tmp_path):
+    rules = Rules(entity_patterns={}, taxonomi_axis=TaxonomiAxis(header_row=2, header_dates=True))
+    wb = Workbook()
+    wb.remove(wb.active)
+    ws = wb.create_sheet("IS")
+    for i in range(3):  # D,E,F = Jan,Feb,Mar 2024
+        ws.cell(row=2, column=4 + i, value=datetime(2024, 1 + i, 1))
+    ws.cell(row=3, column=4, value=10)  # Jan populated
+    ws.cell(row=3, column=5, value=20)  # Feb populated
+    path = tmp_path / "m.xlsx"
+    wb.save(path)
+    c = read_contract(path, rules)
+    axis = c.month_axis()
+    assert axis["D"] == "2024-01" and axis["F"] == "2024-03"
+    assert c.last_populated_month("IS") == "2024-02"
+
+
 # ---- validation against the real Almacena workbook ----
+
+# Each client's real workbook + rules. Workbooks are gitignored, so these skip
+# when absent (CI) and run locally.
+CLIENT_MODELS = [
+    ("clients/cupffee/budget/cupfee-q2-26.xlsx", "clients/cupffee/model_rules.yaml"),
+    ("clients/honey/budget/pollenity-q2-26.xlsx", "clients/honey/model_rules.yaml"),
+    ("clients/farada/modeling/model_farada_ 230326.xlsx", "clients/farada/model_rules.yaml"),
+]
+
+
+@pytest.mark.parametrize("wb,rules_path", CLIENT_MODELS)
+def test_client_rules_parse_end_to_end(wb, rules_path):
+    if not Path(wb).exists():
+        pytest.skip(f"gitignored client model absent: {wb}")
+    contract = read_contract(Path(wb), load_rules(Path(rules_path)))
+    # every sheet classified, an engine sheet found, a non-empty budget + month-axis.
+    assert all(s.role for s in contract.sheets)
+    assert contract.engine(), "expected Pro Forma/Inputs to be recognised"
+    assert contract.entities()
+    assert any(contract.budget(e) for e in contract.entities()), "budget side is empty"
+    axis = contract.month_axis()
+    assert axis, "month-axis did not resolve"
+    # axis values are well-formed YYYY-MM
+    assert all(len(p) == 7 and p[4] == "-" for p in axis.values())
+
 
 @pytest.mark.skipif(not ALMACENA.exists(), reason="gitignored client model absent")
 def test_almacena_classifies_with_real_rules():

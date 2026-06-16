@@ -1,0 +1,24 @@
+# Cupffee — model-pillar contract rules (consumed by core/model/contract.py).
+#
+# Single-entity (consolidated). Has a real single-year taxonomi tab
+# (IS_taxonomi_v2, Jan–Dec 2026 at columns D:O); the CF/BS budget falls back to
+# the bare CF/BS statement sheets (handled by the engine, not config).
+# Engine/driver sheets Pro Forma / Inputs / HR are recognised generically.
+model:
+  separator_marker: ">>>"
+  entity_patterns: {}
+  default_entity: consolidated
+
+  # Client-specific driver sub-engines (the generic HR/KPIs are auto-detected).
+  role_overrides:
+    "Pipeline": driver
+    "Inventory of materials": driver
+    "Procurement of materials": driver
+    "# of Orders in Advance": driver
+
+  # Clean single-year taxonomi: months Jan..Dec 2026 keyed by position.
+  taxonomi_axis:
+    header_row: 1
+    first_month_col: D
+    months: 12
+    year: 2026

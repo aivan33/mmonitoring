@@ -1,0 +1,17 @@
+# Farada — model-pillar contract rules (consumed by core/model/contract.py).
+#
+# Reference workbook: clients/farada/modeling/model_farada_ 230326.xlsx — the
+# fundraising / greenfield model (NOT the ad-hoc rolling budget, which is not a
+# model-pillar reference). Single-entity; lowercase sheet names (is/cf/bs/kpis).
+# No taxonomi tab; the bare is/cf/bs carry ISO dates in header row 2.
+# Bespoke driver sheets not yet inventoried — refine on the first maintain run.
+model:
+  separator_marker: ">>>"
+  entity_patterns: {}
+  default_entity: consolidated
+  role_overrides: {}
+
+  # No single-year taxonomi tab — read months from the is/cf/bs date header.
+  taxonomi_axis:
+    header_row: 2
+    header_dates: true

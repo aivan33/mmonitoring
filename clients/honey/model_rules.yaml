@@ -1,0 +1,19 @@
+# Pollenity / Honey — model-pillar contract rules (consumed by core/model/contract.py).
+#
+# Single-entity (consolidated; BG & RO geographies are consolidated, not split
+# into model entities here). No dedicated *_taxonomi tab: the budget falls back
+# to the bare IS/CF/BS, which carry real ISO dates in header row 2 and span
+# several years — so the month-axis is read from those dates (header_dates).
+model:
+  separator_marker: ">>>"
+  entity_patterns: {}
+  default_entity: consolidated
+
+  # Client-specific driver (generic HR/KPIs/Inputs/Pro Forma are auto-detected).
+  role_overrides:
+    "COGS inputs": driver
+
+  # No single-year taxonomi tab — read months from the IS/CF/BS date header.
+  taxonomi_axis:
+    header_row: 2
+    header_dates: true
