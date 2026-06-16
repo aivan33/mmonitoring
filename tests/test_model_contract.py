@@ -101,6 +101,44 @@ def test_unknown_sheet_is_other_not_dropped(rules):
     assert info.role == "other"
 
 
+# ---- generic engine/driver detection (learned from cupffee/honey/farada, n=3) ----
+# These recur across clients, so the engine recognises them with no per-client
+# override. A rules config with empty overrides proves it's the engine, not config.
+
+@pytest.fixture
+def generic_rules():
+    return Rules(entity_patterns={"foundation": ["found"]}, default_entity="consolidated")
+
+
+@pytest.mark.parametrize("name", ["Pro Forma", "Inputs", " Inputs", "Inputs_Foundation"])
+def test_generic_engine_sheets(generic_rules, name):
+    assert classify_sheet(name, generic_rules).role == "engine"
+
+
+@pytest.mark.parametrize("name", ["HR", "HR ", "KPIs"])
+def test_generic_driver_sheets(generic_rules, name):
+    assert classify_sheet(name, generic_rules).role == "driver"
+
+
+def test_generic_engine_keeps_entity_marker(generic_rules):
+    # "Inputs_Foundation" is engine AND foundation, with no override.
+    info = classify_sheet("Inputs_Foundation", generic_rules)
+    assert (info.role, info.entity) == ("engine", "foundation")
+
+
+@pytest.mark.parametrize("name", ["COGS inputs", "Inventory of materials", "Pipeline", "GP analysis % "])
+def test_generic_detection_does_not_over_match(generic_rules, name):
+    # Real cupffee/honey sheets that merely *contain* a generic token must not
+    # be mis-promoted to engine/driver.
+    assert classify_sheet(name, generic_rules).role == "other"
+
+
+def test_client_override_beats_generic(generic_rules):
+    # If a client explicitly maps a generic name elsewhere, the override wins.
+    generic_rules.role_overrides = {"HR": "other"}
+    assert classify_sheet("HR", generic_rules).role == "other"
+
+
 # ---- ModelContract grouping + seams ----
 
 @pytest.fixture
@@ -146,6 +184,37 @@ def test_month_axis_maps_columns_to_periods(contract):
 def test_last_populated_month_reads_values(contract):
     # synthetic taxonomi has Jan+Feb filled
     assert contract.last_populated_month("is_cons_taxonomi") == "2026-02"
+
+
+# ---- taxonomi fallback to bare IS/CF/BS (honey has no taxonomi tabs; cupffee IS-only) ----
+
+def _contract_from(tmp_path, rules, names):
+    wb = Workbook()
+    wb.remove(wb.active)
+    for n in names:
+        wb.create_sheet(title=n)
+    path = tmp_path / "m.xlsx"
+    wb.save(path)
+    return read_contract(path, rules)
+
+
+def test_budget_falls_back_to_bare_statements_when_no_taxonomi(tmp_path, rules):
+    # honey-shaped: no *_taxonomi tabs at all -> budget = the plain IS/CF/BS.
+    c = _contract_from(tmp_path, rules, ["IS_platf", "IS", "CF", "BS", "Actuals 2025"])
+    assert {s.name for s in c.budget("consolidated")} == {"IS", "CF", "BS"}
+    assert c.seams()["consolidated"]["budget"] == ["IS", "CF", "BS"]
+
+
+def test_budget_fallback_is_per_statement(tmp_path, rules):
+    # cupffee-shaped: IS taxonomi present, CF/BS missing -> fill only CF/BS.
+    c = _contract_from(tmp_path, rules, ["is_cons_taxonomi", "IS", "CF", "BS"])
+    assert {s.name for s in c.budget("consolidated")} == {"is_cons_taxonomi", "CF", "BS"}
+
+
+def test_budget_prefers_taxonomi_and_ignores_platform_variants(tmp_path, rules):
+    # _platform variants are not the budget; only the bare statement falls back.
+    c = _contract_from(tmp_path, rules, ["CF_platform", "CF"])
+    assert {s.name for s in c.budget("consolidated")} == {"CF"}
 
 
 # ---- validation against the real Almacena workbook ----

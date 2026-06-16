@@ -30,6 +30,27 @@ _ACT_TOKEN_RE = re.compile(r"(^|[_ ])act([_ ]|$)", re.IGNORECASE)
 _STATEMENT_ROLES = {"statement", "taxonomi", "yearly"}
 _ENTITY_DEFAULT_ROLES = {"statement", "taxonomi", "yearly", "actuals"}
 
+# Engine/driver sheets that recur across clients (cupffee/honey/farada/almacena)
+# under the same names — recognised by the engine, not per-client config. Matched
+# on the whitespace-normalised name so "HR ", " Inputs", "Pro  Forma" all hit.
+_GENERIC_ENGINE = {"inputs", "pro forma"}
+_GENERIC_DRIVER = {"hr", "kpis"}
+
+
+def _norm(name: str) -> str:
+    """Collapse internal/edge whitespace and lowercase, for tolerant matching."""
+    return re.sub(r"\s+", " ", name.strip()).lower()
+
+
+def _generic_role(name: str) -> str | None:
+    """Engine/driver role for sheets that recur across clients, else ``None``."""
+    n = _norm(name)
+    if n in _GENERIC_ENGINE or n.startswith(("inputs_", "inputs ")):
+        return "engine"  # incl. entity-suffixed engine inputs, e.g. "Inputs_Foundation"
+    if n in _GENERIC_DRIVER:
+        return "driver"
+    return None
+
 
 @dataclass(frozen=True)
 class TaxonomiAxis:
@@ -89,6 +110,9 @@ def _detect_role(name: str, rules: Rules) -> str:
         return "actuals"
     if _STATEMENT_RE.match(name.strip()):
         return "statement"
+    generic = _generic_role(name)
+    if generic is not None:
+        return generic
     return "other"
 
 
@@ -124,6 +148,24 @@ class ModelContract:
     def taxonomi(self, entity: str | None = None) -> list[SheetInfo]:
         return [s for s in self.sheets if s.role == "taxonomi" and (entity is None or s.entity == entity)]
 
+    def budget(self, entity: str | None = None) -> list[SheetInfo]:
+        """Budget-side sheets: the taxonomi tabs, falling back to the bare
+        ``IS``/``CF``/``BS`` statement sheet for any statement that has no
+        taxonomi tab (some clients keep no taxonomi, or only an IS one). Only the
+        plainly-named statement falls back — ``IS_platform`` variants do not."""
+        taxes = self.taxonomi(entity)
+        covered = {s.statement for s in taxes}
+        fallback = [
+            s
+            for s in self.sheets
+            if s.role == "statement"
+            and (entity is None or s.entity == entity)
+            and s.statement is not None
+            and s.statement not in covered
+            and _norm(s.name) == s.statement.lower()
+        ]
+        return taxes + fallback
+
     def actuals(self, entity: str | None = None) -> list[SheetInfo]:
         return [s for s in self.sheets if s.role == "actuals" and (entity is None or s.entity == entity)]
 
@@ -148,7 +190,7 @@ class ModelContract:
         """Per entity, the budget (taxonomi) and actuals sheet names."""
         return {
             ent: {
-                "budget": [s.name for s in self.taxonomi(ent)],
+                "budget": [s.name for s in self.budget(ent)],
                 "actuals": [s.name for s in self.actuals(ent)],
             }
             for ent in self.entities()
