@@ -46,7 +46,7 @@ clients/*/one_offs/*
 *.sqlite
 *.sqlite3
 
-# 3. Archive of deprecated client trees — gitignore the contents but keep
-#    the dir's README/status note tracked.
-_archive/*/*
-!_archive/*/README.md
+# 3. Archive of deprecated client trees. Deleted 2026-06-16 (the old dashboard
+#    project lives on at github.com/aivan33/almacena-ledger). Stay fully ignored
+#    so a stray re-copy can never stage an embedded repo or local secrets.
+_archive/
