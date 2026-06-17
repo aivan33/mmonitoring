@@ -47,26 +47,31 @@ def norm(row):
 
 
 def main():
-    # Transform direction: every actual appended Source-Data row must be
-    # reproducible from some Categorization invoice. This proves the TRANSFORM
-    # independent of the (manual) selection step. Match on date-independent
-    # fields so the PORSCHE invoice-Date typo (3036) doesn't interfere.
-    from mrr_source_data import load_invoices
-    all_built = [to_source_row(i, FX_RON, FX_USD) for i in load_invoices(APR_CAT)]
+    # Selection (candidate rule) + transform must reproduce April's appended
+    # rows. PASS = every actual appended row is produced by a candidate. Extra
+    # candidates beyond the actual set are the manual-exclusion review items
+    # (e.g. ASTREA renewal) — reported, not a failure.
+    from mrr_source_data import candidates
+    cand = [to_source_row(i, FX_RON, FX_USD)
+            for i in candidates(APR_CAT, 2026, 4)]
     actual = actual_appended()
 
-    def fkey(r):  # date-independent identity
+    def fkey(r):
         def n(x):
             return round(x, 2) if isinstance(x, float) else x
         return (r["currency"], n(r["amount"]), r["client"], n(r["valoare"]),
                 r["period"], r["country"], r["mrr"], n(r["monthly"]), r["produs"])
 
     from collections import Counter
-    cb = Counter(fkey(r) for r in all_built)
-    missing = [r for r in actual if cb[fkey(r)] == 0]
-    print(f"actual appended={len(actual)}  reproduced={len(actual)-len(missing)}/{len(actual)}")
+    cb, ca = Counter(fkey(r) for r in cand), Counter(fkey(r) for r in actual)
+    missing = list((ca - cb).elements())   # actual rows no candidate produced
+    extra = list((cb - ca).elements())     # candidates the colleague excluded
+    print(f"candidates={len(cand)}  actual appended={len(actual)}  "
+          f"reproduced={sum((cb & ca).values())}/{len(actual)}")
     for r in missing:
-        print("  NOT reproduced:", fkey(r))
+        print("  MISSING (actual not reproduced):", r)
+    for r in extra:
+        print("  REVIEW (candidate the colleague excluded):", r)
     print("\nRESULT:", "PASS" if not missing else "FAIL")
 
 

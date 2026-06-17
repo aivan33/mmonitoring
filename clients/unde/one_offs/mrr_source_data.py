@@ -29,18 +29,56 @@ PRODUS = {
 }
 
 
+# Country-code prefix (combined "RO - Employer branding" format) -> Country.
+COUNTRY = {
+    "RO": "Romania", "GR": "Greece", "BG": "Bulgaria", "HU": "Hungary",
+    "MD": "Moldova", "CZ": "Czech Republic", "PL": "Poland", "MENA": "MENA",
+}
+# Header labels we locate by name (the column layout drifts between monthly
+# Categorization versions, so we never hard-code indices).
+_HEAD = {
+    "date": "Date", "billstart": "Billing start date", "currency": "Currency",
+    "amount": "Amount", "commercial": "Commercial name",
+    "category": "Management Report Category", "length": "Contract length",
+    "subtype": "Subscription type", "mrr": "MRR", "start": "Start date",
+    "end": "End date",
+}
+
+
+def _resolve_country_product(cat, next_cell):
+    """Category may be combined ('RO - Employer branding') or already split
+    (country in the cell, product in the next, unlabelled column — April's
+    newer layout)."""
+    if isinstance(cat, str) and " - " in cat:
+        code, prod = cat.split(" - ", 1)
+        return COUNTRY.get(code.strip(), code.strip()), prod.strip()
+    return cat, next_cell  # already-split layout
+
+
 def load_invoices(path: str | Path) -> list[dict]:
     wb = load_workbook(path, read_only=True, data_only=True)
     ws = wb["Income Invoices"]
+    rows = list(ws.iter_rows(min_row=7, values_only=True))
+    header = rows[0]
+    idx = {}
+    for key, label in _HEAD.items():
+        idx[key] = next((i for i, v in enumerate(header) if v == label), None)
+    cat_i = idx["category"]
     out = []
-    for r in ws.iter_rows(min_row=8, values_only=True):
-        if r[0] is None and r[5] is None:
+    for r in rows[1:]:
+        if (idx["date"] is None or r[idx["date"]] is None) and \
+           (idx["amount"] is None or r[idx["amount"]] is None):
             continue
+        cat = r[cat_i] if cat_i is not None else None
+        nxt = r[cat_i + 1] if cat_i is not None and cat_i + 1 < len(r) else None
+        country, product = _resolve_country_product(cat, nxt)
+        g = lambda k: r[idx[k]] if idx[k] is not None else None
         out.append({
-            "date": r[0], "billstart": r[2], "currency": r[4], "amount": r[5],
-            "commercial": r[8], "country": r[9], "product": r[10],
-            "length": r[11], "subtype": r[12], "mrr": r[14],
-            "start": r[15], "end": r[16],
+            "date": g("date"), "billstart": g("billstart"), "currency": g("currency"),
+            "amount": g("amount"), "commercial": g("commercial"),
+            "country": country, "product": product,
+            "length": g("length"), "subtype": g("subtype"), "mrr": g("mrr"),
+            "start": g("start"), "end": g("end"),
         })
     wb.close()
     return out
@@ -56,6 +94,50 @@ def new_invoices(curr_path, year: int, month: int) -> list[dict]:
         d = inv["date"]
         if isinstance(d, dt.datetime) and d.year == year and d.month == month:
             out.append(inv)
+    return out
+
+
+def effective_date(inv: dict):
+    """Invoice date, de-typo'd: an implausible year (e.g. 3036-04-24) is the
+    colleague's typo for the current reporting year — fix the year (taken from
+    the contract Start date), keeping month/day. Both PORSCHE 3036-04-24 rows
+    thus resolve to 2026-04-24, matching the April append."""
+    d = inv["date"]
+    if isinstance(d, dt.datetime) and 2020 <= d.year <= 2030:
+        return d, False
+    s = inv["start"]
+    yr = s.year if isinstance(s, dt.datetime) else 2026
+    if isinstance(d, dt.datetime):
+        try:
+            return dt.datetime(yr, d.month, d.day), True
+        except ValueError:
+            pass
+    if isinstance(s, dt.datetime):
+        return s, True
+    return d, True
+
+
+def candidates(path: str | Path, year: int, month: int) -> list[dict]:
+    """Proposed 'new this month' invoices for human review. Selection is a
+    manual judgment in practice, so this is generous + flagged, not final.
+
+    Each candidate carries: `_date_typo` (raw invoice date was implausible) and
+    `_dup_of_count` (how many earlier invoices share client+product+amount —
+    a possible renewal/duplicate to confirm)."""
+    invs = load_invoices(path)
+    from collections import Counter
+    seen = Counter()
+    out = []
+    for inv in invs:
+        ed, typo = effective_date(inv)
+        sig = (inv["commercial"], inv["product"], inv["amount"])
+        if isinstance(ed, dt.datetime) and ed.year == year and ed.month == month:
+            inv = dict(inv)
+            inv["_eff_date"] = ed
+            inv["_date_typo"] = typo
+            inv["_dup_of_count"] = seen[sig]
+            out.append(inv)
+        seen[sig] += 1
     return out
 
 
