@@ -36,6 +36,40 @@ prior month's workbook. This is workstream B — separate from the taxonomi
 4. **Headless limitation:** openpyxl cannot recalc. Final acceptance requires
    opening in Excel once and confirming **`4 Unique MRR Schedule` row 5 = 0**.
 
+## Decoded architecture (Phase 2.1, 2026-06-17)
+The MRR-calc half is a formula chain, NOT independent sheets:
+
+```
+1.1 Source Data  (append raw invoices; cols: FX-cur, amount, Client, Valoare,
+                  Start, End=EDATE, Period=COUNTIF, Country, MRR, Monthly=D/G,
+                  Produs, + legacy month spread $D/$G ending 2024-10)
+   | per-row formula mirror, PRE-ALLOCATED to row 2563 (must extend for May)
+1.2 Source Data  (Customer, Country[VLOOKUP], MRR, Service, Total=E, Period=F,
+                  MRR=E/F, ARR=G*12, Start, End=EDATE(I,F)) — refs '1.1'!rowN
+   | 3 MRR Data data-row N  ==  1.2 row (N-12)
+3 MRR Data  (row13 hdr; rows14+ ref '1.2 Source Data'; Begin=DATE(start),
+             End=Begin+period; month col = IF(AND(Begin<=monthStart,
+             End>=monthEnd), MRR, 0) — forward run-out to latest End;
+             header r6=monthStart r7=EOMONTH r8=EDATE-chain;
+             totals r10 SUM, r11 SUMIF by MRR flag)
+   |
+4 Unique MRR Schedule  (+1 month col/drag-right; dedup to unique clients;
+                        QC row5 = SUM(col) - '3 MRR Data'!totals  == 0)
+2 Unique ID  (unique client names; refresh)
+```
+
+Engine steps to extend one month (May):
+1. `1.1`: append N invoice rows (values + End/Period/Monthly formulas; the
+   legacy month-spread block can stay as the existing pattern).
+2. `1.2`: extend the mirror formulas past row 2563 to cover the new `1.1` rows.
+3. `3 MRR Data`: add N rows mirroring `1.2`'s new rows; extend month columns to
+   the new latest End (EOMONTH/EDATE/IF pattern); widen SUM/SUMIF total ranges.
+4. `4 Unique MRR Schedule`: add the new month column (drag-right formulas);
+   incorporate any new unique clients; preserve QC row 5.
+5. `2 Unique ID`: add new commercial names.
+Open quirk: April grew `1.1`/`1.2` by +32 but `3 MRR Data` by +29 — confirm why
+3 rows don't get a 3-MRR row (likely credits/Non-MRR) during the engine build.
+
 ## Per-sheet roll mechanics (from the Mar→Apr diff)
 | Sheet | Mechanic |
 |---|---|
