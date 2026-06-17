@@ -64,11 +64,24 @@ Engine steps to extend one month (May):
 2. `1.2`: extend the mirror formulas past row 2563 to cover the new `1.1` rows.
 3. `3 MRR Data`: add N rows mirroring `1.2`'s new rows; extend month columns to
    the new latest End (EOMONTH/EDATE/IF pattern); widen SUM/SUMIF total ranges.
-4. `4 Unique MRR Schedule`: add the new month column (drag-right formulas);
-   incorporate any new unique clients; preserve QC row 5.
+4. `4 Unique MRR Schedule`: add the new month column AND **sync the unique-client
+   list from `3 MRR Data`** — every distinct client (case-insensitive) in MRR
+   Data must have a row, and the new month column's formula must be filled down
+   EVERY populated row. This is the #1 source of QC drift.
 5. `2 Unique ID`: add new commercial names.
-Open quirk: April grew `1.1`/`1.2` by +32 but `3 MRR Data` by +29 — confirm why
-3 rows don't get a 3-MRR row (likely credits/Non-MRR) during the engine build.
+
+QC GUARD (automated, no Excel recalc needed): reproduce row 5 in Python —
+`Σ(Unique month col) − (3 MRR Data month MRR total)` must be 0, computed per
+month AND per client so the build fails loudly naming offenders. Worked example
+(May, manual draft): deviation −824.27 = UNICREDIT SERVICES 640.58 + CYCLON TECH
+82.08 + MATECO 51.60 (no Unique row) + HUDSON EDGE 50.00 (Unique row 527, May
+cell unfilled). All four are new May clients not propagated into the Unique list.
+Row counts are CONSISTENT across all three sheets (count by non-empty key
+column, NOT max_row which includes trailing pre-allocated formula rows). April
+data-row count = 2522 (Mar) → 2554 (Apr) on 1.1 Client / 1.2 Customer / 3 MRR
+Identifier alike. The earlier "+29 on 3 MRR Data" was a max_row artifact.
+(Reconciling exact new-row count with the colleague: file shows 32 new rows
+2524-2555; confirm vs their count of 31 — DB SCHENKER r2528 has a 2027 start.)
 
 ## Per-sheet roll mechanics (from the Mar→Apr diff)
 | Sheet | Mechanic |
