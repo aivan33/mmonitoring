@@ -1,0 +1,34 @@
+client_name: Undelucram
+fiscal_year_start_month: 1
+currency: EUR
+as_of_date: 2026-04-01
+
+use_cases: [report]
+
+entities:
+  - unde
+
+# Files load in the order listed. On overlap, last loaded wins.
+# The management report ("Undelucram - Monthly reports 2026.xlsx") is already
+# in EUR — the RON->EUR ECB conversion described in the colleague onboarding
+# notes belongs to the MRR/Monitoring deck workstream, NOT the taxonomi.
+financial_sources:
+  - { file: raw/taxonomi_act_2026-03.xlsx, year: 2026, entity: unde, currency: EUR }
+
+# Reporting pipeline configuration.
+reporting:
+  mr_source: raw/04/Undelucram - Monthly reports 2026.xlsx
+  # MRR headline is sourced from the MRR schedule's 'Reporting (1)' "MRR" row
+  # (current-month column), not the management report. The schedule restates
+  # prior months, so it is version-specific per period.
+  mrr_source: raw/04/MRR_Schedule_Undelucram April 2026.xlsx
+  mrr_sheet: "Reporting (1)"
+  mapping: mapping.yaml
+  carryover_topics:
+    - MRR trend by market and service
+    - Retention (churn / expansion / contraction)
+    - Runway and operating cash flow
+  variance_thresholds:
+    flag_pct: 20        # |variance %| > flag_pct -> flag for discussion
+    flag_eur: 10000     # OR |variance EUR| > flag_eur
+    reconcile_eur: 5    # MR-vs-taxonomi delta > reconcile_eur -> list in reconcile.md
