@@ -385,10 +385,27 @@ def clean_dead_inputs(wb):
     print("  overhaul: blanked orphaned usage-pricing ladder (Inputs 24-29)")
 
 
+def calibrate_saas_placeholder(wb):
+    """F1 (completion) — the SaaS overage-only line gave a ~98% GM (the one clearly-wrong line).
+    PLACEHOLDER: plug SaaS COGS (ProForma 41 'Usage cloud/compute') to the existing 'SaaS gross
+    margin target' input (J99=80%): COGS = SaaS revenue (row 19) × (1−target). Wires J99 (was
+    orphaned), flagged for real calibration (subscription + realistic cloud cost) later. The
+    measurement-driven J102 input stays in place but unreferenced — noted as superseded."""
+    pf, inp = wb["ProForma"], wb[" Inputs"]
+    for c in range(FIRST, LAST + 1):
+        x = get_column_letter(c)
+        pf.cell(41, c, f"={x}19*(1-' Inputs'!$J$99)")
+    inp.cell(99, 15, "← PLACEHOLDER: drives SaaS COGS (= SaaS rev × (1−this)); "
+                     "calibrate real subscription + cloud cost later")
+    inp.cell(102, 15, "← superseded by the SaaS-GM-target placeholder (J99); kept for calibration")
+    print("  completion F1: SaaS COGS plugged to target GM (J99=80%), flagged")
+
+
 def build():
     wb = openpyxl.load_workbook(SRC)
     fix_capacity_ref(wb)
     clean_dead_inputs(wb)
+    calibrate_saas_placeholder(wb)
     add_cf_inputs(wb)
     strip_proforma_subtotals(wb)
     L_is = is_compute_subtotals(wb)

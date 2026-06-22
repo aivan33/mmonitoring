@@ -106,6 +106,13 @@ def main():
     hwgp = L["Hardware GP (€)"]
     ck(all(iss.cell(hwgp + i, 3).value is None for i in (1, 2, 3)), "per-bundle GP rows dropped")
 
+    print("\n[F1] SaaS COGS plugged to target GM (placeholder, calibrate later)")
+    from openpyxl.utils import get_column_letter
+    ck(all(ft(ws.cell(41, c)) == f"={get_column_letter(c)}19*(1-' Inputs'!$J$99)" for c in range(3, 63)),
+       "SaaS COGS (ProForma 41) = SaaS rev × (1−J99 target GM), all cols")
+    ck(isinstance(inp.cell(99, 15).value, str) and "placeholder" in inp.cell(99, 15).value.lower(),
+       "J99 SaaS-GM-target carries a placeholder note in col O")
+
     print("\n[R3] ProForma rolls; tax-payable & RE reference the IS")
     Lp = labels(ws)
     ck(ft(ws.cell(Lp["Trade receivables (AR)"], 3)).startswith("=((C5+C9+C15)*(1-"), "AR roll present")
