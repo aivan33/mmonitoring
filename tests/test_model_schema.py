@@ -8,10 +8,14 @@ recursive-CTE lineage trace walks a statement line back to its driver-leaf input
 from __future__ import annotations
 
 import sqlite3
+from pathlib import Path
 
 import pytest
 
 from core.schema import create_db, trace_input_leaves
+from core.schema.load import load_model
+
+FARADA = Path("clients/farada/modeling/farada_model_v4.5.xlsx")
 
 EXPECTED_TABLES = {
     "client", "model", "scenario", "period", "section", "grp",
@@ -68,3 +72,22 @@ def test_lineage_trace_walks_statement_line_to_input_leaves():
     assert leaves == {1}
     # the driver line (10) traces to the same input directly
     assert trace_input_leaves(conn, 10) == {1}
+
+
+@pytest.mark.skipif(not FARADA.exists(), reason="Farada model is gitignored / absent")
+def test_load_farada_structure_and_lineage():
+    conn = load_model(":memory:", str(FARADA), "Farada", "Farada 5Y v4.5", horizon=60)
+    c = lambda t: conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
+    # all three pillars represented
+    pillars = {p for (p,) in conn.execute("SELECT DISTINCT pillar FROM section")}
+    assert pillars == {"input", "proforma", "statement"}
+    # structural sanity
+    assert c("input") > 50 and c("input_value") == c("input")
+    assert c("line") > 100 and c("line_formula") > 50 and c("line_dependency") > 100
+    # lineage: the IS Revenue line resolves back to input leaves through the ProForma
+    row = conn.execute(
+        "SELECT l.line_id FROM line l JOIN section s ON l.section_id = s.section_id "
+        "WHERE s.title = 'IS' AND l.label = 'Revenue'"
+    ).fetchone()
+    assert row is not None
+    assert len(trace_input_leaves(conn, row[0])) > 0
