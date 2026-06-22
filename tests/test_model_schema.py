@@ -20,7 +20,7 @@ FARADA = Path("clients/farada/modeling/farada_model_v4.5.xlsx")
 EXPECTED_TABLES = {
     "client", "model", "scenario", "period", "section", "grp",
     "input", "input_value", "line", "line_formula", "line_dependency",
-    "line_value", "kpi",
+    "line_value", "kpi", "headcount",
 }
 
 
@@ -59,9 +59,23 @@ def test_foreign_keys_and_checks_enforced():
     with pytest.raises(sqlite3.IntegrityError):
         conn.execute("INSERT INTO model VALUES (1, 99, 'x', 'EUR', '2026-07-01', 60)")
     conn.execute("INSERT INTO model VALUES (1, 1, 'x', 'EUR', '2026-07-01', 60)")
-    # CHECK violation: section.pillar must be input|proforma|statement
+    # CHECK violation: section.pillar must be input|proforma|statement|driver
     with pytest.raises(sqlite3.IntegrityError):
         conn.execute("INSERT INTO section VALUES (1, 1, 'bogus', 'X', 'X', 1)")
+    conn.execute("INSERT INTO section VALUES (9, 1, 'driver', 'HR', 'HR', 9)")   # driver now allowed
+
+
+def test_headcount_table():
+    conn = create_db(":memory:")
+    conn.execute("INSERT INTO client VALUES (1,'A')")
+    conn.execute("INSERT INTO model VALUES (1,1,'M','EUR','2026-07-01',60)")
+    conn.execute("INSERT INTO headcount VALUES (1,1,'R&D','CTO','Alex','Germany','FTE',"
+                 "'2026-01-01',NULL,8828.71,NULL,'{\"scenario\":\"yes\"}')")
+    row = conn.execute("SELECT type, monthly_cost, attrs FROM headcount").fetchone()
+    assert row == ("R&D", 8828.71, '{"scenario":"yes"}')
+    # FK to model enforced
+    with pytest.raises(sqlite3.IntegrityError):
+        conn.execute("INSERT INTO headcount(headcount_id,model_id,type) VALUES (2,99,'X')")
 
 
 def test_lineage_trace_walks_statement_line_to_input_leaves():

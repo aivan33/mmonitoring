@@ -36,7 +36,7 @@ CREATE TABLE period (
 CREATE TABLE section (
     section_id  INTEGER PRIMARY KEY,
     model_id    INTEGER NOT NULL REFERENCES model(model_id),
-    pillar      TEXT NOT NULL CHECK (pillar IN ('input','proforma','statement')),
+    pillar      TEXT NOT NULL CHECK (pillar IN ('input','proforma','statement','driver')),
     code        TEXT,
     title       TEXT NOT NULL,
     ord         INTEGER NOT NULL
@@ -112,6 +112,25 @@ CREATE TABLE kpi (
     formula     TEXT,
     unit        TEXT
 );
+
+-- ---- HR / headcount (a flexible roster derived from the live Excel HR; Excel keeps the VALUES) --
+-- The 120-cell monthly cost grid is NOT stored (derived); only the roster + dates + escalation link.
+-- `attrs` (JSON) is the deliberate space for ambiguity — scenario toggles / shift / client extras.
+CREATE TABLE headcount (
+    headcount_id        INTEGER PRIMARY KEY,
+    model_id            INTEGER NOT NULL REFERENCES model(model_id),
+    type                TEXT,            -- cost category -> OPEX/COGS bucket (CoS|COGS|S&M|G&A|R&D|…)
+    position            TEXT,
+    name                TEXT,            -- nullable (TBD / [To be hired])
+    entity              TEXT,
+    engagement          TEXT,
+    start_date          TEXT,
+    end_date            TEXT,
+    monthly_cost        REAL,            -- total employer monthly cost (one number)
+    escalation_input_id INTEGER REFERENCES input(input_id),
+    attrs               TEXT             -- JSON: the space for ambiguity
+);
+CREATE INDEX ix_headcount_type ON headcount(model_id, type);
 
 CREATE INDEX ix_dep_line ON line_dependency(line_id);
 CREATE INDEX ix_dep_target ON line_dependency(dep_kind, dep_id);
