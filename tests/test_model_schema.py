@@ -117,8 +117,8 @@ def test_validation_flags_known_issues():
     from core.schema import validate
     conn = load_model(":memory:", str(FARADA), "Farada", "v4.5", horizon=60)
     v = validate(conn)
-    # orphaned assumptions exist (e.g. the unused Line-3 usage-pricing ladder)
-    assert any("meas" in lbl for _, lbl, _ in v["orphan_inputs"])
+    # orphaned assumptions still flagged (the "from HR" payroll placeholders remain)
+    assert v["orphan_inputs"]
     # dead proforma display rows (blended ASP) surface as orphan lines
     assert v["orphan_lines"]
     # the capacity #REF! was repaired by the overhaul — no broken formulas remain

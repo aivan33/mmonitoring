@@ -159,6 +159,10 @@ def main():
     print("\n[oracle] BS balances by construction (synthetic flows → check = 0 every month)")
     ck(_balance_oracle(), "synthetic 3-statement run: BS check = 0 for all test months")
 
+    print("\n[overhaul] dead Line-3 usage-pricing ladder removed")
+    ck(all(inp.cell(r, 3).value is None and inp.cell(r, 12).value is None for r in range(24, 30)),
+       "usage-pricing ladder + header (Inputs 24-29) blanked (was orphaned)")
+
     print("\n[struct] no naked rows; no new #REF!")
     naked = [f"C{r}" for r in (Lp["Trade receivables (AR)"], re, L["EBITDA"])
              if ws.cell(r, 3).value is not None and ws.cell(r, 3).number_format == "General"

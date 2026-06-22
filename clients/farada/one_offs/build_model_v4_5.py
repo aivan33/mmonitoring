@@ -374,9 +374,21 @@ def fix_capacity_ref(wb):
     print("  overhaul: capacity row 78 repaired (no more #REF!)")
 
 
+def clean_dead_inputs(wb):
+    """Blank the orphaned Line-3 usage-pricing ladder (Inputs 24-29 — header + 5 rungs):
+    superseded by the per-bundle overage prices (J45-47); 0 references anywhere. Blank in place
+    (no row-shift); the rows get removed wholesale in the later Inputs re-sequence."""
+    inp = wb[" Inputs"]
+    for r in range(24, 30):
+        for col in (2, 3, 4, 6, 10, 11, 12, 15):
+            inp.cell(r, col).value = None
+    print("  overhaul: blanked orphaned usage-pricing ladder (Inputs 24-29)")
+
+
 def build():
     wb = openpyxl.load_workbook(SRC)
     fix_capacity_ref(wb)
+    clean_dead_inputs(wb)
     add_cf_inputs(wb)
     strip_proforma_subtotals(wb)
     L_is = is_compute_subtotals(wb)
