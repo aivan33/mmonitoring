@@ -191,10 +191,13 @@ def build():
         ws.cell(19, c, f"={L}20+{L}21+{L}22")
         for i, (lbl, rib, spb, incb, ovb) in enumerate(BUNDLES):
             land = landing_term(ri, rib, k)
-            # Hardware = sensors * device_cost * (1 + markup J72)
+            # Hardware = sensors * device_cost * (1 + markup J72).
+            # device_cost = the 6-point component build = Σ driver cells (rows 69-73:
+            # chip+packaging+sensor-test+final-test+ASIC), replacing the removed all-in
+            # inputs J69/J70.  See align_cost_of_sales().
+            unit_cost = f"({L}69+{L}70+{L}71+{L}72+{L}73)"
             hw = (f"={land}*' Inputs'!$J${spb}"
-                  f"*(IF({L}67>=' Inputs'!$J$47,' Inputs'!$J$70,' Inputs'!$J$69)"
-                  f"*(1+' Inputs'!$J$72))")
+                  f"*({unit_cost}*(1+' Inputs'!$J$72))")
             ws.cell(16 + i, c, hw)
             # SaaS recurring = cumulative + new bundles * billable-overage measurements
             rev = (f"{land}*' Inputs'!$J${spb}"
@@ -311,8 +314,145 @@ def build():
         ws.cell(er, c, f"={L}44-{L}{opex_total}")._style = copy(ws.cell(44, c)._style)
         ws.cell(er + 1, c, f"=IF({L}4=0,0,{L}{er}/{L}4)")._style = copy(ws.cell(56, c)._style)
 
+    align_cost_of_sales(ws, inp)
+
     wb.save(DST)
     return refs_16_43, opex
+
+
+# ---------------------------------------------------------------- cost of sales
+# 6-POINT volume cost curve, ported from the live unit-economics file
+# (`farada_unit_economics.xlsx`, sheet "Unit Economics v2").  Replaces the model's
+# 2-stage (now/at-scale) cost + all-in plug.  Format is kept: COST OF SALES inputs +
+# the per-component ProForma cost-driver rows; only values/wiring change.
+#
+# Volume points (annual sensors) and €/sensor per component.  Chip is derived from
+# the file's wafer build (wafer-cost / sensors-per-wafer / yield); the rest are the
+# file's hand-entered values.  Testing is split into Sensor + Final (the extra
+# component the user flagged).  Last point (4M/yr) is where the own-ASIC cost-down
+# lands -> "at-scale" now triggers at 4M, not 1M.
+CURVE_THR = [1, 4000, 10000, 100000, 1000000, 4000000]
+_SPW = 4000
+_WAFER = [4000, 4000, 3735, 3068, 2401, 2000]
+_YIELD = [0.70, 0.70, 0.73, 0.82, 0.90, 0.95]
+CURVE = {
+    "Chip":           [_WAFER[i] / (_SPW * _YIELD[i]) for i in range(6)],
+    "Packaging":      [0.30, 0.30, 0.30, 0.10, 0.10, 0.10],
+    "Sensor testing": [0.50, 0.50, 0.25, 0.10, 0.03, 0.01],
+    "Final testing":  [0.20, 0.20, 0.187, 0.153, 0.12, 0.10],
+    "ASIC / readout": [1.50, 1.50, 1.50, 1.50, 1.50, 0.32],
+}
+# component -> ProForma driver row (v3, after the +12 shift) and its label.
+#   69 Chip, 70 Packaging, 71 Sensor test, 72 Final test, 73 ASIC (unified, all lines).
+DRIVER = {"Chip": 69, "Packaging": 70, "Sensor testing": 71,
+          "Final testing": 72, "ASIC / readout": 73}
+DRIVER_LABEL = {69: "  Chip EUR/sensor", 70: "  Packaging €/sensor",
+                71: "  Sensor testing €/sensor", 72: "  Final testing €/sensor",
+                73: "  ASIC / readout €/sensor (all lines)"}
+# COGS rewires (v3 rows): (cogs_row, sensors_row).  Testing = sensor+final drivers;
+# ASIC = the single unified driver (row 73) for every line.
+COGS_TEST = [(28, 64), (33, 65), (39, 66)]   # L1, L2, L3-HW
+COGS_ASIC = [(29, 64), (34, 65), (40, 66)]   # L1, L2, L3-HW
+GM_TIER_ROWS = range(85, 94)                  # GROSS MARGIN BY TIER (was 73-81)
+# (band threshold, ladder Inputs row) for the GM-by-tier ASP pick, after the rung add.
+ASP_LADDER = [(100, 17), (1000, 18), (10000, 19), (100000, 20),
+              (100001, 21), (1000000, 22), (4000000, 23)]
+
+
+def _pick(vol_cell: str, rows6: list[int]) -> str:
+    """Nested-IF 6-point pick: highest threshold outermost, default = point 0."""
+    expr = f"' Inputs'!$J${rows6[0]}"
+    for i in range(1, 6):
+        expr = f"IF({vol_cell}>=' Inputs'!$F${rows6[i]},' Inputs'!$J${rows6[i]},{expr})"
+    return expr
+
+
+def align_cost_of_sales(ws, inp):
+    # 1) ASP ladder: add the €10 @ 1M rung (was €5) + a new €5 @ 4M rung at blank row 23.
+    inp.cell(22, 3, "Price @ 1,000,000 pc")
+    inp.cell(22, 12, 10.0)
+    for col in (3, 4, 6, 10, 12):
+        inp.cell(23, col)._style = copy(inp.cell(22, col)._style)
+    inp.cell(23, 3, "Price @ 4,000,000 pc")
+    inp.cell(23, 4, "EUR/sensor")
+    inp.cell(23, 6, 4000000)
+    inp.cell(23, 10, "=OFFSET(K23,0,$D$2)")
+    inp.cell(23, 12, 5.0)
+
+    # 2) extend the revenue array-formula ranges to include row 23.
+    for r in (6, 7, 8, 10, 11, 12):
+        for c in range(FIRST, LAST + 1):
+            cell = ws.cell(r, c)
+            v = cell.value
+            t = v.text if isinstance(v, ArrayFormula) else v
+            if not isinstance(t, str):
+                continue
+            t2 = t.replace("$J$16:$J$22", "$J$16:$J$23").replace("$F$16:$F$22", "$F$16:$F$23")
+            cell.value = ArrayFormula(cell.coordinate, t2) if isinstance(v, ArrayFormula) else t2
+
+    # 3) append the 6-point cost curve to Inputs (append-only => no row shift).
+    S_SEC = inp.cell(31, 3)._style          # COST OF SALES section header
+    S_SUB = inp.cell(32, 3)._style          # sub-header (component name)
+    S_C, S_D = inp.cell(16, 3)._style, inp.cell(16, 4)._style   # ladder value-row styles
+    S_F, S_J, S_L = inp.cell(16, 6)._style, inp.cell(16, 10)._style, inp.cell(16, 12)._style
+    r = inp.max_row + 2
+    inp.cell(r, 3, "COST OF SALES — 6-POINT VOLUME CURVE (€/sensor, from unit economics)")._style = copy(S_SEC)
+    r += 1
+    comp_rows: dict[str, list[int]] = {}
+    for name, vals in CURVE.items():
+        inp.cell(r, 3, name)._style = copy(S_SUB)
+        r += 1
+        rows6 = []
+        for i, thr in enumerate(CURVE_THR):
+            inp.cell(r, 3, f"@ {thr:,} /yr")._style = copy(S_C)
+            inp.cell(r, 4, "EUR/sensor")._style = copy(S_D)
+            inp.cell(r, 6, thr)._style = copy(S_F)
+            inp.cell(r, 10, f"=OFFSET(K{r},0,$D$2)")._style = copy(S_J)
+            lc = inp.cell(r, 12, round(vals[i], 4))
+            lc._style = copy(S_L)
+            lc.number_format = "€#,##0.00"
+            rows6.append(r)
+            r += 1
+        comp_rows[name] = rows6
+
+    # 4) blank the superseded inputs (the "remove"): old 2-pt chip/pkg/test/ASIC 33-40
+    #    + all-in block 66-70.  Keep the rows (no shift); leave pointer notes.
+    for br in (34, 35, 36, 37, 38, 39, 40, 67, 68, 69, 70):
+        for col in (2, 3, 4, 6, 10, 11, 12):
+            inp.cell(br, col).value = None
+    inp.cell(33, 3, "→ see 6-POINT VOLUME CURVE below (sensor cost moved 2026-06-22)")
+    for col in (4, 6, 10, 11, 12):
+        inp.cell(33, col).value = None
+    inp.cell(66, 3, "ALL-IN SENSOR COST removed 2026-06-22 — superseded by the 6-point curve")
+
+    # 5) rewire the ProForma cost-driver rows to the 6-point curve, keyed on the
+    #    column's total run-rate (row 67), exactly like the old 2-stage drivers.
+    for name, drow in DRIVER.items():
+        ws.cell(drow, 1, DRIVER_LABEL[drow])
+        rows6 = comp_rows[name]
+        for c in range(FIRST, LAST + 1):
+            L = get_column_letter(c)
+            ws.cell(drow, c, "=" + _pick(f"{L}67", rows6))
+
+    # 6) rewire COGS: Testing = sensor+final drivers; ASIC = unified driver (row 73).
+    for c in range(FIRST, LAST + 1):
+        L = get_column_letter(c)
+        for cog, sens in COGS_TEST:
+            ws.cell(cog, c, f"={L}{sens}*({L}71+{L}72)")
+        for cog, sens in COGS_ASIC:
+            ws.cell(cog, c, f"={L}{sens}*{L}73")
+
+    # 7) GROSS MARGIN BY TIER: ASP picks include the 4M rung; unit cost = 6-pt build
+    #    on the band volume (col C) — preserves the block's "if this tier were the
+    #    whole business" framing (stages on band vol, not aggregate run-rate).
+    for r in GM_TIER_ROWS:
+        cv = f"C{r}"
+        asp = "' Inputs'!$J$16"
+        for thr, jr in ASP_LADDER:
+            asp = f"IF({cv}>={thr},' Inputs'!$J${jr},{asp})"
+        ws.cell(r, 4, "=" + asp)
+        cost = "+".join(f"({_pick(cv, rows6)})" for rows6 in comp_rows.values())
+        ws.cell(r, 5, "=" + cost)
 
 
 if __name__ == "__main__":
