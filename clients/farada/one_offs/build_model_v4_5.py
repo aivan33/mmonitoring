@@ -358,8 +358,25 @@ def build_yearly(wb):
     print("  R6: CF_Y / BS_Y (calendar 2026-2030; CF = SUM flows, BS = Dec snapshot)")
 
 
+# ---------------------------------------------------------------- overhaul
+def fix_capacity_ref(wb):
+    """Repair the pre-existing capacity #REF! — cols BE-BJ carried a broken outer IF branch
+    (a deleted capacity tier). Rewrite the whole row uniformly to the clean 5-tier cascade
+    (Inputs G/J 8-12 = the 'Capacity from Jul-20xx' rows)."""
+    ws = wb["ProForma"]
+    R = 78
+    for c in range(FIRST, LAST + 1):
+        x = get_column_letter(c)
+        ws.cell(R, c, f"=IF({x}$2>=' Inputs'!$G$12,' Inputs'!$J$12,"
+                      f"IF({x}$2>=' Inputs'!$G$11,' Inputs'!$J$11,"
+                      f"IF({x}$2>=' Inputs'!$G$10,' Inputs'!$J$10,"
+                      f"IF({x}$2>=' Inputs'!$G$9,' Inputs'!$J$9,' Inputs'!$J$8))))")
+    print("  overhaul: capacity row 78 repaired (no more #REF!)")
+
+
 def build():
     wb = openpyxl.load_workbook(SRC)
+    fix_capacity_ref(wb)
     add_cf_inputs(wb)
     strip_proforma_subtotals(wb)
     L_is = is_compute_subtotals(wb)

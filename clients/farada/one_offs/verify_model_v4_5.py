@@ -166,7 +166,7 @@ def main():
     ck(iss.cell(L["EBITDA"], 3).number_format != "General", "IS EBITDA styled (not General)")
     refrows = {(sn, c.row) for sn in wb.sheetnames for row in wb[sn].iter_rows() for c in row
                if isinstance(ft(c), str) and "#REF!" in ft(c)}
-    ck(refrows <= {("ProForma", 78)}, f"no new #REF! (got {sorted(refrows)})")
+    ck(not refrows, f"no #REF! anywhere (capacity row repaired) (got {sorted(refrows)})")
     # blanked cells read as 0 (not #REF!), so explicitly assert nothing still pulls a stripped row
     import re
     strip = set(range(44, 56)) | {116, 125, 130, 131, 132}

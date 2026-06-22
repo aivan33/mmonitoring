@@ -121,5 +121,5 @@ def test_validation_flags_known_issues():
     assert any("meas" in lbl for _, lbl, _ in v["orphan_inputs"])
     # dead proforma display rows (blended ASP) surface as orphan lines
     assert v["orphan_lines"]
-    # the pre-existing capacity #REF! is flagged
-    assert any("Capacity" in lbl for _, lbl, _ in v["broken_formulas"])
+    # the capacity #REF! was repaired by the overhaul — no broken formulas remain
+    assert not v["broken_formulas"]
