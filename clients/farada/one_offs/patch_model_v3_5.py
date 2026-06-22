@@ -156,6 +156,68 @@ def add_below_ebitda_and_da(wb) -> None:
           f"(rows {R_SCHED}-{R_CLOSE}); inputs {I_CAPEX}-{I_TAX}")
 
 
+# --- Phase 3: yearly P&L (IS_Y) -------------------------------------------------
+PL_ROWS = list(range(4, 62)) + list(range(85, 134))   # income-statement rows (skip drivers)
+# %-margin rows -> (numerator row, denominator row), recomputed yearly (not summed).
+PCT_MAP = {56: (44, 4), 57: (45, 5), 58: (46, 9), 59: (47, 14), 60: (48, 15), 61: (52, 19),
+           117: (116, 4), 122: (116, 4), 126: (125, 4), 133: (132, 4)}
+FY_LABELS = ["FY1  Jul'26–Jun'27", "FY2  Jul'27–Jun'28", "FY3  Jul'28–Jun'29",
+             "FY4  Jul'29–Jun'30", "FY5  Jul'30–Jun'31"]
+
+
+def add_yearly_pl(wb) -> None:
+    """Yearly P&L `IS_Y`: each flow line = SUM of its 12 monthly ProForma cells per
+    fiscal year (Jul-Jun); margins recomputed from IS_Y's own lines (reference `isy`
+    pattern). Mirrors the ProForma row numbers 1:1 so the recompute refs are trivial."""
+    ws = wb["ProForma"]
+    if "IS_Y" in wb.sheetnames:                       # idempotent
+        del wb["IS_Y"]
+    y = wb.create_sheet("IS_Y", index=wb.sheetnames.index("ProForma") + 1)
+    y.sheet_view.showGridLines = False
+    ycols = [get_column_letter(3 + k) for k in range(5)]    # C..G = FY1..FY5
+
+    # title + year header (styled from ProForma analogues)
+    y["A1"]._style = copy(ws.cell(1, 1)._style)
+    y["A1"] = "Income Statement — Yearly (fiscal years Jul–Jun)"
+    for k, yc in enumerate(ycols):
+        c = y[f"{yc}2"]
+        c._style = copy(ws.cell(2, 3)._style)
+        c.value = FY_LABELS[k]
+        c.number_format = "General"
+    y.freeze_panes = "C3"
+    y.column_dimensions["A"].width = ws.column_dimensions["A"].width or 34
+    for yc in ycols:
+        y.column_dimensions[yc].width = 15
+
+    for r in PL_ROWS:
+        a, cval = ws.cell(r, 1).value, _ft(ws.cell(r, 3))
+        if a is None and cval is None:
+            continue
+        y.cell(r, 1, a)._style = copy(ws.cell(r, 1)._style)
+        if cval is None:                              # section header (band, no data)
+            for k, yc in enumerate(ycols):
+                y[f"{yc}{r}"]._style = copy(ws.cell(r, 3 + k)._style)
+            continue
+        is_pct = "%" in ws.cell(r, 3).number_format
+        for k, yc in enumerate(ycols):
+            cell = y[f"{yc}{r}"]
+            cell._style = copy(ws.cell(r, 3)._style)  # carry money/% format -> no naked rows
+            if is_pct:
+                if r == 121:
+                    cell.value = f"=IF({yc}4=0,0,({yc}116+{yc}120)/{yc}4)"
+                elif r in PCT_MAP:
+                    num, den = PCT_MAP[r]
+                    cell.value = f"=IF({yc}{den}=0,0,{yc}{num}/{yc}{den})"
+                else:
+                    raise ValueError(f"unmapped % row {r} ({a!r})")
+            else:
+                s = get_column_letter(FIRST + 12 * k)
+                e = get_column_letter(FIRST + 12 * k + 11)
+                cell.value = f"=SUM(ProForma!{s}{r}:{e}{r})"
+    print(f"  yearly P&L IS_Y: {len([r for r in PL_ROWS if ws.cell(r,1).value or _ft(ws.cell(r,3))])} "
+          f"rows over 5 fiscal years (C..G)")
+
+
 def patch() -> None:
     if not os.path.exists(BAK):
         shutil.copy2(P, BAK)
@@ -165,6 +227,7 @@ def patch() -> None:
     wb = openpyxl.load_workbook(P)
     add_salary_indexation(wb)
     add_below_ebitda_and_da(wb)
+    add_yearly_pl(wb)
     wb.save(P)
     print(f"Saved {P}")
 

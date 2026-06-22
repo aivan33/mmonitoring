@@ -100,6 +100,22 @@ def main() -> None:
         lbl = ft(inp.cell(row, 3))
         ck(isinstance(lbl, str) and kw in lbl.lower(), f"Inputs r{row} = {kw} input ({lbl!r})")
 
+    print("\n[Phase3] Yearly P&L sheet IS_Y (SUM 12 months / recompute margins)")
+    ck("IS_Y" in wb.sheetnames, "IS_Y sheet exists")
+    if "IS_Y" in wb.sheetnames:
+        y = wb["IS_Y"]
+        ck(ft(y["C4"]) == "=SUM(ProForma!C4:N4)", "FY1 Revenue = SUM(ProForma!C4:N4)")
+        ck(ft(y["D4"]) == "=SUM(ProForma!O4:Z4)", "FY2 Revenue = SUM(ProForma!O4:Z4)")
+        ck(ft(y["G132"]) == "=SUM(ProForma!AY132:BJ132)", "FY5 Net profit = SUM(ProForma!AY132:BJ132)")
+        ck(ft(y["C116"]) == "=SUM(ProForma!C116:N116)", "FY1 EBITDA = SUM monthly")
+        ck(ft(y["C56"]) == "=IF(C4=0,0,C44/C4)", "GM% recomputed from IS_Y's own lines")
+        ck(ft(y["C133"]) == "=IF(C4=0,0,C132/C4)", "Profit margin recomputed (not summed)")
+        ck(ft(y["C121"]) == "=IF(C4=0,0,(C116+C120)/C4)", "EBITDA margin incl. grant recomputed")
+        ck(ft(y["A43"]) == "GROSS PROFIT" and ft(y["A85"]) == "OPERATING EXPENSES", "section headers mirrored")
+        naked_y = [f"{co}{r}" for r in (4, 56, 116, 132) for co in "CDEFG"
+                   if y[f"{co}{r}"].value is not None and y[f"{co}{r}"].number_format == "General"]
+        ck(not naked_y, f"IS_Y has no naked (General-format) data cells (found {naked_y[:5]})")
+
     print("\n[flag] HR subtotal labels (informational, not changed — format is a given):")
     print(f"     HR r39 {hr.cell(39,1).value!r} sums R&D engineers; HR r48 {hr.cell(48,1).value!r} sums G&A people")
     print("     → labels look swapped, but ProForma pulls the correct CONTENT. Flagged for the user.")
