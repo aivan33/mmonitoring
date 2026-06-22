@@ -66,7 +66,9 @@ def _is_note(c: str) -> bool:
 
 
 def load_model(db_path: str, xlsx_path: str, client_name: str, model_name: str,
-               base_ccy: str = "EUR", start_date: str | None = None, horizon: int = 60):
+               base_ccy: str = "EUR", start_date: str | None = None, horizon: int = 60,
+               pillars: dict[str, str] | None = None):
+    pillars = pillars or PILLARS
     conn = create_db(db_path)
     wbf = load_workbook(xlsx_path)
     wbv = load_workbook(xlsx_path, data_only=True)
@@ -83,7 +85,7 @@ def load_model(db_path: str, xlsx_path: str, client_name: str, model_name: str,
         return n[k]
 
     # ---- Pillar 1: inputs ----------------------------------------------
-    isheet = " Inputs"
+    isheet = next((s for s,p in pillars.items() if p=="input"), " Inputs")
     wf, wv = wbf[isheet], wbv[isheet]
     cur_sec = cur_grp = None
     so = go = io = 0
@@ -124,7 +126,7 @@ def load_model(db_path: str, xlsx_path: str, client_name: str, model_name: str,
             conn.execute("INSERT INTO grp VALUES (?,?,?,?,?)", (cur_grp, cur_sec, str(wf.cell(r, 2).value or "")[:8] or None, c, go))
 
     # ---- Pillars 2-3: lines (one section per proforma/statement sheet) --
-    for sheet, pillar in PILLARS.items():
+    for sheet, pillar in pillars.items():
         if pillar == "input" or sheet not in wbf.sheetnames:
             continue
         wf = wbf[sheet]
@@ -132,7 +134,7 @@ def load_model(db_path: str, xlsx_path: str, client_name: str, model_name: str,
         conn.execute("INSERT INTO section VALUES (?,1,?,NULL,?,?)", (sec, pillar, sheet, so))
         lo = 0
         for r in range(1, wf.max_row + 1):
-            a = wf.cell(r, 1).value
+            a = wf.cell(r, 1).value or wf.cell(r, 2).value   # some models label in col B
             if a is None or not str(a).strip():
                 continue
             formula = next((_ft(wf.cell(r, col)) for col in range(2, 8) if _ft(wf.cell(r, col))), None)

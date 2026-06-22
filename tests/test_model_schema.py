@@ -93,6 +93,25 @@ def test_load_farada_structure_and_lineage():
     assert len(trace_input_leaves(conn, row[0])) > 0
 
 
+def test_model_logic_md_renders_from_synthetic():
+    from core.schema.report import model_logic_md
+    conn = create_db(":memory:")
+    _seed(conn)
+    md = model_logic_md(conn)
+    for header in ("# Acme 5Y", "## Structure", "## Pillar 1", "## Model health"):
+        assert header in md
+    # the seed's statement line "Revenue" traces to its input
+    assert "Revenue" in md
+
+
+@pytest.mark.skipif(not FARADA.exists(), reason="Farada model is gitignored / absent")
+def test_farada_report_has_lineage():
+    from core.schema.report import model_logic_md
+    conn = load_model(":memory:", str(FARADA), "Farada", "Farada 5Y v4.5", horizon=60)
+    md = model_logic_md(conn)
+    assert "← " in md and "driver inputs" in md   # lineage resolved for the standardized layout
+
+
 @pytest.mark.skipif(not FARADA.exists(), reason="Farada model is gitignored / absent")
 def test_validation_flags_known_issues():
     from core.schema import validate
