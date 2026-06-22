@@ -80,6 +80,19 @@ def model_logic_md(conn: sqlite3.Connection) -> str:
                    "loader's J/F/G/H assumption; structure loads but input-edges don't connect)*")
     out.append("")
 
+    # HR / headcount (driver) — the standardized roster derived from the live Excel HR
+    hc = _q(conn, "SELECT type, COUNT(*), ROUND(SUM(monthly_cost)) FROM headcount "
+            "GROUP BY type ORDER BY type")
+    if hc:
+        total = sum((cost or 0) for _, _, cost in hc)
+        out += ["## HR / headcount (driver)",
+                f"Roster of {sum(k for _, k, _ in hc)} roles (Excel HR keeps the monthly values; "
+                f"the schema captures the standardized roster). Monthly cost by cost-type:"]
+        for typ, k, cost in hc:
+            out.append(f"- **{typ}**: {k} roles" + (f" · €{cost:,.0f}/mo" if cost else ""))
+        out.append(f"- **Total**: €{total:,.0f}/mo" if total else "")
+        out.append("")
+
     # Validation
     v = validate(conn)
     out += ["## Model health"]

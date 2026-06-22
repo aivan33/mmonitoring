@@ -56,6 +56,23 @@ here** — those live on the statements. Leaves pull `' Inputs'!$J$NN`; drivers 
   statement (`=CF!<cell>`). Row 1 = `Data | Group | Subgroup | <month labels>`. This is what
   `core/model` classifies and what reviews read.
 
+## HR — the headcount roster (a driver sheet)
+A flexible roster, **standardized on top of the existing Excel HR** (which keeps the monthly cost
+*values*; never regenerate it). One row per role; fixed core columns + an extension area for the
+ambiguity:
+- **Core (detected by header):** `Type` (cost category → the OPEX/COGS bucket: CoS|COGS|S&M|G&A|R&D)
+  · `Position` · `Name` (may be `TBD` / `[To be hired]`) · `Entity` · `Engagement` (FTE/contractor)
+  · `Start` · `End` · `Monthly cost`.
+- **Monthly grid** (to the right of the roster): `IF(start ≤ month ≤ end, cost·(1+escalation)^Δyr, 0)`,
+  escalation = the salary-indexation input.
+- **Rollups** per `Type`: headcount (`COUNTIF`) and cost (`SUMIF`); the P&L payroll lines pull these.
+- **Extension area** (extra columns) for client-specific shape — e.g. Cupffee's per-scenario
+  `SC1/SC2/SC3` toggles and `shift`. These are not standardized; in the schema they land in
+  `headcount.attrs` (JSON). Required core = `Type` + dates + `Monthly cost`; everything else optional.
+
+The schema (`core/schema` `headcount` table) is a read-only *compression* of this roster (roster +
+dates + escalation link; the 120-cell grid is derived, not stored).
+
 ## KPIs — ad-hoc per business model (not standardized).
 
 ## Cardinal formatting rules
