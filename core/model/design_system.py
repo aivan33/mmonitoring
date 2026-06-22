@@ -36,9 +36,12 @@ NUMBER_FORMATS = {
     "date": "[$-409]mmm\\-yy",
 }
 
-# scenarios live in columns K(anchor)/L/M/N; D2 selects via OFFSET
+# scenarios live in columns K(anchor)/L/M/N; D2 selects via OFFSET.
+# The three columns are part of the standard layout, but only Realistic (L) is REQUIRED —
+# Optimistic / Pessimistic (M/N) are optional and may stay empty.
 SCENARIOS = ["Realistic", "Optimistic", "Pessimistic"]
 SCENARIO_COLS = ["L", "M", "N"]
+SCENARIO_COLS_REQUIRED = ["L"]
 SELECTOR_CELL = "D2"
 
 # Inputs sheet column grammar: role -> column letter

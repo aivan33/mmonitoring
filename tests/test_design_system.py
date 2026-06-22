@@ -25,6 +25,8 @@ def test_canon_constants():
     assert ds.PALETTE["statement_banner"] == "FFD5EBF4"
     assert ds.SCENARIOS == ["Realistic", "Optimistic", "Pessimistic"]   # cols L/M/N
     assert ds.SCENARIO_COLS == ["L", "M", "N"]
+    # only Realistic (L) is required; Optimistic/Pessimistic (M/N) are optional, may stay empty
+    assert ds.SCENARIO_COLS_REQUIRED == ["L"]
     # plain number formats (not accounting)
     assert ds.NUMBER_FORMATS["int"] == "#,##0" and ds.NUMBER_FORMATS["pct"] == "0.0%"
 

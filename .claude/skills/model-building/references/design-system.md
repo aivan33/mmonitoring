@@ -33,9 +33,10 @@ Per-input: counts→int, rates→pct, money→eur, sub-€ costs→num2.
 Columns: **A** Roman section (`I.`) · **B** sub-number (`1.1`,`3.1.1`, bold) · **C** label (left) ·
 **D** unit · **F** ladder threshold (if any) · **G/H** start/end date · **J** active `=OFFSET(K{r},0,$D$2)`
 (cyan) · **K** anchor (blank) · **L / M / N** scenario value cells = **Realistic / Optimistic /
-Pessimistic** (cream) · **O** notes. The selector lives at **`D2`** (Realistic=1 → L). *Three
-scenario columns are standard* (Farada currently has only L — the overhaul adds M/N). Sections, in
-order (Cupffee skeleton):
+Pessimistic** (cream) · **O** notes. The selector lives at **`D2`** (Realistic=1 → L). The three
+scenario columns are part of the standard layout, but **only Realistic (L) is required** —
+Optimistic / Pessimistic (M/N) are **optional and may stay empty**. Sections, in order (Cupffee
+skeleton):
 **I. FUNDING · II. REVENUE · III. PRODUCTION (yield, cost of sales) · IV. OPERATING EXPENSES ·
 V. OTHER ASSUMPTIONS.** Notes go in **col O**, never inline in the label.
 
