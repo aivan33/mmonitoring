@@ -401,11 +401,41 @@ def calibrate_saas_placeholder(wb):
     print("  completion F1: SaaS COGS plugged to target GM (J99=80%), flagged")
 
 
+def expose_yield(wb):
+    """F2 (completion) — make yield explicit. Chip €/sensor = wafer ÷ sensors-per-wafer ÷ yield.
+    Reuse the Inputs chip rows (62-67) as the WAFER COST assumption (€/wafer, staged on run-rate);
+    add sensors-per-wafer + yield as ProForma calc rows (the engine, empty rows 82-83) and derive
+    chip there (per user: the yield calc belongs in the ProForma). No row-shift; chip values
+    unchanged by construction (4000/(4000·0.70)=1.43 … 2000/(4000·0.95)=0.53)."""
+    inp, pf = wb[" Inputs"], wb["ProForma"]
+    WAFER = [4000, 4000, 3735, 3068, 2401, 2000]
+    inp.cell(61, 3, "Wafer cost (€/wafer)")
+    inp.cell(61, 15, "← chip €/sensor derived in ProForma = wafer ÷ sensors-per-wafer ÷ yield")
+    for i, r in enumerate(range(62, 68)):
+        inp.cell(r, 12, WAFER[i])                       # L = Realistic wafer cost
+    pf.cell(82, 1, "  Sensors per wafer")
+    pf.cell(83, 1, "  Yield (staged by run-rate)")
+    for c in range(FIRST, LAST + 1):
+        x = get_column_letter(c)
+        pf.cell(82, c, 4000)
+        pf.cell(83, c, f"=IF({x}67>=4000000,0.95,IF({x}67>=1000000,0.9,IF({x}67>=100000,0.82,"
+                       f"IF({x}67>=10000,0.73,0.7))))")
+        wafer = (f"IF({x}67>=' Inputs'!$F$67,' Inputs'!$J$67,IF({x}67>=' Inputs'!$F$66,' Inputs'!$J$66,"
+                 f"IF({x}67>=' Inputs'!$F$65,' Inputs'!$J$65,IF({x}67>=' Inputs'!$F$64,' Inputs'!$J$64,"
+                 f"IF({x}67>=' Inputs'!$F$63,' Inputs'!$J$63,' Inputs'!$J$62)))))")
+        pf.cell(69, c, f"=({wafer})/({x}82*{x}83)")
+    for c in range(1, LAST + 1):                         # style the new rows like the chip driver
+        pf.cell(82, c)._style = copy(pf.cell(69, c)._style)
+        pf.cell(83, c)._style = copy(pf.cell(69, c)._style)
+    print("  completion F2: yield exposed — chip = wafer÷spw÷yield (ProForma calc rows)")
+
+
 def build():
     wb = openpyxl.load_workbook(SRC)
     fix_capacity_ref(wb)
     clean_dead_inputs(wb)
     calibrate_saas_placeholder(wb)
+    expose_yield(wb)
     add_cf_inputs(wb)
     strip_proforma_subtotals(wb)
     L_is = is_compute_subtotals(wb)

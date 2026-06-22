@@ -113,6 +113,14 @@ def main():
     ck(isinstance(inp.cell(99, 15).value, str) and "placeholder" in inp.cell(99, 15).value.lower(),
        "J99 SaaS-GM-target carries a placeholder note in col O")
 
+    print("\n[F2] yield explicit — chip derived in ProForma from wafer ÷ spw ÷ yield")
+    ck(isinstance(inp.cell(61, 3).value, str) and "Wafer" in inp.cell(61, 3).value,
+       "Inputs chip block relabeled to Wafer cost")
+    ck(inp.cell(62, 12).value == 4000, "Inputs L62 = wafer cost (€4000/wafer)")
+    ck(isinstance(ws.cell(83, 1).value, str) and "ield" in ws.cell(83, 1).value,
+       "ProForma row 83 = Yield calc row (staged)")
+    ck(ft(ws.cell(69, 3)).endswith("/(C82*C83)"), "Chip €/sensor = wafer cascade ÷ (spw × yield)")
+
     print("\n[R3] ProForma rolls; tax-payable & RE reference the IS")
     Lp = labels(ws)
     ck(ft(ws.cell(Lp["Trade receivables (AR)"], 3)).startswith("=((C5+C9+C15)*(1-"), "AR roll present")
