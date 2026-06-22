@@ -52,6 +52,54 @@ def main() -> None:
                 if isinstance(ft(cell), str) and "#REF!" in ft(cell)}
     ck(ref_rows <= {78}, f"#REF! rows ⊆ {{78}} (got {sorted(ref_rows)})")
 
+    print("\n[Phase2] P&L completed to Net Profit (mirrors reference is)")
+    chain = {
+        "C125": "=C116+C120-C123",                       # EBIT = EBITDA + grant - D&A
+        "C129": "=C127-C128",                            # finance net
+        "C130": "=C125+C129",                            # PBT
+        "C131": "=-MAX(0,C130)*' Inputs'!$J$158",        # tax on positive PBT
+        "C132": "=C130+C131",                            # net profit
+    }
+    for coord, f in chain.items():
+        ck(ft(ws[coord]) == f, f"{coord} = {f}")
+    ck(ft(ws["C133"]) == "=IF(C4=0,0,C132/C4)", "C133 profit margin = NP/Sales")
+
+    print("\n[Phase2] D&A is BUILT from a capex schedule (not a direct input)")
+    ck(ft(ws["C123"]) == "=C124", "D&A total = depreciation sub-line")
+    ck(ft(ws["C124"]) == "=C138", "Depreciation (P&L) ← schedule row 138")
+    ck(ft(ws["C136"]) == "=IF(AND(C2>=' Inputs'!$G$153,C2<=' Inputs'!$H$153),' Inputs'!$J$153,0)",
+       "Capex row gated by date from the capex input")
+    ck(ft(ws["C137"]) == "=' Inputs'!$J$155" and ft(ws["D137"]) == "=C139",
+       "Opening PP&E = opening input then prior closing (rollforward)")
+    ck(ft(ws["C138"]) == "=MIN((C137+C136)/(' Inputs'!$J$154*12),C137+C136)",
+       "Depreciation = straight-line on (opening+capex) over life×12 months")
+    ck(ft(ws["C139"]) == "=C137+C136-C138", "Closing PP&E = opening + capex − depreciation")
+    # depreciation oracle: mockup capex €/mo, life yrs -> month-by-month NBV roll
+    capex = inp.cell(153, 12).value or 0
+    life_m = (inp.cell(154, 12).value or 0) * 12
+    open_nbv = inp.cell(155, 12).value or 0
+    nbv, dep3 = open_nbv, []
+    for _ in range(3):
+        d = min((nbv + capex) / life_m, nbv + capex) if life_m else 0
+        dep3.append(round(d, 2))
+        nbv = nbv + capex - d
+    print(f"     oracle: capex €{capex:,.0f}/mo, life {life_m/12:.0f}y → dep first 3 mo = {dep3}")
+    ck(life_m > 0 and all(d >= 0 for d in dep3), "depreciation schedule yields non-negative dep")
+
+    print("\n[Phase2] no naked rows — added rows are styled (number_format set, not General)")
+    naked = []
+    for r in list(range(120, 134)) + list(range(136, 140)):
+        for coord in (f"C{r}", f"D{r}"):
+            if ws[coord].value is not None and ws[coord].number_format == "General":
+                naked.append(coord)
+    ck(not naked, f"no General-format data cells in the new P&L/schedule rows (found {naked[:5]})")
+
+    print("\n[Phase2] below-EBITDA / D&A inputs present (grouped after OPEX)")
+    for row, kw in ((153, "capex"), (154, "life"), (155, "opening"), (156, "grant"),
+                    (157, "finance"), (158, "tax")):
+        lbl = ft(inp.cell(row, 3))
+        ck(isinstance(lbl, str) and kw in lbl.lower(), f"Inputs r{row} = {kw} input ({lbl!r})")
+
     print("\n[flag] HR subtotal labels (informational, not changed — format is a given):")
     print(f"     HR r39 {hr.cell(39,1).value!r} sums R&D engineers; HR r48 {hr.cell(48,1).value!r} sums G&A people")
     print("     → labels look swapped, but ProForma pulls the correct CONTENT. Flagged for the user.")
