@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from core.schema import create_db, trace_input_leaves
+from core.schema import create_db, trace_input_leaves, validate
 from core.schema.load import load_model
 
 FARADA = Path("clients/farada/modeling/farada_model_v4.5.xlsx")
@@ -92,9 +92,9 @@ def test_lineage_trace_walks_statement_line_to_input_leaves():
 def test_load_farada_structure_and_lineage():
     conn = load_model(":memory:", str(FARADA), "Farada", "Farada 5Y v4.5", horizon=60)
     c = lambda t: conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
-    # all three pillars represented
+    # all three pillars represented (+ driver for HR)
     pillars = {p for (p,) in conn.execute("SELECT DISTINCT pillar FROM section")}
-    assert pillars == {"input", "proforma", "statement"}
+    assert {"input", "proforma", "statement", "driver"} <= pillars
     # structural sanity
     assert c("input") > 50 and c("input_value") == c("input")
     assert c("line") > 100 and c("line_formula") > 50 and c("line_dependency") > 100
@@ -105,6 +105,30 @@ def test_load_farada_structure_and_lineage():
     ).fetchone()
     assert row is not None
     assert len(trace_input_leaves(conn, row[0])) > 0
+
+
+@pytest.mark.skipif(not FARADA.exists(), reason="Farada model gitignored / absent")
+def test_load_hr_populates_headcount_and_fixes_orphan():
+    from core.schema import trace_input_leaves
+    conn = load_model(":memory:", str(FARADA), "Farada", "v4.5", horizon=60)
+    # the standardized roster is populated from the live Excel HR
+    types = {t for (t,) in conn.execute("SELECT DISTINCT type FROM headcount")}
+    assert {"S&M", "R&D", "G&A"} <= types
+    assert conn.execute("SELECT COUNT(*) FROM headcount").fetchone()[0] > 20
+    # each roster row links its salary-indexation escalation input
+    assert conn.execute("SELECT COUNT(*) FROM headcount WHERE escalation_input_id IS NULL").fetchone()[0] == 0
+    # an HR driver section exists
+    assert conn.execute("SELECT COUNT(*) FROM section WHERE pillar='driver'").fetchone()[0] >= 1
+    # loading HR fixes the false-positive: salary indexation is no longer orphaned ...
+    orphans = [lbl.lower() for _, lbl, _ in validate(conn)["orphan_inputs"]]
+    assert not any("salary indexation" in o for o in orphans)
+    # ... and EBITDA now traces through payroll to the salary-indexation input
+    eb = conn.execute("SELECT l.line_id FROM line l JOIN section s ON l.section_id=s.section_id "
+                      "WHERE s.title='IS' AND l.label='EBITDA'").fetchone()[0]
+    leaves = trace_input_leaves(conn, eb)
+    labels = [r[0].lower() for r in conn.execute(
+        f"SELECT label FROM input WHERE input_id IN ({','.join('?'*len(leaves))})", list(leaves))]
+    assert any("salary indexation" in l for l in labels)
 
 
 def test_model_logic_md_renders_from_synthetic():

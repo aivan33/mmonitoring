@@ -15,6 +15,7 @@ Run/import:  from core.schema.load import load_model
 from __future__ import annotations
 
 import datetime as dt
+import json
 
 from openpyxl import load_workbook
 from openpyxl.utils import coordinate_to_tuple
@@ -78,7 +79,7 @@ def load_model(db_path: str, xlsx_path: str, client_name: str, model_name: str,
 
     cell2input: dict[tuple[str, str], int] = {}   # (sheet, COORD J/F/G/H) -> input_id
     row2line: dict[tuple[str, int], int] = {}      # (sheet, row) -> line_id
-    n = {"section": 0, "grp": 0, "input": 0, "line": 0}
+    n = {"section": 0, "grp": 0, "input": 0, "line": 0, "headcount": 0}
 
     def nid(k):
         n[k] += 1
@@ -148,6 +149,11 @@ def load_model(db_path: str, xlsx_path: str, client_name: str, model_name: str,
                 conn.execute("INSERT INTO line_formula VALUES (?,?)", (lid, stored[:480]))
             row2line[(sheet, r)] = lid
 
+    # ---- HR (driver): roster -> headcount + driver lines (Excel keeps the values) ----
+    hr_sheet = next((s for s in wbf.sheetnames if s.strip().lower() == "hr"), None)
+    if hr_sheet:
+        _load_hr(conn, wbf, hr_sheet, cell2input, row2line, nid)
+
     # ---- dependencies (lineage edges) from formula refs ----------------
     edges = set()
     for (sheet, r), lid in row2line.items():
@@ -166,6 +172,74 @@ def load_model(db_path: str, xlsx_path: str, client_name: str, model_name: str,
     conn.executemany("INSERT OR IGNORE INTO line_dependency VALUES (?,?,?)", edges)
     conn.commit()
     return conn
+
+
+def _load_hr(conn, wbf, hr_sheet, cell2input, row2line, nid):
+    """Parse the live Excel HR roster into the `headcount` table (the standardized compression)
+    and emit each HR row as a driver `line` so the ProForma payroll refs (=HR!O16) resolve.
+    HR's formulas live in the MONTH grid (not cols 2-7), so deps are parsed from a grid cell:
+    the salary-indexation input ref makes that input no longer orphaned, and the subtotal SUMIFs
+    link to the employee rows — completing EBITDA→payroll→salary-indexation lineage. Excel keeps
+    the values; the 120-cell grid is not stored. Column layout is detected flexibly by header."""
+    wf = wbf[hr_sheet]
+    hdr = {c: str(wf.cell(1, c).value).strip().lower()
+           for c in range(1, wf.max_column + 1) if wf.cell(1, c).value is not None}
+
+    def colof(*keys):
+        return next((c for c, h in hdr.items() if any(k in h for k in keys)), None)
+
+    cc = {k: colof(*kw) for k, kw in {
+        "dept": ("dept",), "name": ("name", "employee"), "position": ("position",),
+        "entity": ("entity",), "type": ("type",), "engagement": ("engagement", "fte"),
+        "start": ("start",), "end": ("end",), "cost": ("cost",)}.items()}
+    grid0 = next((c for c in range(1, wf.max_column + 1)
+                  if isinstance(wf.cell(1, c).value, (dt.datetime, dt.date))), wf.max_column + 1)
+    roster_cols = {v for v in cc.values() if v}
+
+    sec = nid("section")
+    conn.execute("INSERT INTO section VALUES (?,1,'driver',NULL,?,999)", (sec, hr_sheet.strip()))
+    hr_edges, ord_, hc = set(), 0, 0
+    val = lambda r, key: (wf.cell(r, cc[key]).value if cc[key] else None)
+    for r in range(2, wf.max_row + 1):
+        label = val(r, "name") or val(r, "position") or wf.cell(r, 1).value
+        if label is None or not str(label).strip():
+            continue
+        ord_ += 1
+        lid = nid("line")
+        conn.execute("INSERT INTO line VALUES (?,?,?,?,NULL,?,?)",
+                     (lid, sec, str(label).strip()[:120], "driver", ord_, f"{hr_sheet}!{r}"))
+        row2line[(hr_sheet, r)] = lid
+        # representative grid formula -> dep edges (inputs + same-sheet HR rows)
+        gform = next((_ft(wf.cell(r, c)) for c in range(grid0, min(grid0 + 6, wf.max_column + 1))
+                      if _ft(wf.cell(r, c))), None)
+        esc = None
+        if gform:
+            for ref in parse_refs(gform, hr_sheet).refs:
+                for rs, rco in _cells_of(ref):
+                    if (rs, rco) in cell2input:
+                        hr_edges.add((lid, "input", cell2input[(rs, rco)]))
+                        esc = esc or cell2input[(rs, rco)]
+                    else:
+                        tgt = row2line.get((rs, coordinate_to_tuple(rco)[0]))
+                        if tgt and tgt != lid:
+                            hr_edges.add((lid, "line", tgt))
+        # a headcount entry = a row with a cost Type
+        if val(r, "type"):
+            hc += 1
+            extra = {hdr[c]: wf.cell(r, c).value for c in hdr
+                     if c < grid0 and c not in roster_cols and wf.cell(r, c).value is not None}
+            conn.execute(
+                "INSERT INTO headcount(headcount_id,model_id,type,position,name,entity,engagement,"
+                "start_date,end_date,monthly_cost,escalation_input_id,attrs) VALUES (?,1,?,?,?,?,?,?,?,?,?,?)",
+                (nid("headcount"), str(val(r, "type")),
+                 str(val(r, "position")) if val(r, "position") else None,
+                 str(val(r, "name")) if val(r, "name") else None,
+                 str(val(r, "entity")) if val(r, "entity") else None,
+                 str(val(r, "engagement")) if val(r, "engagement") else None,
+                 _iso(val(r, "start")), _iso(val(r, "end")), _num(val(r, "cost")), esc,
+                 json.dumps({k: str(v)[:40] for k, v in extra.items()}) if extra else None))
+    conn.executemany("INSERT OR IGNORE INTO line_dependency VALUES (?,?,?)", hr_edges)
+    print(f"  HR: {hc} headcount rows, {ord_} driver lines from {hr_sheet!r}")
 
 
 def _cells_of(ref):
