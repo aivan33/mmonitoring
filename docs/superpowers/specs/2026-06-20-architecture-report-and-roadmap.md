@@ -356,6 +356,24 @@ Phase 3
 3. ~~**Phase 0 execution**~~ — **RESOLVED: execute now.**
 4. ~~**Git pacing**~~ — **RESOLVED: spread** the practice reps across R1/R2/R3.
 
+## 8b. Phase 0 status / resume marker (last updated 2026-06-22)
+
+**Checkpoint reached — paused to do Farada model work. Branch `chore/restructure-safety`, tree clean, 379 tests green.**
+
+| Task | Status | Notes |
+|---|---|---|
+| R1 re-baseline untracked work | ✅ done | commits `442af8a` (docs), `374b10e` (unde), `e3f1b70`+`7edda0f` (farada one_offs). Git rep #1 done by user. |
+| R2 delete ghost modules | ✅ done | `core/bronze,cli,config` removed from disk; were untracked so no git footprint; tests green. |
+| R3 scratch convention | ✅ done | `clients/README.md` committed `5867ef9`. |
+| R4 boundary guard test | ⬜ todo | `tests/test_boundaries.py` — assert no pillar imports another pillar; `core/data` imports no pillar. Claude may commit directly. |
+| R5 doc-map + path guard | ⬜ todo | `docs/doc-map.md` + `tests/test_doc_paths.py`. |
+| R6 git workflow guide | ✅ written | `docs/git-workflow.md` committed in `442af8a`. Learning reps #1–#3 done live (status/add/commit, shell line-wrap gotcha, ghost-removal-is-invisible-to-git lesson). Amend rep deferred. |
+| R7 rewrite README + architecture.md | ⬜ todo (Phase 1) | governed by R5 doc-map. |
+
+**To resume Phase 0:** "finish Phase 0 from the resume marker in `docs/superpowers/specs/2026-06-20-architecture-report-and-roadmap.md`" → does R4, R5, then Checkpoint A. R4/R5 are pure-additive test+doc work; Claude commits directly (user's 3 git reps are complete).
+
+**Minor history wart (cosmetic, do not fix):** commits `e3f1b70` and `7edda0f` share an identical message but hold different farada files. Unpushed; rewriting needs interactive rebase — not worth the risk. Left as-is per "know when *not* to rewrite history."
+
 ## 9. Execution mode (2026-06-20)
 
 Agreed working contract for Phase 0:
