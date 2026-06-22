@@ -5,6 +5,12 @@ truth. It either **parses** an existing model (`core/model/` — cells → contr
 formula → flow; see `__init__.py`) or **authors/extends** a client model from typed
 inputs (the per-client builders under `clients/<client>/one_offs/`).
 
+**Two skills sit on this pillar:** `model-building` (greenfield — build/overhaul a model in
+the standardized 3-pillar structure + design system; `.claude/skills/model-building/`) and
+`model-maintenance` (align an existing model to actuals). `core/schema` represents a parsed
+model as a normalized DB (structure + lineage) and powers the build skill's model-logic
+overview + health scan.
+
 ## ⚠️ The format of a model is a GIVEN — never change it without explicit approval
 
 **A client's model format/layout is taken as a given. Do NOT change it unless the user
