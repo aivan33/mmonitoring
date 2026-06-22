@@ -139,7 +139,9 @@ def add_cf_inputs(wb):
     put(I["OB_DEFERRED"], "Opening deferred revenue", "EUR", 0, "€#,##0")
     put(I["OB_DEBT"], "Opening debt", "EUR", 0, "€#,##0")
     put(I["OB_SC"], "Opening share capital", "EUR", 5_000_000, "€#,##0")
-    put(I["OB_RE"], "Opening retained earnings", "EUR", -3_000_000, "€#,##0")
+    # Opening retained earnings is NOT a free input — it's the balancing plug so the opening
+    # balance sheet ties (assets = equity + liabilities). Computed in the RE roll.
+    inp.cell(I["OB_RE"], 3, "Opening retained earnings (= balancing plug)")._style = copy(s_lbl)
 
 
 def add_rolls(wb, L_is):
@@ -175,7 +177,10 @@ def add_rolls(wb, L_is):
             dr = f"IF({x}2={jp('DEBT_DATE')},{jp('DEBT_AMT')},0)"
             return f"={jp('OB_DEBT')}+{dr}" if first else f"={prev}{R['DEBT']}+{dr}"
         if rk == "RE":
-            return f"={jp('OB_RE')}+IS!{x}{np_r}" if first else f"={prev}{R['RE']}+IS!{x}{np_r}"
+            # opening RE = balancing plug = opening assets − opening other-L&E (so BS ties at t0)
+            plug = (f"({jp('OB_CASH')}+{jp('OB_AR')}+' Inputs'!$J$155"
+                    f"-{jp('OB_AP')}-{jp('OB_PAYROLL')}-{jp('OB_DEFERRED')}-{jp('OB_DEBT')}-{jp('OB_SC')})")
+            return f"={plug}+IS!{x}{np_r}" if first else f"={prev}{R['RE']}+IS!{x}{np_r}"
         return None
 
     ws.cell(R["HDR"], 1, LABEL[R["HDR"]])._style = copy(band[1])
@@ -191,12 +196,117 @@ def add_rolls(wb, L_is):
     print(f"  R3: rolls {R['HDR']}-{R['RE']}; tax-payable & RE reference IS (tax r{tax_r}, NP r{np_r})")
 
 
+# ---------------------------------------------------------------- R4 (CF) / R5 (BS)
+def _new_sheet(wb, name, after):
+    if name in wb.sheetnames:
+        del wb[name]
+    s = wb.create_sheet(name, index=wb.sheetnames.index(after) + 1)
+    s.sheet_view.showGridLines = False
+    s.freeze_panes = "C3"
+    return s
+
+
+def build_cf(wb, L_is):
+    iss = wb["IS"]
+    tax_r = L_is["Income tax (expense)"]
+    s = _new_sheet(wb, "CF", "IS_Y")
+    s.column_dimensions["A"].width = iss.column_dimensions["A"].width or 42
+    leaf = {c: iss.cell(5, c)._style for c in range(1, LAST + 1)}
+    tot = {c: iss.cell(4, c)._style for c in range(1, LAST + 1)}
+    s.cell(1, 1, "Cash Flow Statement — Monthly (Direct method, EUR)")._style = copy(iss.cell(1, 1)._style)
+    s.cell(2, 1, "Currency: EUR")._style = copy(iss.cell(2, 1)._style)
+    for c in range(FIRST, LAST + 1):
+        s.cell(2, c, f"=IS!{get_column_letter(c)}2")._style = copy(iss.cell(2, c)._style)
+    PF = "ProForma!"
+    LBL = {4: "Cash received from customers", 5: "Cash paid to suppliers",
+           6: "Payment for personnel and social security", 7: "Corporate and other taxes, net",
+           8: "Bank charges paid", 9: "Movement in deferred revenue",
+           10: "Cash Flow from Operating Activities", 12: "CAPEX", 13: "R&D (capitalised)",
+           14: "Cash Flow from Investing Activities", 16: "Capital Increase",
+           17: "Loan facility financing", 18: "Grants", 19: "Cash Flow from Financing Activities",
+           21: "Excess Cash for the Period", 22: "Beginning Cash Balance",
+           23: "Ending Cash Balance", 24: "% Change in cash"}
+    TOT = {10, 14, 19, 21, 23}
+    for r, lab in LBL.items():
+        s.cell(r, 1, lab)._style = copy((tot if r in TOT else leaf)[1])
+
+    def delta(rollrow, ob, x, p, first):
+        base = (f"' Inputs'!$J${ob}" if ob else "0")
+        return f"({PF}{x}{rollrow}-{base})" if first else f"({PF}{x}{rollrow}-{PF}{p}{rollrow})"
+
+    for c in range(FIRST, LAST + 1):
+        x, p, first = get_column_letter(c), get_column_letter(c - 1), c == FIRST
+        D = lambda rr, ob: delta(rr, ob, x, p, first)
+        f = {
+            4: f"={PF}{x}4-{D(R['AR'], I['OB_AR'])}",
+            5: f"=-({PF}{x}24+{PF}{x}86-({PF}{x}88+{PF}{x}97+{PF}{x}108))+{D(R['AP_TOT'], I['OB_AP'])}",
+            6: f"=-({PF}{x}88+{PF}{x}97+{PF}{x}108)+{D(R['PAYROLL'], I['OB_PAYROLL'])}",
+            7: f"=IS!{x}{tax_r}+{D(R['TAXPAY'], None)}",
+            8: f"=-{PF}{x}128",
+            9: f"={D(R['DEFERRED'], I['OB_DEFERRED'])}",
+            10: f"=SUM({x}4:{x}9)",
+            12: f"=-{PF}{x}136", 13: "0", 14: f"={x}12+{x}13",
+            16: f"={D(R['SC'], I['OB_SC'])}", 17: f"={D(R['DEBT'], I['OB_DEBT'])}",
+            18: f"={PF}{x}120", 19: f"={x}16+{x}17+{x}18",
+            21: f"={x}10+{x}14+{x}19",
+            22: (f"=' Inputs'!$J$175" if first else f"={p}23"),
+            23: f"={x}22+{x}21",
+            24: (f"=IF(' Inputs'!$J$175=0,0,{x}23/' Inputs'!$J$175-1)" if first else f"=IF({p}23=0,0,{x}23/{p}23-1)"),
+        }
+        for r, formula in f.items():
+            cell = s.cell(r, c, formula)
+            cell._style = copy((tot if r in TOT else leaf)[c])
+            if r == 24:
+                cell.number_format = "0.0%"
+    print("  R4: CF (monthly, direct) — operating/investing/financing; cash = plug")
+
+
+def build_bs(wb):
+    iss = wb["IS"]
+    s = _new_sheet(wb, "BS", "CF")
+    s.column_dimensions["A"].width = iss.column_dimensions["A"].width or 42
+    leaf = {c: iss.cell(5, c)._style for c in range(1, LAST + 1)}
+    tot = {c: iss.cell(4, c)._style for c in range(1, LAST + 1)}
+    band = {c: iss.cell(63, c)._style for c in range(1, LAST + 1)}
+    s.cell(1, 1, "Balance Sheet — Monthly (EUR)")._style = copy(iss.cell(1, 1)._style)
+    s.cell(2, 1, "Currency: EUR")._style = copy(iss.cell(2, 1)._style)
+    for c in range(FIRST, LAST + 1):
+        s.cell(2, c, f"=IS!{get_column_letter(c)}2")._style = copy(iss.cell(2, c)._style)
+    PF = "ProForma!"
+    LBL = {4: "ASSETS", 5: "  Intangible fixed assets (R&D)", 6: "  Tangible fixed assets (PP&E)",
+           7: "  Cash & cash equivalents", 8: "  Trade receivable", 9: "TOTAL ASSETS",
+           11: "EQUITY & LIABILITIES", 12: "  Share capital", 13: "  Retained earnings",
+           14: "  Loan facility financing", 15: "  Trade payables",
+           16: "  Personnel & social security payables", 17: "  Deferred revenue",
+           18: "  Tax payables", 19: "TOTAL EQUITY & LIABILITIES", 20: "check (Assets − E&L)"}
+    BANDS, TOT = {4, 11}, {9, 19}
+    for r, lab in LBL.items():
+        st = band if r in BANDS else (tot if r in TOT else leaf)
+        s.cell(r, 1, lab)._style = copy(st[1])
+    for c in range(FIRST, LAST + 1):
+        x = get_column_letter(c)
+        f = {5: "0", 6: f"={PF}{x}139", 7: f"=CF!{x}23", 8: f"={PF}{x}144",
+             9: f"={x}5+{x}6+{x}7+{x}8",
+             12: f"={PF}{x}153", 13: f"={PF}{x}155", 14: f"={PF}{x}154", 15: f"={PF}{x}149",
+             16: f"={PF}{x}150", 17: f"={PF}{x}151", 18: f"={PF}{x}152",
+             19: f"=SUM({x}12:{x}18)", 20: f"={x}9-{x}19"}
+        for r, formula in f.items():
+            st = band if r in BANDS else (tot if r in TOT else leaf)
+            s.cell(r, c, formula)._style = copy(st[c])
+        for r in (4, 11):
+            for cc in range(2, LAST + 1):
+                s.cell(r, cc)._style = copy(band[cc])
+    print("  R5: BS (monthly) — cash = CF ending; check row = Assets − E&L (target 0)")
+
+
 def build():
     wb = openpyxl.load_workbook(SRC)
     add_cf_inputs(wb)
     strip_proforma_subtotals(wb)
     L_is = is_compute_subtotals(wb)
     add_rolls(wb, L_is)
+    build_cf(wb, L_is)
+    build_bs(wb)
     wb.save(DST)
     print(f"Saved {DST}")
 

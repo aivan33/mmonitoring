@@ -28,6 +28,59 @@ def labels(ws):
     return out
 
 
+def _balance_oracle():
+    """Replicate the CF/BS formula logic on synthetic monthly leaves and assert the BS balances
+    (Assets = Equity + Liabilities) every month — independent of the sheet's computed P&L."""
+    rate, DSO, DPO, PAYD, PREPAY, SAASANN, LIFE_M = 0.25, 30, 30, 30, 0.5, 0.0, 60
+    OB_CASH, OB_AR, OB_AP, OB_PAY, OB_DEF, OB_DEBT, OB_SC, OPEN_PPE = 2e6, 0, 0, 0, 0, 0, 5e6, 0
+    H = [100000, 120000, 0, 200000]        # hardware+components revenue
+    S = [10000, 12000, 15000, 18000]       # SaaS revenue
+    COGS = [40000, 48000, 5000, 60000]
+    OPEX = [50000, 50000, 50000, 50000]
+    PAY = [30000, 30000, 30000, 30000]     # payroll (⊂ OPEX)
+    FIN = [1000, 1000, 1000, 1000]
+    GRANT = [0, 0, 50000, 0]
+    CAPEX = [5000, 5000, 5000, 5000]
+    plug_re = OB_CASH + OB_AR + OPEN_PPE - OB_AP - OB_PAY - OB_DEF - OB_DEBT - OB_SC
+
+    ppe_prev, cash_prev = OPEN_PPE, OB_CASH
+    ar_prev, ap_prev, pay_prev, def_prev, taxp_prev, sc_prev, debt_prev, re_prev = (
+        OB_AR, OB_AP, OB_PAY, OB_DEF, 0.0, OB_SC, OB_DEBT, plug_re)
+    for m in range(4):
+        rev = H[m] + S[m]
+        dep = min((ppe_prev + CAPEX[m]) / LIFE_M, ppe_prev + CAPEX[m])   # P&L D&A == schedule dep
+        ppe = ppe_prev + CAPEX[m] - dep
+        ebitda = rev - COGS[m] - OPEX[m]
+        ebit = ebitda + GRANT[m] - dep
+        pbt = ebit - FIN[m]                          # finance income 0
+        tax = -max(0.0, pbt) * rate
+        np = pbt + tax
+        # rolls (closing balances)
+        ar = (H[m] * (1 - PREPAY) + S[m] * (1 - SAASANN)) / 30 * DSO
+        ap = (COGS[m] + (OPEX[m] - PAY[m])) / 30 * DPO
+        pay = PAY[m] / 30 * PAYD
+        deferred = S[m] * SAASANN * 6
+        taxp = 0.0                                   # lag 0
+        sc, debt = OB_SC, OB_DEBT                    # no tranches in test window
+        re = re_prev + np
+        # CF (direct)
+        op = (rev - (ar - ar_prev)) + (-(COGS[m] + OPEX[m] - PAY[m]) + (ap - ap_prev)) \
+            + (-PAY[m] + (pay - pay_prev)) + (tax + (taxp - taxp_prev)) + (-FIN[m]) + (deferred - def_prev)
+        inv = -CAPEX[m]
+        fin = (sc - sc_prev) + (debt - debt_prev) + GRANT[m]
+        excess = op + inv + fin
+        cash = cash_prev + excess
+        # BS
+        assets = 0 + ppe + cash + ar
+        el = sc + re + debt + ap + pay + deferred + taxp
+        if abs(assets - el) > 1e-6:
+            print(f"     month {m}: check = {assets - el:.4f}  (assets {assets:.0f} vs E&L {el:.0f})")
+            return False
+        ppe_prev, cash_prev, ar_prev, ap_prev, pay_prev, def_prev, taxp_prev, sc_prev, debt_prev, re_prev = (
+            ppe, cash, ar, ap, pay, deferred, taxp, sc, debt, re)
+    return True
+
+
 def main():
     wb = openpyxl.load_workbook(P)
     ws, inp, iss = wb["ProForma"], wb[" Inputs"], wb["IS"]
@@ -60,8 +113,10 @@ def main():
     tp = Lp["Tax payable"]
     ck(ft(ws.cell(tp, 3)) == f"=-IS!C{L['Income tax (expense)']}*IF(' Inputs'!$J$167>=1,1,0)", "Tax-payable roll → IS tax")
     re = Lp["Retained earnings"]
-    ck(ft(ws.cell(re, 3)) == f"=' Inputs'!$J$182+IS!C{L['Net profit / (loss) for the period']}", "RE roll → opening + IS net profit")
-    ck(ft(ws.cell(re, 4)) == f"=C{re}+IS!D{L['Net profit / (loss) for the period']}", "RE roll month 2 = prior + IS NP")
+    np = L["Net profit / (loss) for the period"]
+    ck(ft(ws.cell(re, 3)).startswith("=(' Inputs'!$J$175+' Inputs'!$J$176+' Inputs'!$J$155")
+       and ft(ws.cell(re, 3)).endswith(f"+IS!C{np}"), "RE roll t0 = balancing plug + IS net profit")
+    ck(ft(ws.cell(re, 4)) == f"=C{re}+IS!D{np}", "RE roll month 2 = prior + IS NP")
 
     print("\n[inputs] CF groups present")
     Li = labels_col3 = {}
@@ -72,6 +127,24 @@ def main():
     for kw in ("Receivable days (DSO)", "Payable days (DPO)", "Equity round amount",
                "Opening cash", "Opening retained earnings"):
         ck(any(kw in k for k in labels_col3), f"input: {kw}")
+
+    print("\n[R4] CF statement (direct) present + wired to rolls/IS")
+    cf = wb["CF"]
+    Lc = labels(cf)
+    ck(ft(cf.cell(Lc["Cash received from customers"], 3)) == "=ProForma!C4-(ProForma!C144-' Inputs'!$J$176)",
+       "Cash from customers = rev − ΔAR")
+    ck(ft(cf.cell(Lc["Ending Cash Balance"], 3)) == "=C22+C21", "Ending cash = beginning + excess (plug)")
+    ck(ft(cf.cell(Lc["Beginning Cash Balance"], 3)) == "=' Inputs'!$J$175", "Beginning cash (t0) = opening cash input")
+    ck(ft(cf.cell(Lc["Beginning Cash Balance"], 4)) == "=C23", "Beginning cash (t1) = prior ending")
+
+    print("\n[R5] BS present; cash=CF ending; check row = Assets − E&L")
+    bs = wb["BS"]
+    Lb = labels(bs)
+    ck(ft(bs.cell(Lb["Cash & cash equivalents"], 3)) == "=CF!C23", "BS cash = CF ending")
+    ck(ft(bs.cell(Lb["check (Assets − E&L)"], 3)) == "=C9-C19", "check = TOTAL ASSETS − TOTAL E&L")
+
+    print("\n[oracle] BS balances by construction (synthetic flows → check = 0 every month)")
+    ck(_balance_oracle(), "synthetic 3-statement run: BS check = 0 for all test months")
 
     print("\n[struct] no naked rows; no new #REF!")
     naked = [f"C{r}" for r in (Lp["Trade receivables (AR)"], re, L["EBITDA"])
