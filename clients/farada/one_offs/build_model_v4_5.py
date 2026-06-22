@@ -299,6 +299,65 @@ def build_bs(wb):
     print("  R5: BS (monthly) — cash = CF ending; check row = Assets − E&L (target 0)")
 
 
+# ---------------------------------------------------------------- R6 (yearly)
+CAL_YEARS = [("2026", 3, 8), ("2027", 9, 20), ("2028", 21, 32), ("2029", 33, 44), ("2030", 45, 56)]
+
+
+def build_yearly(wb):
+    cf, bs = wb["CF"], wb["BS"]
+    ycols = [get_column_letter(3 + k) for k in range(5)]
+    # --- CF_Y: SUM 12 monthly flows; cash balances = year-open / year-end roll ---
+    y = _new_sheet(wb, "CF_Y", "BS")
+    y.column_dimensions["A"].width = cf.column_dimensions["A"].width or 42
+    y.cell(1, 1, "Cash Flow — Yearly (calendar; 2026 = Jul–Dec)")._style = copy(cf.cell(1, 1)._style)
+    for k, (lbl, _, _) in enumerate(CAL_YEARS):
+        c = y.cell(2, 3 + k, lbl)
+        c._style = copy(cf.cell(2, 3)._style)
+        c.number_format = "General"
+        y.column_dimensions[ycols[k]].width = 14
+    FLOW = {4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 16, 17, 18, 19, 21}
+    for r in range(4, 25):
+        lab = cf.cell(r, 1).value
+        if lab is None:
+            continue
+        y.cell(r, 1, lab)._style = copy(cf.cell(r, 1)._style)
+        for k, (_, c0, c1) in enumerate(CAL_YEARS):
+            yc, f0, f1 = ycols[k], get_column_letter(c0), get_column_letter(c1)
+            cell = y.cell(r, 3 + k)
+            cell._style = copy(cf.cell(r, 3)._style)
+            if r in FLOW:
+                cell.value = f"=SUM(CF!{f0}{r}:{f1}{r})"
+            elif r == 22:
+                cell.value = f"=CF!{f0}22"
+            elif r == 23:
+                cell.value = f"={yc}22+{yc}21"
+            elif r == 24:
+                cell.value = f"=IF({yc}22=0,0,{yc}23/{yc}22-1)"
+                cell.number_format = "0.0%"
+    # --- BS_Y: December period-end snapshot ---
+    yb = _new_sheet(wb, "BS_Y", "CF_Y")
+    yb.column_dimensions["A"].width = bs.column_dimensions["A"].width or 42
+    yb.cell(1, 1, "Balance Sheet — Yearly (calendar year-end; 2026 = Dec)")._style = copy(bs.cell(1, 1)._style)
+    for k, (lbl, _, _) in enumerate(CAL_YEARS):
+        c = yb.cell(2, 3 + k, lbl)
+        c._style = copy(bs.cell(2, 3)._style)
+        c.number_format = "General"
+        yb.column_dimensions[ycols[k]].width = 14
+    BANDS = {4, 11}
+    for r in range(4, 21):
+        lab = bs.cell(r, 1).value
+        if lab is None:
+            continue
+        yb.cell(r, 1, lab)._style = copy(bs.cell(r, 1)._style)
+        for k, (_, _, c1) in enumerate(CAL_YEARS):
+            decL = get_column_letter(c1)
+            cell = yb.cell(r, 3 + k)
+            cell._style = copy(bs.cell(r, 3)._style)
+            if r not in BANDS:
+                cell.value = f"=BS!{decL}{r}"
+    print("  R6: CF_Y / BS_Y (calendar 2026-2030; CF = SUM flows, BS = Dec snapshot)")
+
+
 def build():
     wb = openpyxl.load_workbook(SRC)
     add_cf_inputs(wb)
@@ -307,6 +366,7 @@ def build():
     add_rolls(wb, L_is)
     build_cf(wb, L_is)
     build_bs(wb)
+    build_yearly(wb)
     wb.save(DST)
     print(f"Saved {DST}")
 

@@ -143,6 +143,19 @@ def main():
     ck(ft(bs.cell(Lb["Cash & cash equivalents"], 3)) == "=CF!C23", "BS cash = CF ending")
     ck(ft(bs.cell(Lb["check (Assets − E&L)"], 3)) == "=C9-C19", "check = TOTAL ASSETS − TOTAL E&L")
 
+    print("\n[R6] yearly CF_Y / BS_Y (calendar 2026–2030)")
+    for s in ("CF_Y", "BS_Y"):
+        ck(s in wb.sheetnames, f"sheet {s} present")
+    cfy, bsy = wb["CF_Y"], wb["BS_Y"]
+    Lcy, Lby = labels(cfy), labels(bsy)
+    ck(cfy.cell(2, 3).value == "2026" and cfy.cell(2, 7).value == "2030", "CF_Y years 2026..2030")
+    op = Lcy["Cash Flow from Operating Activities"]
+    ck(ft(cfy.cell(op, 3)) == f"=SUM(CF!C{op}:H{op})", "CF_Y 2026 operating = SUM(CF! Jul–Dec)")
+    ck(ft(cfy.cell(op, 4)) == f"=SUM(CF!I{op}:T{op})", "CF_Y 2027 operating = SUM(CF! Jan–Dec)")
+    chk = Lby["check (Assets − E&L)"]
+    ck(ft(bsy.cell(chk, 3)) == f"=BS!H{chk}", "BS_Y 2026 = BS Dec-2026 snapshot")
+    ck(ft(bsy.cell(chk, 4)) == f"=BS!T{chk}", "BS_Y 2027 = BS Dec-2027 snapshot")
+
     print("\n[oracle] BS balances by construction (synthetic flows → check = 0 every month)")
     ck(_balance_oracle(), "synthetic 3-statement run: BS check = 0 for all test months")
 
