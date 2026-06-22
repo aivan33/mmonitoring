@@ -65,9 +65,11 @@ def main():
     tie_max = 0.0
     inst_total = [0.0] * MONTHS
     ov_mrr = [0.0] * MONTHS
+    bundle_series = {}                       # lbl -> {bundles_cum, inst, mrr} monthly lists
     for lbl, d in per.items():
         qcounts = [ri.cell(d["trow"], RI_FIRST_COL + q).value or 0 for q in range(QUARTERS)]
         new_u = monthly_new(qcounts)
+        bundles_cum = cumsum(new_u)
         inst_sensors = cumsum([n * d["sensors"] for n in new_u])
         # method A (sheet/cohort): accumulate new cohorts' monthly MRR
         mrr_cohort, acc = [], 0.0
@@ -77,12 +79,27 @@ def main():
         # method B (stock): installed sensors * per-sensor rate
         mrr_stock = [inst_sensors[m] * d["ov_per"] / 12 for m in range(MONTHS)]
         tie_max = max(tie_max, max(abs(a - b) for a, b in zip(mrr_cohort, mrr_stock)))
+        bundle_series[lbl] = dict(bundles_cum=bundles_cum, inst=inst_sensors, mrr=mrr_stock)
         for m in range(MONTHS):
             inst_total[m] += inst_sensors[m]
             ov_mrr[m] += mrr_stock[m]
 
     print(f"\n[tie-out] cohort vs stock overage-MRR, max abs diff = {tie_max:.6f}  "
           f"({'TIE ✅' if tie_max < 1e-6 else 'MISMATCH ❌'})")
+
+    # ---- revenue PER YEAR PER BUNDLE (overage-only) -------------------------
+    yrs = [y for y in (2026, 2027, 2028, 2029, 2030)]
+    midx = {y: [m for m in range(MONTHS) if cal_year(m) == y] for y in yrs}
+    print("\nAnnual SaaS revenue PER BUNDLE (overage-only); bundle sold = its #sensors deployed:")
+    for lbl, d in per.items():
+        s = bundle_series[lbl]
+        print(f"\n  Bundle {lbl}  —  {d['sensors']:,.0f} sensors/bundle, overage €{d['ov_per']:.2f}/sensor/yr")
+        print(f"    {'year':6}{'bundles sold (cum)':>20}{'installed sensors':>20}{'SaaS rev €':>16}")
+        for y in yrs:
+            ms = midx[y]
+            last = ms[-1]
+            rev = sum(s["mrr"][m] for m in ms)
+            print(f"    {y:<6}{s['bundles_cum'][last]:>20,.0f}{s['inst'][last]:>20,.0f}{rev:>16,.0f}")
 
     # ---- annual (calendar) overage revenue + implied ARPU -------------------
     print("\nAnnual SaaS (calendar; 2026 = Jul–Dec partial), overage-only (current logic):")
