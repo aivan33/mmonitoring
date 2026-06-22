@@ -39,3 +39,12 @@ SELECT DISTINCT id FROM deps WHERE kind = 'input';
 def trace_input_leaves(conn: sqlite3.Connection, line_id: int) -> set[int]:
     """The set of ``input_id`` a line transitively depends on (recursive-CTE lineage)."""
     return {r[0] for r in conn.execute(_TRACE_INPUTS, (line_id,))}
+
+
+def validate(conn: sqlite3.Connection) -> dict[str, list[tuple]]:
+    """Run the model-health views: orphaned inputs, dead proforma lines, broken refs."""
+    return {
+        "orphan_inputs": conn.execute("SELECT input_id, label, cell FROM v_orphan_input").fetchall(),
+        "orphan_lines": conn.execute("SELECT line_id, label, cell FROM v_orphan_line").fetchall(),
+        "broken_formulas": conn.execute("SELECT line_id, label, cell FROM v_broken_formula").fetchall(),
+    }

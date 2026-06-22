@@ -136,12 +136,14 @@ def load_model(db_path: str, xlsx_path: str, client_name: str, model_name: str,
             if a is None or not str(a).strip():
                 continue
             formula = next((_ft(wf.cell(r, col)) for col in range(2, 8) if _ft(wf.cell(r, col))), None)
+            broken = next((f for col in range(2, 63) for f in [_ft(wf.cell(r, col))] if f and "#REF!" in f), None)
             lo += 1
             lid = nid("line")
             conn.execute("INSERT INTO line VALUES (?,?,?,?,NULL,?,?)",
                          (lid, sec, str(a).strip(), "header" if formula is None else "leaf", lo, f"{sheet}!{r}"))
-            if formula:
-                conn.execute("INSERT INTO line_formula VALUES (?,?)", (lid, formula[:480]))
+            stored = broken or formula                     # prefer a broken-ref formula so it surfaces
+            if stored:
+                conn.execute("INSERT INTO line_formula VALUES (?,?)", (lid, stored[:480]))
             row2line[(sheet, r)] = lid
 
     # ---- dependencies (lineage edges) from formula refs ----------------

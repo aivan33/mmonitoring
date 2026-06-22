@@ -91,3 +91,16 @@ def test_load_farada_structure_and_lineage():
     ).fetchone()
     assert row is not None
     assert len(trace_input_leaves(conn, row[0])) > 0
+
+
+@pytest.mark.skipif(not FARADA.exists(), reason="Farada model is gitignored / absent")
+def test_validation_flags_known_issues():
+    from core.schema import validate
+    conn = load_model(":memory:", str(FARADA), "Farada", "v4.5", horizon=60)
+    v = validate(conn)
+    # orphaned assumptions exist (e.g. the unused Line-3 usage-pricing ladder)
+    assert any("meas" in lbl for _, lbl, _ in v["orphan_inputs"])
+    # dead proforma display rows (blended ASP) surface as orphan lines
+    assert v["orphan_lines"]
+    # the pre-existing capacity #REF! is flagged
+    assert any("Capacity" in lbl for _, lbl, _ in v["broken_formulas"])

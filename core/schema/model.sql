@@ -117,3 +117,26 @@ CREATE INDEX ix_dep_line ON line_dependency(line_id);
 CREATE INDEX ix_dep_target ON line_dependency(dep_kind, dep_id);
 CREATE INDEX ix_line_section ON line(section_id);
 CREATE INDEX ix_input_group ON input(group_id);
+
+-- ---- validation views ----------------------------------------------------
+-- inputs that no line depends on (dead/orphaned assumptions)
+CREATE VIEW v_orphan_input AS
+    SELECT i.input_id, i.label, i.cell
+    FROM input i
+    WHERE i.input_id NOT IN (SELECT dep_id FROM line_dependency WHERE dep_kind = 'input');
+
+-- proforma calc lines that nothing references (dead engine rows)
+CREATE VIEW v_orphan_line AS
+    SELECT l.line_id, l.label, l.cell
+    FROM line l
+    JOIN section s ON l.section_id = s.section_id
+    JOIN line_formula f ON l.line_id = f.line_id
+    WHERE s.pillar = 'proforma'
+      AND l.line_id NOT IN (SELECT dep_id FROM line_dependency WHERE dep_kind = 'line');
+
+-- lines whose formula carries a broken reference
+CREATE VIEW v_broken_formula AS
+    SELECT l.line_id, l.label, l.cell, f.formula
+    FROM line l
+    JOIN line_formula f ON l.line_id = f.line_id
+    WHERE f.formula LIKE '%#REF!%';
