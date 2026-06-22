@@ -1,9 +1,16 @@
 # Model design system
 
-The standardized **formatting** of a client financial model — harvested from the reference budgets
-(Cupffee, Almacena, original Farada) so any new model looks like the house. Calculations are
-client-specific; *this* is fixed. Harvest real style objects from a reference file (`copy.copy`);
-never approximate RGB (it gets rejected). Confirmed values below are the live ones.
+The standardized **formatting** of a client financial model. Calculations are client-specific;
+*this* is fixed. **Source of truth = `core/model/design_system.py`** (importable constants +
+`font()`/`fill()` helpers, verified against the reference files by `tests/test_design_system.py`) —
+this doc is the prose companion.
+
+> **Reconciled canon (2026-06-22).** The three references had *diverged* (Cupffee green active +
+> accounting formats; Almacena Calibri; Farada cyan + plain). The chosen house standard is a
+> **Hybrid**: Farada's palette (cyan active, blue banners, grey bands, cream inputs) + Cupffee's
+> **three scenario columns L/M/N**, with **plain number formats** and **Century Gothic 10pt**.
+> When applying to a workbook, `copy.copy` real style objects from a Farada reference (don't
+> approximate RGB) or build from `design_system.font()/fill()`.
 
 ## Typography
 - **Century Gothic, 10pt** everywhere; **9pt** for the month date-ribbon.
@@ -25,8 +32,10 @@ Per-input: counts→int, rates→pct, money→eur, sub-€ costs→num2.
 ## Pillar 1 — Inputs grammar (one sheet, scenario-switchable)
 Columns: **A** Roman section (`I.`) · **B** sub-number (`1.1`,`3.1.1`, bold) · **C** label (left) ·
 **D** unit · **F** ladder threshold (if any) · **G/H** start/end date · **J** active `=OFFSET(K{r},0,$D$2)`
-(cyan) · **K–N** scenario columns (Realistic/Optimistic/Pessimistic…) · **L** Realistic value (cream) ·
-**O** notes. The selector lives at **`D2`** (Realistic=1). Sections, in order (Cupffee skeleton):
+(cyan) · **K** anchor (blank) · **L / M / N** scenario value cells = **Realistic / Optimistic /
+Pessimistic** (cream) · **O** notes. The selector lives at **`D2`** (Realistic=1 → L). *Three
+scenario columns are standard* (Farada currently has only L — the overhaul adds M/N). Sections, in
+order (Cupffee skeleton):
 **I. FUNDING · II. REVENUE · III. PRODUCTION (yield, cost of sales) · IV. OPERATING EXPENSES ·
 V. OTHER ASSUMPTIONS.** Notes go in **col O**, never inline in the label.
 
