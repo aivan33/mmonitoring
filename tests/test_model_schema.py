@@ -15,7 +15,7 @@ import pytest
 from core.schema import create_db, trace_input_leaves, validate
 from core.schema.load import load_model
 
-FARADA = Path("clients/farada/modeling/farada_model_v4.5.xlsx")
+FARADA = Path("clients/farada/modeling/farada_model_v5.xlsx")
 
 EXPECTED_TABLES = {
     "client", "model", "scenario", "period", "section", "grp",
@@ -90,7 +90,7 @@ def test_lineage_trace_walks_statement_line_to_input_leaves():
 
 @pytest.mark.skipif(not FARADA.exists(), reason="Farada model is gitignored / absent")
 def test_load_farada_structure_and_lineage():
-    conn = load_model(":memory:", str(FARADA), "Farada", "Farada 5Y v4.5", horizon=60)
+    conn = load_model(":memory:", str(FARADA), "Farada", "Farada 5Y v5", horizon=60)
     c = lambda t: conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
     # all three pillars represented (+ driver for HR)
     pillars = {p for (p,) in conn.execute("SELECT DISTINCT pillar FROM section")}
@@ -110,7 +110,7 @@ def test_load_farada_structure_and_lineage():
 @pytest.mark.skipif(not FARADA.exists(), reason="Farada model gitignored / absent")
 def test_load_hr_populates_headcount_and_fixes_orphan():
     from core.schema import trace_input_leaves
-    conn = load_model(":memory:", str(FARADA), "Farada", "v4.5", horizon=60)
+    conn = load_model(":memory:", str(FARADA), "Farada", "v5", horizon=60)
     # the standardized roster is populated from the live Excel HR
     types = {t for (t,) in conn.execute("SELECT DISTINCT type FROM headcount")}
     assert {"S&M", "R&D", "G&A"} <= types
@@ -145,7 +145,7 @@ def test_model_logic_md_renders_from_synthetic():
 @pytest.mark.skipif(not FARADA.exists(), reason="Farada model is gitignored / absent")
 def test_farada_report_has_lineage():
     from core.schema.report import model_logic_md
-    conn = load_model(":memory:", str(FARADA), "Farada", "Farada 5Y v4.5", horizon=60)
+    conn = load_model(":memory:", str(FARADA), "Farada", "Farada 5Y v5", horizon=60)
     md = model_logic_md(conn)
     assert "← " in md and "driver inputs" in md   # lineage resolved for the standardized layout
 
@@ -153,7 +153,7 @@ def test_farada_report_has_lineage():
 @pytest.mark.skipif(not FARADA.exists(), reason="Farada model is gitignored / absent")
 def test_validation_flags_known_issues():
     from core.schema import validate
-    conn = load_model(":memory:", str(FARADA), "Farada", "v4.5", horizon=60)
+    conn = load_model(":memory:", str(FARADA), "Farada", "v5", horizon=60)
     v = validate(conn)
     # orphaned assumptions still flagged (the "from HR" payroll placeholders remain)
     assert v["orphan_inputs"]

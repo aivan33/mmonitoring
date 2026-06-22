@@ -1,17 +1,17 @@
-"""Verify farada_model_v4.5.xlsx — CF re-architecture R1–R3.
+"""Verify farada_model_v5.xlsx — CF re-architecture R1–R3.
 
 R1 ProForma stripped of profitability subtotals; R2 IS computes GP/EBITDA/EBIT/PBT/tax/NP from
 its own leaves; R3 ProForma WC + financing rolls (tax-payable & RE reference the IS). No recalc
 engine → structural + logic checks.
 
-Run:  .venv/bin/python clients/farada/one_offs/verify_model_v4_5.py
+Run:  .venv/bin/python clients/farada/one_offs/verify_model_v5.py
 """
 from __future__ import annotations
 
 import openpyxl
 from openpyxl.worksheet.formula import ArrayFormula
 
-P = "clients/farada/modeling/farada_model_v4.5.xlsx"
+P = "clients/farada/modeling/farada_model_v5.xlsx"
 
 
 def ft(cell):
