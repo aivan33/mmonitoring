@@ -187,6 +187,12 @@ SAAS_ANN=100%. CF/BS flow through the existing direct-method structure.
   - `cloud_cost` €0.0005/meas vs list €0.02–0.03 ⇒ implied SaaS GM ~98% (structure right; value low).
   - `included` = 960 (plan-heavy, ~80% of avg 1200); tier discounts S/M/L = 10/15/20% — all mockups.
 
+### Shipped — v7 (2026-06-23)
+`cloud_cost` calibrated €0.0005 → €0.0016/meas ⇒ worst-bundle SaaS GM 90.5% (S 94.2%), blended ≥90%
+at any mix [D5d-cal]. Promoted v6.5 → v7 (69e9f76): `build_model_v7.py` / `verify_model_v7.py` →
+`farada_model_v7.xlsx`. All gates green; 392 tests. `included`/discounts remain mockups to calibrate
+with the founder.
+
 ## Risks
 | Risk | Mitigation |
 |---|---|
