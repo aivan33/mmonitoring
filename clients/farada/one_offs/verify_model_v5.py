@@ -97,14 +97,19 @@ def main():
     def JREF(label):
         return f"' Inputs'!$J${IJ(label)}"
 
+    Lp = labels(ws)                      # ProForma label → row (robust to the ProForma reflow)
+    PC = lambda label: f"C{Lp[label]}"   # 'C<row>' for an internal ProForma ref
+
     def ck(cond, msg):
         print(f"  {'✅' if cond else '❌'} {msg}")
         if not cond:
             fails.append(msg)
 
-    print("\n[R1] ProForma profitability subtotals stripped")
-    for r in (44, 116, 125, 130, 131, 132):
-        ck(ws.cell(r, 3).value is None and ws.cell(r, 1).value is None, f"ProForma row {r} blank")
+    print("\n[R1] ProForma carries NO profitability subtotals/margins (they live on the IS)")
+    pf_labels = {str(ws.cell(r, 1).value).strip() for r in range(1, ws.max_row + 1)
+                 if isinstance(ws.cell(r, 1).value, str)}
+    for banned in ("GROSS PROFIT", "EBITDA", "EBIT", "Net profit"):
+        ck(not any(banned in lbl for lbl in pf_labels), f"no '{banned}' row on the ProForma")
 
     print("\n[R2] IS computes subtotals from its own leaves (not ProForma pulls)")
     ck(ft(iss.cell(L["Gross profit TOTAL (€)"], 3)) == f"=C{L['Revenue']}-C{L['COGS TOTAL']}", "GP = Rev − COGS")
@@ -119,22 +124,27 @@ def main():
     print("\n[F1] SaaS COGS plugged to target GM (placeholder, calibrate later)")
     from openpyxl.utils import get_column_letter
     saas_gm = IJ("SaaS gross margin target")
-    ck(all(ft(ws.cell(41, c)) == f"={get_column_letter(c)}19*(1-' Inputs'!$J${saas_gm})" for c in range(3, 63)),
-       "SaaS COGS (ProForma 41) = SaaS rev × (1−SaaS-GM-target), all cols")
+    saas_cogs, saas_rev = Lp["Usage (cloud / compute)"], Lp["SaaS (overage, recurring)"]
+    ck(all(ft(ws.cell(saas_cogs, c)) == f"={get_column_letter(c)}{saas_rev}*(1-' Inputs'!$J${saas_gm})"
+           for c in range(3, 63)), "SaaS COGS = SaaS rev × (1−SaaS-GM-target), all cols")
     ck(isinstance(inp.cell(saas_gm, 15).value, str) and "placeholder" in inp.cell(saas_gm, 15).value.lower(),
        "SaaS-GM-target carries a placeholder note in col O")
 
     print("\n[F2] yield explicit — chip derived in ProForma from wafer ÷ spw ÷ yield")
     ck(any(isinstance(inp.cell(r, 3).value, str) and "wafer cost" in inp.cell(r, 3).value.lower()
            for r in range(1, inp.max_row + 1)), "Inputs has a Wafer cost (€/wafer) block")
-    ck(isinstance(ws.cell(83, 1).value, str) and "ield" in ws.cell(83, 1).value,
-       "ProForma row 83 = Yield calc row (staged)")
-    ck(ft(ws.cell(69, 3)).endswith("/(C82*C83)"), "Chip €/sensor = wafer cascade ÷ (spw × yield)")
+    ck("Yield (staged by run-rate)" in Lp, "ProForma has a Yield calc row (staged)")
+    spw, yld = Lp["Sensors per wafer"], Lp["Yield (staged by run-rate)"]
+    ck(ft(ws.cell(Lp["Chip EUR/sensor"], 3)).endswith(f"/(C{spw}*C{yld})"),
+       "Chip €/sensor = wafer cascade ÷ (spw × yield)")
 
     print("\n[R3] ProForma rolls; tax-payable & RE reference the IS")
-    Lp = labels(ws)
-    ck(ft(ws.cell(Lp["Trade receivables (AR)"], 3)).startswith("=((C5+C9+C15)*(1-"), "AR roll present")
-    ck(ft(ws.cell(Lp["Trade payables (total)"], 3)).startswith("=C145+C146+C147+C148"), "AP total = Σ buckets")
+    ck(ft(ws.cell(Lp["Trade receivables (AR)"], 3)).startswith(
+        f"=(({PC('Components #1 - Low Volume')}+{PC('Components #2 - High Volume')}+"
+        f"{PC('Hardware (device, cost + markup)')})*(1-"), "AR roll present")
+    ck(ft(ws.cell(Lp["Trade payables (total)"], 3)) ==
+       f"={PC('Trade payables — COGS')}+{PC('Trade payables — S&M')}+"
+       f"{PC('Trade payables — G&A')}+{PC('Trade payables — R&D')}", "AP total = Σ buckets")
     tp = Lp["Tax payable"]
     ck(ft(ws.cell(tp, 3)) == f"=-IS!C{L['Income tax (expense)']}*IF({JREF('Tax payment lag')}>=1,1,0)", "Tax-payable roll → IS tax")
     re = Lp["Retained earnings"]
@@ -158,7 +168,8 @@ def main():
     print("\n[R4] CF statement (direct) present + wired to rolls/IS")
     cf = wb["CF"]
     Lc = labels(cf)
-    ck(ft(cf.cell(Lc["Cash received from customers"], 3)) == f"=ProForma!C4-(ProForma!C144-{JREF('Opening AR')})",
+    ck(ft(cf.cell(Lc["Cash received from customers"], 3)) ==
+       f"=ProForma!{PC('Revenue')}-(ProForma!{PC('Trade receivables (AR)')}-{JREF('Opening AR')})",
        "Cash from customers = rev − ΔAR")
     ck(ft(cf.cell(Lc["Ending Cash Balance"], 3)) == "=C22+C21", "Ending cash = beginning + excess (plug)")
     ck(ft(cf.cell(Lc["Beginning Cash Balance"], 3)) == f"={JREF('Opening cash')}", "Beginning cash (t0) = opening cash input")
@@ -198,17 +209,8 @@ def main():
     refrows = {(sn, c.row) for sn in wb.sheetnames for row in wb[sn].iter_rows() for c in row
                if isinstance(ft(c), str) and "#REF!" in ft(c)}
     ck(not refrows, f"no #REF! anywhere (capacity row repaired) (got {sorted(refrows)})")
-    # blanked cells read as 0 (not #REF!), so explicitly assert nothing still pulls a stripped row
-    import re
-    strip = set(range(44, 56)) | {116, 125, 130, 131, 132}
-    dangling = []
-    for sn in wb.sheetnames:
-        for row in wb[sn].iter_rows():
-            for cell in row:
-                t = ft(cell)
-                if isinstance(t, str) and any(int(m) in strip for m in re.findall(r"ProForma!\$?[A-Z]{1,2}\$?(\d+)", t)):
-                    dangling.append(f"{sn}!{cell.coordinate}")
-    ck(not dangling, f"no cell still references a stripped ProForma row (found {dangling[:5]})")
+    # (the old 'no ref to a stripped ProForma row' check is obsolete — the reflow DROPS those rows
+    #  and reflow_proforma's gate already asserts no formula references a dropped row.)
 
     print()
     if fails:

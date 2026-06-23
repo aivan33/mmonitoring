@@ -449,6 +449,9 @@ def build():
     old2new, label_at, _ = rf.reflow(wb)
     rf._gate(wb, old2new, label_at, referenced)
     rf.remap_refs(wb, old2new)
+    # re-sequence the ProForma engine into the skill-outline order (drivers first) + context-aware remap
+    import reflow_proforma as rfp
+    rfp.reflow(wb)
     wb.save(DST)
     print(f"Saved {DST}")
 
