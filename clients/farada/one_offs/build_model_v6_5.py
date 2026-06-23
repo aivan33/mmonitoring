@@ -489,6 +489,7 @@ def build():
     rfp.reflow(wb)
     rfp.add_measurement_children(wb)   # split Line-3 measurements into Included + Overage
     rfp.add_subscription_lines(wb)     # D5b: Subscription (recurring) revenue + billings memo
+    rfp.cloud_cogs_measurement_driven(wb)  # D5d: cloud COGS = measurements × cloud_cost (retire GM plug)
     rfp.fix_run_rate(wb)               # D1: LTM trailing-12 run-rate (was a frozen constant)
     rfp.add_proforma_sections(wb)      # skill-outline lower sections (BS rolls + WC/CF/Tax/Funding)
     rfp.style_subtotals(wb)            # bold the ProForma sum/subtotal lines (readability)

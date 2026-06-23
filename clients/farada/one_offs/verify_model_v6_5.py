@@ -135,14 +135,15 @@ def main():
     hwgp = L["Hardware GP (€)"]
     ck(all(iss.cell(hwgp + i, 3).value is None for i in (1, 2, 3)), "per-bundle GP rows dropped")
 
-    print("\n[F1] SaaS COGS plugged to target GM (placeholder, calibrate later)")
+    print("\n[D5d] SaaS/cloud COGS is measurement-driven (the 80% GM plug is gone)")
     from openpyxl.utils import get_column_letter
     saas_gm = IJ("SaaS gross margin target")
-    saas_cogs, saas_rev = Lp["Usage (cloud / compute)"], Lp["SaaS (overage, recurring)"]
-    ck(all(ft(ws.cell(saas_cogs, c)) == f"={get_column_letter(c)}{saas_rev}*(1-' Inputs'!$J${saas_gm})"
-           for c in range(3, 63)), "SaaS COGS = SaaS rev × (1−SaaS-GM-target), all cols")
-    ck(isinstance(inp.cell(saas_gm, 15).value, str) and "placeholder" in inp.cell(saas_gm, 15).value.lower(),
-       "SaaS-GM-target carries a placeholder note in col O")
+    cloud = IJ("Cloud / compute per measurement")
+    saas_cogs, meas = Lp["Usage (cloud / compute)"], Lp["Measurements Line 3 (monthly)"]
+    ck(all(ft(ws.cell(saas_cogs, c)) == f"={get_column_letter(c)}{meas}*' Inputs'!$J${cloud}"
+           for c in range(3, 63)), "Cloud COGS = total measurements × cloud_cost(J), all cols")
+    ck(not any(f"$J${saas_gm}" in (ft(ws.cell(saas_cogs, c)) or "") for c in range(3, 63)),
+       "Cloud COGS no longer references the SaaS-GM-target plug")
 
     print("\n[F2] yield explicit — chip derived in ProForma from wafer ÷ spw ÷ yield")
     ck(any(isinstance(inp.cell(r, 3).value, str) and "wafer cost" in inp.cell(r, 3).value.lower()

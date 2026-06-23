@@ -324,3 +324,22 @@ def add_subscription_lines(wb, FIRST=3, LAST=62):
         pf.cell(BILL, c, f"={bill}")._style = sv[c]
         pf.cell(saas, c, f"={x}{hw}+{x}{SUB}+{x}{OVER}")._style = pf.cell(saas, c)._style
     print(f"  D5b: subscription block (rev {SUB}, children {S_S}-{S_L}, billings {BILL}); SaaS#3 = HW+Sub+Overage")
+
+
+def cloud_cogs_measurement_driven(wb, FIRST=3, LAST=62):
+    """D5d — replace the SaaS-COGS gross-margin plug (overage × (1−GM-target)) with a real
+    measurement-driven cost: cloud COGS = total Line-3 measurements × cloud_cost/measurement. The
+    measurements total already equals installed_base × avg/12 (D4), so this = installed × avg × cloud/12.
+    GM becomes an OUTPUT (subscription + overage − cloud), not a plug. Supersedes the placeholder."""
+    pf, inp = wb[SHEET], wb[" Inputs"]
+    L = {pf.cell(r, 1).value.strip(): r for r in range(1, pf.max_row + 1)
+         if isinstance(pf.cell(r, 1).value, str) and pf.cell(r, 1).value.strip()}
+    usage, meas = L["Usage (cloud / compute)"], L["Measurements Line 3 (monthly)"]
+    inrow = lambda pfx: next(r for r in range(1, inp.max_row + 1) if isinstance(inp.cell(r, 3).value, str)
+                             and inp.cell(r, 3).value.strip().startswith(pfx))
+    cloud, gm = inrow("Cloud / compute per measurement"), inrow("SaaS gross margin target")
+    for c in range(FIRST, LAST + 1):
+        pf.cell(usage, c, f"={get_column_letter(c)}{meas}*' Inputs'!$J${cloud}")
+    inp.cell(cloud, 15, "← drives SaaS/cloud COGS = total measurements × this (SaaS GM is an output)")
+    inp.cell(gm, 15, "← SUPERSEDED by measurement-driven cloud COGS (D5d); kept for reference")
+    print(f"  D5d: cloud COGS = measurements(row {meas}) × cloud_cost(J{cloud}); 80% GM plug retired")
