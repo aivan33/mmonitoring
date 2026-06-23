@@ -138,6 +138,13 @@ def main():
     ck(ft(ws.cell(Lp["Chip EUR/sensor"], 3)).endswith(f"/(C{spw}*C{yld})"),
        "Chip €/sensor = wafer cascade ÷ (spw × yield)")
 
+    print("\n[F-meas] Line-3 measurements split into Included + Overage children")
+    mr = Lp["Measurements Line 3 (monthly)"]
+    kids = [str(ws.cell(mr + i, 1).value or "") for i in (1, 2)]
+    ck(any("Included" in k for k in kids), "measurements has an Included (subscription) child")
+    ck(any("Overage" in k for k in kids), "measurements has an Overage (beyond subscription) child")
+    ck(ft(ws.cell(mr, 3)) == f"=C{mr + 1}+C{mr + 2}", "measurements total = Included + Overage")
+
     print("\n[R3] ProForma rolls; tax-payable & RE reference the IS")
     ck(ft(ws.cell(Lp["Trade receivables (AR)"], 3)).startswith(
         f"=(({PC('Components #1 - Low Volume')}+{PC('Components #2 - High Volume')}+"

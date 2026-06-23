@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import re
 
+from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.formula import ArrayFormula
 
 SHEET = "ProForma"
@@ -138,3 +139,47 @@ def reflow(wb):
 def _ft_snap(snap, row):
     v = snap[row][2][0]  # col C value
     return v.text if isinstance(v, ArrayFormula) else v
+
+
+def add_measurement_children(wb, FIRST=3, LAST=62):
+    """Split 'Measurements Line 3 (monthly)' into two children — Included (subscription) and Overage
+    (beyond subscription) — keeping the total (= their sum). Each column's total has one $J$71 (avg
+    meas/sensor/yr) per bundle S/M/L; the Included child swaps each for the bundle's included-meas
+    input (J58/59/60), the Overage child for MAX(0, J71 − included). Inserts 2 rows + shifts refs."""
+    pf = wb[SHEET]
+    R = next(r for r in range(1, pf.max_row + 1)
+             if isinstance(pf.cell(r, 1).value, str) and "Measurements Line 3" in pf.cell(r, 1).value)
+    totals = {c: _ft(pf.cell(R, c)) for c in range(FIRST, LAST + 1)}
+    lbl_st = pf.cell(R, 1)._style
+    val_st = {c: pf.cell(R, c)._style for c in range(FIRST, LAST + 1)}
+
+    pf.insert_rows(R + 1, 2)
+    o2n = {r: (r if r <= R else r + 2) for r in range(1, pf.max_row + 3)}
+    for row in pf.iter_rows():
+        for cell in row:
+            t = _ft(cell)
+            if isinstance(t, str) and t.startswith("="):
+                cell.value = _remap_internal(t, o2n)
+    for sn in STMTS:
+        for row in wb[sn].iter_rows():
+            for cell in row:
+                t = _ft(cell)
+                if isinstance(t, str) and "ProForma!" in t:
+                    cell.value = _remap_pfrefs(t, o2n)
+
+    def nth_sub(f, repls):
+        it = iter(repls)
+        return re.sub(r"' Inputs'!\$J\$71", lambda m: next(it), f)
+
+    INCL = ["' Inputs'!$J$58", "' Inputs'!$J$59", "' Inputs'!$J$60"]
+    OVER = ["MAX(0,' Inputs'!$J$71-' Inputs'!$J$58)",
+            "MAX(0,' Inputs'!$J$71-' Inputs'!$J$59)",
+            "MAX(0,' Inputs'!$J$71-' Inputs'!$J$60)"]
+    pf.cell(R + 1, 1, "    Included (subscription)")._style = lbl_st
+    pf.cell(R + 2, 1, "    Overage (beyond subscription)")._style = lbl_st
+    for c in range(FIRST, LAST + 1):
+        x = get_column_letter(c)
+        pf.cell(R + 1, c, nth_sub(totals[c], INCL))._style = val_st[c]
+        pf.cell(R + 2, c, nth_sub(totals[c], OVER))._style = val_st[c]
+        pf.cell(R, c, f"={x}{R + 1}+{x}{R + 2}")._style = val_st[c]   # total = Included + Overage
+    print(f"  measurements: added Included + Overage children under row {R}")
