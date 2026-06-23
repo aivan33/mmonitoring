@@ -79,6 +79,17 @@ IS (tax, NP)  ─────────────┘
 ### Checkpoint — after CB2 (the core ask) and again after CB5
 ProForma is the CF engine; the CF statement is pure output; model still balances.
 
+### ✅ CB1–CB4 SHIPPED (2026-06-23) — review checkpoint
+- CB1/CB2 (c480b19): CF derivation + cash roll cloned into the ProForma CASH FLOW section (Δ-offset
+  ref translation); CF statement is now 100% bare `=ProForma!` refs; BS cash → ProForma cash roll.
+- CB3 (9269986): WC DRIVERS & RATIOS (DSO/DPO + current/quick/cash) computed in the ProForma; BS pulls.
+- CB4 (681d8ee): TAXATION + FUNDING sections populated (thin refs to IS tax / rolls / financing).
+- ProForma now carries the full skill-outline engine: BALANCE SHEET rolls (124) · WC DRIVERS & RATIOS
+  (138) · CASH FLOW (145) · TAXATION (179) · FUNDING (183). Statements thin.
+- Gates: balance oracle BS check=0 · schema broken-ref=0 · no `#REF!` · 392 pytest · CF_Y/BS_Y intact.
+- **Relocation, not redesign** → values identical to pre-CB v7 by construction. CB5 (regenerate
+  `model_logic.md`) + v8 promotion pending user review.
+
 ## Risks
 | Risk | Impact | Mitigation |
 |---|---|---|
