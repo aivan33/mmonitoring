@@ -58,6 +58,7 @@ LAYOUT = [
     S("2.6", "Line 3 — plan tier discount (off list price, %)"),
     *NEW(("Bundle S", "%"), ("Bundle M", "%"), ("Bundle L", "%")), B,
     S("2.7", "Pricing parameters"), *K(33, 98, 99, 106), B,
+    S("2.8", "Overage ramp"), *NEW(("Overage ramp delay (months)", "months")), B,
 
     H("III.", "PRODUCTION"), B,
     S("3.1", "Capacity ceiling (sensors / yr)"), *K(8, 9, 10, 11, 12), B,

@@ -179,7 +179,12 @@ def set_d5_inputs(wb):
     cloud = next(r for r in range(1, inp.max_row + 1) if isinstance(inp.cell(r, 3).value, str)
                  and inp.cell(r, 3).value.strip().startswith("Cloud / compute per measurement"))
     inp.cell(cloud, 12, 0.0016)
-    print(f"  D5a: tier discounts (10/15/20%) + plan-heavy included (960) + cloud_cost 0.0016 set")
+    # OD1 — overage ramp delay: clients don't overuse credits until `delay` months after onboarding
+    delay = next(r for r in range(1, inp.max_row + 1) if isinstance(inp.cell(r, 3).value, str)
+                 and inp.cell(r, 3).value.strip().startswith("Overage ramp delay"))
+    inp.cell(delay, 12, 3)
+    inp.cell(delay, 15, "← PLACEHOLDER: months before a cohort starts using overage; calibrate later")
+    print(f"  D5a: tier discounts + plan-heavy included + cloud_cost 0.0016 + overage delay 3mo set")
 
 
 def add_rolls(wb, L_is):
@@ -498,6 +503,7 @@ def build():
     rfp.fix_run_rate(wb)               # D1: LTM trailing-12 run-rate (was a frozen constant)
     rfp.add_proforma_sections(wb)      # skill-outline lower sections (BS rolls + WC/CF/Tax/Funding)
     rfp.style_subtotals(wb)            # bold the ProForma sum/subtotal lines (readability)
+    rfp.add_overage_delay(wb)          # OD: ramp-delay overage rev + measurements (OFFSET, guarded)
     import restructure_statements as rs
     rs.restructure_bs(wb)              # BS → reference structure (sub-groups + blank lines + ratios)
     rs.restructure_cf(wb)             # CF → reference lines (VAT/Other/Dividends/burn) + CF_Y mirror

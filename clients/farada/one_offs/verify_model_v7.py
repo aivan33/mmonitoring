@@ -196,7 +196,8 @@ def main():
     kids = [str(ws.cell(mr + i, 1).value or "") for i in (1, 2)]
     ck(any("Included" in k for k in kids), "measurements has an Included (subscription) child")
     ck(any("Overage" in k for k in kids), "measurements has an Overage (beyond subscription) child")
-    ck(ft(ws.cell(mr, 3)) == f"=C{mr + 1}+C{mr + 2}", "measurements total = Included + Overage")
+    ck(ft(ws.cell(mr, 3)).startswith(f"=C{mr + 1}+") and f"OFFSET(C{mr + 2}" in ft(ws.cell(mr, 3)),
+       "measurements total = Included + (ramp-delayed) Overage")
 
     print("\n[D4] measurements children accumulate off their OWN prior column (installed base), not the total")
     def accum_own(child):  # month-2+ cols must self-accumulate: '={prevcol}{child}+...' (cumulative installed base)
@@ -226,6 +227,16 @@ def main():
     ck(accum_own(ov + 1), "Overage Bundle S accrues on installed base (own-column accumulator)")
     fov = ft(ws.cell(ov + 1, 3))
     ck("MAX(0,' Inputs'!$J$76-' Inputs'!$J$58)" in fov, "Overage rate = MAX(0, avg(J76) − included(J58)) × list")
+
+    print("\n[OD2/3] overage revenue + measurements shifted right by the ramp delay (OFFSET, guarded)")
+    D = IJ("Overage ramp delay")
+    mt = Lp["Measurements Line 3 (monthly)"]
+    f48c, f48e = ft(ws.cell(ov, 3)), ft(ws.cell(ov, 5))           # overage subtotal, col C (m=0) & E (m=2)
+    ck("OFFSET" in f48e and f"$J${D}" in f48e, "overage subtotal = OFFSET shift by the delay input")
+    ck(f48c.startswith("=IF(0<") and f48e.startswith("=IF(2<"), "overage subtotal guarded by month-index < delay (0 in ramp)")
+    f16 = ft(ws.cell(mt, 3))
+    ck(f16.startswith(f"=C{mt + 1}+IF(0<") and "OFFSET" in f16 and f"$J${D}" in f16,
+       "measurement total = Included + guarded-delayed Overage (cloud COGS follows)")
 
     print("\n[R3] ProForma rolls; tax-payable & RE reference the IS")
     ck(ft(ws.cell(Lp["Trade receivables (AR)"], 3)).startswith(
@@ -277,6 +288,13 @@ def main():
     ck(abs(inp.cell(IJ("Hardware prepayment"), 12).value or 0) < 1e-9, "PREPAY = 0 (30d net, no prepay)")
     ck(abs((inp.cell(IJ("SaaS billed annually"), 12).value or 0) - 1.0) < 1e-9,
        "SAAS_ANN = 100% (subscription billed annually upfront)")
+
+    print("\n[OD1] overage ramp delay input (clients don't overuse from month 1)")
+    dly = IJ("Overage ramp delay")
+    ck(inp.cell(dly, 12).value == 3, "Overage ramp delay = 3 months (placeholder)")
+    ck("month" in str(inp.cell(dly, 4).value or "").lower(), "delay unit is months")
+    ck(IJ("Line 3 — overage price") < dly < IJ("Capacity ceiling"),
+       "delay input sits in II. REVENUE (after overage price, before III. PRODUCTION)")
 
     print("\n[fmt] input value cells formatted per unit (no dates/%-as-plain-numbers)")
     dfmt = inp.cell(IJ("Tranche 1 date"), 12).number_format.lower()

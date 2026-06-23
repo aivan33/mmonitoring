@@ -370,3 +370,31 @@ def rework_wc_rolls(wb, FIRST=3, LAST=62):
         pf.cell(dfr, c, (f"=' Inputs'!$J${OBDEF}+{x}{bill}-{x}{sub}" if c == FIRST
                          else f"={p}{dfr}+{x}{bill}-{x}{sub}"))
     print(f"  D5e: AR=(comp+hw)(1−prepay)+overage; deferred=running(billings−subscription)")
+
+
+def add_overage_delay(wb, FIRST=3, LAST=62):
+    """OD — a client doesn't overuse credits from month 1; overage ramps in `delay` months after a
+    cohort starts. A UNIFORM per-cohort delay = an exact right-shift of the (cumulative) overage
+    aggregate by `delay` months: overage_delayed(c) = overage_undelayed(c−delay). Implemented with
+    OFFSET (as the scenario selector does) on the undelayed children, guarded so the first `delay`
+    months are 0 (no #REF!). Applies to BOTH overage revenue (→ SaaS#3/AR/IS) and the overage
+    MEASUREMENT child (→ cloud COGS). Hardware (one-time) and Subscription/Included (month 1) untouched.
+    No row inserts — the undelayed children/child stay as the engine; only the consumed rows shift."""
+    pf = wb[SHEET]
+    L = {pf.cell(r, 1).value.strip(): r for r in range(1, pf.max_row + 1)
+         if isinstance(pf.cell(r, 1).value, str) and pf.cell(r, 1).value.strip()}
+    ov, mt = L["SaaS (overage, recurring)"], L["Measurements Line 3 (monthly)"]
+    incl, ovm = L["Included (subscription)"], L["Overage (beyond subscription)"]
+    inp = wb[" Inputs"]
+    drow = next(r for r in range(1, inp.max_row + 1) if isinstance(inp.cell(r, 3).value, str)
+                and inp.cell(r, 3).value.strip().startswith("Overage ramp delay"))
+    DLY = f"' Inputs'!$J${drow}"
+    for c in range(FIRST, LAST + 1):
+        x, m = get_column_letter(c), c - FIRST                    # m = 0-based month index
+        shift = lambda row: f"OFFSET({x}{row},0,-{DLY})"          # value `delay` columns to the left
+        # overage revenue subtotal → delayed sum of the (undelayed) children, 0 during the ramp
+        kids = "+".join(shift(ov + i) for i in (1, 2, 3))
+        pf.cell(ov, c, f"=IF({m}<{DLY},0,{kids})")
+        # measurement total = Included (immediate) + delayed Overage child → cloud COGS follows
+        pf.cell(mt, c, f"={x}{incl}+IF({m}<{DLY},0,{shift(ovm)})")
+    print(f"  OD: overage revenue (row {ov}) + measurements (row {mt}) ramp-delayed by {DLY}")
