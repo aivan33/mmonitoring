@@ -15,7 +15,7 @@ import pytest
 from core.schema import create_db, trace_input_leaves, validate
 from core.schema.load import load_model
 
-FARADA = Path("clients/farada/modeling/farada_model_v5.xlsx")
+FARADA = Path("clients/farada/modeling/farada_model_v6.xlsx")
 
 EXPECTED_TABLES = {
     "client", "model", "scenario", "period", "section", "grp",
