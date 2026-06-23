@@ -138,6 +138,12 @@ def main():
     ck(ft(ws.cell(Lp["Chip EUR/sensor"], 3)).endswith(f"/(C{spw}*C{yld})"),
        "Chip €/sensor = wafer cascade ÷ (spw × yield)")
 
+    print("\n[A] ProForma carries the skill-outline lower sections")
+    pf_secs = {str(ws.cell(r, 1).value).strip() for r in range(1, ws.max_row + 1)
+               if isinstance(ws.cell(r, 1).value, str)}
+    for sec in ("BALANCE SHEET", "WC DRIVERS & RATIOS", "CASH FLOW", "TAXATION", "FUNDING"):
+        ck(any(sec in s for s in pf_secs), f"ProForma section: {sec}")
+
     print("\n[E] ProForma sum/subtotal lines are bold (readability)")
     ck(ws.cell(Lp["Total run-rate (sensors/yr)"], 1).font.bold, "'Total run-rate' (a SUM) is bold")
     ck(ws.cell(Lp["Revenue"], 1).font.bold, "'Revenue' (a subtotal) is bold")

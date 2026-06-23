@@ -143,6 +143,38 @@ def _ft_snap(snap, row):
     return v.text if isinstance(v, ArrayFormula) else v
 
 
+PF_SECTIONS = [
+    ("WC DRIVERS & RATIOS", ["Receivable days (DSO)", "Payable days (DPO)",
+                             "Current ratio", "Quick ratio", "Cash ratio"]),
+    ("CASH FLOW", ["Operating activities", "Investing activities", "Financing activities"]),
+    ("TAXATION", ["Tax expense (P&L)", "Tax payable (BS)"]),
+    ("FUNDING", ["Equity round", "Debt draw", "Grants"]),
+]
+
+
+def add_proforma_sections(wb):
+    """Complete the ProForma's skill-outline lower sections. The existing rolls ARE the balance
+    sheet → relabel that header 'BALANCE SHEET (rolls)', then APPEND the remaining named sections
+    (WC drivers & ratios · Cash Flow · Taxation · Funding) as blank-but-defined placeholders. Append
+    only — no row-shift, no remap (nothing references rows past the rolls)."""
+    pf = wb[SHEET]
+    band_st = label_st = None
+    for r in range(1, pf.max_row + 1):
+        v = pf.cell(r, 1).value
+        if isinstance(v, str) and "WORKING CAPITAL & FINANCING ROLLS" in v:
+            band_st = pf.cell(r, 1)._style
+            label_st = pf.cell(r + 1, 1)._style
+            pf.cell(r, 1, "BALANCE SHEET (rolls)")._style = band_st
+    nr = max(r for r in range(1, pf.max_row + 1) if pf.cell(r, 1).value is not None)
+    for title, lines in PF_SECTIONS:
+        nr += 2                                       # blank spacer + header
+        pf.cell(nr, 1, title)._style = band_st
+        for ln in lines:
+            nr += 1
+            pf.cell(nr, 1, "  " + ln)._style = label_st
+    print("  PF sections: BALANCE SHEET + appended WC / Cash Flow / Taxation / Funding (blank-but-defined)")
+
+
 def style_subtotals(wb, LAST=62):
     """Bold the ProForma sum/subtotal lines (a row whose formula is purely +-joined internal cell
     refs or a SUM range) so totals stand out from their indented leaf children — readability (E)."""
