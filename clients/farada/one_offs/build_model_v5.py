@@ -443,6 +443,12 @@ def build():
     build_cf(wb, L_is)
     build_bs(wb)
     build_yearly(wb)
+    # re-sequence Inputs into the house skeleton (I. FUNDING … V. OTHER) + remap refs (equivalence-gated)
+    import reflow_inputs as rf
+    referenced = rf._referenced_rows(wb)
+    old2new, label_at, _ = rf.reflow(wb)
+    rf._gate(wb, old2new, label_at, referenced)
+    rf.remap_refs(wb, old2new)
     wb.save(DST)
     print(f"Saved {DST}")
 
