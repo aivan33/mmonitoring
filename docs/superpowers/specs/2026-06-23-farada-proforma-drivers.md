@@ -95,7 +95,7 @@ Placeholders to calibrate later (flagged): the 3 tier discounts, the re-set `inc
 
 ## Task breakdown (D4 → D5)
 
-### D4 — measurements driver onto the cumulative installed base  *(mechanical · S/M · do now)*
+### D4 — measurements driver onto the cumulative installed base  ✅ DONE (852260c)
 Rewrite `add_measurement_children` (and the Measurements total) so each column = `installed_base ×
 rate/12` (running Σ of bundle sensors × sensors/bundle), not `phased(this-period bookings)`. Revenue
 row 20 already does this (oracle ties cohort==stock) — D4 makes the driver match.
