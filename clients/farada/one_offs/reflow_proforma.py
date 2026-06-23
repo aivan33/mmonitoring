@@ -469,3 +469,41 @@ def relocate_cf_to_proforma(wb, FIRST=3, LAST=62):
             for c in range(FIRST, LAST + 1):
                 bs.cell(r, c).value = f"=ProForma!{get_column_letter(c)}{pf_end}"
     print(f"  CB1/CB2: CF cloned to ProForma {base}-{base + (cf_last - cf_first)} (Δ={delta}); CF stmt thinned; BS cash→PF")
+
+
+def populate_wc_ratios(wb, FIRST=3, LAST=62):
+    """CB3 — fill the WC DRIVERS & RATIOS section in the ProForma (was blank). Realised DSO/DPO and
+    the liquidity ratios, computed off the BS rolls + the cloned cash. Current assets = cash + AR
+    (Farada has no inventory/prepaid); current liabilities = AP + payroll + deferred + tax payable.
+    The BS statement's ratio rows then pull from here. Runs after relocate_cf_to_proforma."""
+    pf = wb[SHEET]
+    L = {pf.cell(r, 1).value.strip(): r for r in range(1, pf.max_row + 1)
+         if isinstance(pf.cell(r, 1).value, str) and pf.cell(r, 1).value.strip()}
+    dso, dpo, cur, qk, csh = (L["Receivable days (DSO)"], L["Payable days (DPO)"],
+                              L["Current ratio"], L["Quick ratio"], L["Cash ratio"])
+    ar, ap, pay, dfr, tax = (L["Trade receivables (AR)"], L["Trade payables (total)"], L["Payroll payable"],
+                             L["Deferred revenue (SaaS annual)"], L["Tax payable"])
+    rev, cogs, cash = L["Revenue"], L["COGS TOTAL"], L["Ending Cash Balance"]
+    base_st = pf.cell(ar, FIRST)._style                       # a roll value-cell style to harvest
+    for c in range(FIRST, LAST + 1):
+        x = get_column_letter(c)
+        CA, CL = f"({x}{cash}+{x}{ar})", f"({x}{ap}+{x}{pay}+{x}{dfr}+{x}{tax})"
+        rows = {dso: (f"=IF({x}{rev}=0,0,{x}{ar}/{x}{rev}*30)", "#,##0"),
+                dpo: (f"=IF({x}{cogs}=0,0,{x}{ap}/{x}{cogs}*30)", "#,##0"),
+                cur: (f"=IF({CL}=0,0,{CA}/{CL})", "0.0"),
+                qk:  (f"=IF({CL}=0,0,{CA}/{CL})", "0.0"),     # no inventory → quick = current
+                csh: (f"=IF({CL}=0,0,{x}{cash}/{CL})", "0.0")}
+        for r, (f, fmt) in rows.items():
+            cell = pf.cell(r, c, f)
+            cell._style = base_st
+            cell.number_format = fmt
+    # BS statement ratio rows → pull from the ProForma WC ratios
+    bs = wb["BS"]
+    for r in range(1, bs.max_row + 1):
+        lbl = bs.cell(r, 1).value
+        if isinstance(lbl, str):
+            tgt = {"Current ratio": cur, "Quick ratio": qk, "Cash ratio": csh}.get(lbl.strip())
+            if tgt:
+                for c in range(FIRST, LAST + 1):
+                    bs.cell(r, c, f"=ProForma!{get_column_letter(c)}{tgt}").number_format = "0.0"
+    print(f"  CB3: WC ratios (DSO/DPO/current/quick/cash) computed in ProForma; BS pulls them")

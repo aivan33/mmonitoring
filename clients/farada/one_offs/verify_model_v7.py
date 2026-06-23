@@ -329,6 +329,20 @@ def main():
         ck(any(isinstance(cf.cell(r, 1).value, str) and line in cf.cell(r, 1).value
                for r in range(1, cf.max_row + 1)), f"CF has '{line}'")
 
+    print("\n[CB3] WC drivers & ratios computed in the ProForma (BS pulls them)")
+    for line in ("Receivable days (DSO)", "Payable days (DPO)", "Current ratio", "Quick ratio", "Cash ratio"):
+        r = Lpcf.get(line)
+        ck(r is not None and isinstance(ft(ws.cell(r, 3)), str) and ft(ws.cell(r, 3)).startswith("="),
+           f"ProForma WC row computed: {line}")
+    dso = Lpcf.get("Receivable days (DSO)")
+    ck(dso and f"C{Lp['Trade receivables (AR)']}" in ft(ws.cell(dso, 3)) and f"C{Lp['Revenue']}" in ft(ws.cell(dso, 3)),
+       "DSO = AR / Revenue × days")
+    curr = Lpcf.get("Current ratio")
+    ck(curr and f"C{Lp['Trade payables (total)']}" in ft(ws.cell(curr, 3)), "Current ratio uses current liabilities (AP etc.)")
+    bsr = next((r for r in range(1, wb["BS"].max_row + 1) if isinstance(wb["BS"].cell(r, 1).value, str)
+                and "Current ratio" in wb["BS"].cell(r, 1).value), None)
+    ck(bsr and str(ft(wb["BS"].cell(bsr, 3)) or "").startswith("=ProForma!"), "BS Current ratio pulls from ProForma")
+
     print("\n[R5] BS present; cash=ProForma ending; check row = Assets − E&L")
     bs = wb["BS"]
     Lb = labels(bs)
