@@ -55,7 +55,9 @@ LAYOUT = [
     S("2.3", "Line 3 — sensors per bundle"), *K(37, 38, 39), B,
     S("2.4", "Line 3 — included measurements / sensor"), *K(41, 42, 43), B,
     S("2.5", "Line 3 — overage price (EUR / measurement)"), *K(45, 46, 47), B,
-    S("2.6", "Pricing parameters"), *K(33, 98, 99, 106), B,
+    S("2.6", "Line 3 — plan tier discount (off list price, %)"),
+    *NEW(("Bundle S", "%"), ("Bundle M", "%"), ("Bundle L", "%")), B,
+    S("2.7", "Pricing parameters"), *K(33, 98, 99, 106), B,
 
     H("III.", "PRODUCTION"), B,
     S("3.1", "Capacity ceiling (sensors / yr)"), *K(8, 9, 10, 11, 12), B,

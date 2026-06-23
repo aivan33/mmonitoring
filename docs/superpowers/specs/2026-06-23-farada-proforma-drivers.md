@@ -84,8 +84,45 @@ small top-up.
 - **SaaS COGS** = `installed_base × avg_meas × cloud_cost / 12` (J102) — **removes the 80% GM plug**;
   GM = subscription + overage − COGS, an **output**.
 
-Placeholders to calibrate later (flagged): the 3 tier discounts, the re-set `included meas` (2.4),
-`cloud_cost` (J102). Keep `list/overage price` (2.5), `avg_meas` (106).
+Placeholders to calibrate later (flagged): the 3 tier discounts, the re-set `included meas` (2.4).
+Inputs that already exist: `list/overage price` per bundle (J63/64/65 = €0.03/0.025/0.02), `avg_meas`
+(J71 = 1200), `cloud_cost` (J123 = €0.0005/meas), `hardware markup` (J69 = 10%), `SaaS billed
+annually` (J171). The list/API rate = the per-bundle overage price; **plan rate = list × (1−discount)**.
+
+## D5 — 3-statement design (the WC seams)  ← decided 2026-06-23
+The revenue split must articulate into CF/BS so check=0 holds. Each stream's **recognition** (P&L) and
+**cash timing** differ — that's the whole point of the WC engine. Per the user's cycle:
+
+| Stream | P&L recognition | Cash timing | Balance-sheet home |
+|---|---|---|---|
+| **Hardware** (device, cost+10%) | at sale (bundle booked) | +30d | Trade **receivables** (DSO); COGS → **payables** (DPO) |
+| **Subscription** (plan, annual) | straight-line **1/12 over 12 mo** | **full year UPFRONT** at sale | **Deferred revenue** (unearned); cloud COGS → payables |
+| **Overage** (beyond included) | monthly as used | +30d | Trade **receivables** (DSO); cloud COGS → payables |
+
+So everything lands on CF ~1 month later via AR/AP, **except** the yearly subscription, whose cash is
+collected upfront and recognized over 12 months.
+
+**The deferred-revenue seam (the elegant articulation):**
+- **Subscription billings** (cash) = `new_bundles_b × included_b × list_b × (1−disc_b)` — a *per-period*
+  (new-bookings) line, collected upfront. NEW ProForma line.
+- **Subscription revenue** (P&L) = `installed_base_b × included_b × list_b × (1−disc_b) / 12` — cumulative,
+  straight-line. NEW ProForma line.
+- **Deferred-revenue roll** = `Deferred(t-1) + Billings(t) − Revenue(t)` — a simple running balance
+  (mirrors the SC/DEBT/RE rolls). **Replaces** the current `=SaaS_rev × SAAS_ANN × 6` proxy.
+- Then CF *cash from customers* for subscription `= Revenue + ΔDeferred = Billings` (upfront cash) — the
+  existing direct-method CF already does `Rev − ΔAR + ΔDeferred`, so it ties automatically once the
+  rolls are right.
+
+**AR / AP scope change:**
+- **AR** = Hardware + Overage only (DSO). Subscription is **excluded** (cash upfront → deferred, no
+  receivable). Current AR formula lumps all SaaS via `(1−SAAS_ANN)`; rework to reference the new lines.
+- **AP** = all COGS (hardware curve + cloud) at DPO — cloud COGS now real (D5d), so AP picks it up.
+
+**Input settings for this cycle (flagged mockups):** `Hardware prepayment % (PREPAY) → 0` (30d net, no
+prepay); `SaaS billed annually (SAAS_ANN) → 100%` (subscription fully upfront); DSO = DPO = 30.
+
+**Stated assumptions (correct me):** subscription recognized **straight-line 1/12** (a stand-ready
+obligation), not usage-metered; overage & its cloud COGS recognized in the same month as used.
 
 ## Resolved questions
 1. **Run-rate** → LTM (D1, done).
@@ -112,27 +149,37 @@ Add a `2.x Line 3 — plan tier discount (%)` sub-group (S/M/L = 10/15/20%) into
 - **Verify:** resolved-target equivalence gate (label match on every remapped ref); balance oracle; schema sections still I–V; pytest.
 - **Files:** `reflow_inputs.py` (`LAYOUT`).
 
-### D5b — Subscription (plan) revenue line, on installed base  *(M)*
-New ProForma recurring line: `installed_base × included × list_price × (1−discount)/12`, per bundle.
-Confirm one-time vs recurring split (decision 3). Bundle-price headline = hardware×1.10 + plan.
-- **Accept:** subscription line exists per bundle, on installed base; plan rate = list × (1−discount).
-- **Verify:** balance oracle; SaaS oracle extended to include the subscription leg; pytest.
-- **Files:** `reflow_proforma.py` / build script revenue block; `verify_saas_revenue.py`.
+### D5b — Subscription revenue + billings lines  *(M)*
+Two NEW ProForma lines per bundle: **Subscription revenue** (P&L) = `installed_base × included × list ×
+(1−discount)/12` (cumulative, straight-line) and **Subscription billings** (cash) = `new_bundles ×
+included × list × (1−discount)` (per-period, upfront). Bundle-price headline = hardware×1.10 + plan.
+- **Accept:** both lines exist per bundle; revenue is cumulative/12, billings is per-period annual.
+- **Verify:** balance oracle; SaaS oracle extended for the subscription leg; pytest.
+- **Files:** `reflow_proforma.py` revenue block; `verify_saas_revenue.py`.
 
 ### D5c — Overage on installed base  *(S/M)*
 Overage = `installed_base × MAX(0, avg_meas − included) × list_price / 12`. With plan-heavy included,
 overage becomes a small top-up (not ~99%).
-- **Accept:** overage ≪ subscription (sane top-up share); on installed base; total SaaS = sub + overage.
+- **Accept:** overage ≪ subscription (sane top-up share); on installed base.
 - **Verify:** balance oracle; SaaS oracle; eyeball overage share; pytest.
 
-### D5d — SaaS COGS measurement-driven (remove the 80% GM plug)  *(M)*
-SaaS COGS = `installed_base × avg_meas × cloud_cost / 12` (J102). Retire `calibrate_saas_placeholder`'s
-GM plug; GM becomes an output.
-- **Accept:** no 80% GM plug remains; SaaS GM is computed sub+overage−COGS; magnitude believable.
+### D5d — Cost of sales: cloud measurement-driven (remove the 80% GM plug)  *(M)*
+SaaS/cloud COGS = `installed_base × avg_meas × cloud_cost / 12` (J123). Retire
+`calibrate_saas_placeholder`'s `× (1−J70)` plug; GM becomes an output.
+- **Accept:** no 80% GM plug remains; SaaS GM = sub+overage−cloud COGS; magnitude believable.
 - **Verify:** balance oracle; SaaS oracle reports derived GM; schema broken=0; pytest.
-- **Files:** build script COGS block, `calibrate_saas_placeholder` (retire), `verify_saas_revenue.py`.
+- **Files:** build script COGS block (row 65), `calibrate_saas_placeholder` (retire), `verify_saas_revenue.py`.
 
-### Checkpoint — after D4, and again after D5d
+### D5e — WC seam DRAFT: deferred roll + AR/AP rework (CF/BS articulate)  *(M)*
+Deferred-revenue roll → running balance `prev + Billings − Revenue` (replaces `×SAAS_ANN×6`). AR roll →
+Hardware + Overage only (drop subscription). AP picks up the real cloud COGS. Set PREPAY=0,
+SAAS_ANN=100%. CF/BS flow through the existing direct-method structure.
+- **Accept:** deferred = running balance; AR excludes subscription; CF cash-from-customers for the
+  subscription = billings; **BS check = 0 every month**.
+- **Verify:** balance oracle (extend synthetic run for deferred running-balance + upfront cash); schema; pytest.
+- **Files:** `build_model_v6_5.py` (`add_rolls`, `add_cf_inputs`), `verify_model_v6_5.py`.
+
+### Checkpoint — after D4 (done), and again after D5e
 - Balance oracle (BS check=0, no #REF!) · SaaS oracle ties · schema broken=0 · pytest green ·
   eyeball revenue/EBITDA/ending-cash. Review with user before promoting v6.5 → v7.
 

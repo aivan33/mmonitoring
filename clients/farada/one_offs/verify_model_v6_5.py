@@ -28,6 +28,20 @@ def labels(ws):
     return out
 
 
+def bundle_rows(inp, subheader_prefix, n=3):
+    """The n input rows (col-J OFFSET) immediately under an Inputs sub-header (col-C startswith)."""
+    hdr = next((r for r in range(1, inp.max_row + 1)
+                if isinstance(inp.cell(r, 3).value, str)
+                and inp.cell(r, 3).value.strip().startswith(subheader_prefix)), None)
+    rows = []
+    r = (hdr or 0) + 1
+    while hdr and len(rows) < n and r <= inp.max_row:
+        if isinstance(inp.cell(r, 10).value, str) and "OFFSET" in inp.cell(r, 10).value:
+            rows.append(r)
+        r += 1
+    return rows
+
+
 def _balance_oracle():
     """Replicate the CF/BS formula logic on synthetic monthly leaves and assert the BS balances
     (Assets = Equity + Liabilities) every month — independent of the sheet's computed P&L."""
@@ -203,6 +217,18 @@ def main():
     for kw in ("Receivable days (DSO)", "Payable days (DPO)", "Equity round amount",
                "Opening cash", "Opening retained earnings"):
         ck(any(k.strip().startswith(kw) for k in all_lbls), f"input: {kw}")
+
+    print("\n[D5a] plan tier discounts + plan-heavy included + WC cash-timing settings")
+    disc = bundle_rows(inp, "Line 3 — plan tier discount")
+    ck(len(disc) == 3, "3 plan tier discount inputs present")
+    ck([inp.cell(r, 12).value for r in disc] == [0.10, 0.15, 0.20], "discounts = 10/15/20% (S/M/L)")
+    ck(bool(disc) and IJ("Line 3 — overage price") < disc[0], "discounts sorted after overage price (not appended)")
+    incl = bundle_rows(inp, "Line 3 — included measurements")
+    ck(bool(incl) and all((inp.cell(r, 12).value or 0) >= 800 for r in incl),
+       "included re-set plan-heavy (≥800 of avg 1200)")
+    ck(abs(inp.cell(IJ("Hardware prepayment"), 12).value or 0) < 1e-9, "PREPAY = 0 (30d net, no prepay)")
+    ck(abs((inp.cell(IJ("SaaS billed annually"), 12).value or 0) - 1.0) < 1e-9,
+       "SAAS_ANN = 100% (subscription billed annually upfront)")
 
     print("\n[fmt] input value cells formatted per unit (no dates/%-as-plain-numbers)")
     dfmt = inp.cell(IJ("Tranche 1 date"), 12).number_format.lower()

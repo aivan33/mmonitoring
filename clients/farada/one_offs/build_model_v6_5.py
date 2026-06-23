@@ -121,8 +121,8 @@ def add_cf_inputs(wb):
 
     hdr(I["WC_HDR"], "WORKING CAPITAL (payment terms)  (mockup ← confirm)")
     put(I["DSO"], "Receivable days (DSO)", "days", 30, "#,##0")
-    put(I["PREPAY"], "Hardware prepayment % (large orders)", "%", 0.5, "0.0%")
-    put(I["SAAS_ANN"], "SaaS billed annually in advance", "%", 0.0, "0.0%")
+    put(I["PREPAY"], "Hardware prepayment % (large orders)", "%", 0.0, "0.0%")
+    put(I["SAAS_ANN"], "SaaS billed annually in advance", "%", 1.0, "0.0%")
     put(I["DPO"], "Payable days (DPO)", "days", 30, "#,##0")
     put(I["PAYDAYS"], "Payroll payable days", "days", 30, "#,##0")
     put(I["TAXLAG"], "Tax payment lag", "months", 0, "#,##0")
@@ -142,6 +142,40 @@ def add_cf_inputs(wb):
     # Opening retained earnings is NOT a free input — it's the balancing plug so the opening
     # balance sheet ties (assets = equity + liabilities). Computed in the RE roll.
     inp.cell(I["OB_RE"], 3, "Opening retained earnings (= balancing plug)")._style = copy(s_lbl)
+
+
+def _bundle_rows(inp, subheader_prefix, n=3):
+    """The n input rows (col-J OFFSET) immediately under an Inputs sub-header (col-C startswith).
+    Label-based → robust to the I–V reflow renumbering."""
+    hdr = next((r for r in range(1, inp.max_row + 1)
+                if isinstance(inp.cell(r, 3).value, str)
+                and inp.cell(r, 3).value.strip().startswith(subheader_prefix)), None)
+    rows, r = [], (hdr or 0) + 1
+    while hdr and len(rows) < n and r <= inp.max_row:
+        if isinstance(inp.cell(r, 10).value, str) and "OFFSET" in inp.cell(r, 10).value:
+            rows.append(r)
+        r += 1
+    return rows
+
+
+def set_d5_inputs(wb):
+    """D5a — populate the new plan tier-discount skeletons (S/M/L = 10/15/20% off list) and re-set the
+    included-measurements quota plan-heavy (~80% of avg=1200 → 960). Both flagged placeholders to
+    calibrate. Runs POST-reflow, by sub-header context (rows renumbered by the I–V reflow). Values go
+    in col L (Realistic; the OFFSET reads it at D2=1)."""
+    inp = wb[" Inputs"]
+    for r, v in zip(_bundle_rows(inp, "Line 3 — plan tier discount"), (0.10, 0.15, 0.20)):
+        inp.cell(r, 12, v)
+    note = next((r for r in range(1, inp.max_row + 1) if isinstance(inp.cell(r, 3).value, str)
+                 and inp.cell(r, 3).value.strip().startswith("Line 3 — plan tier discount")), None)
+    if note:
+        inp.cell(note, 15, "← PLACEHOLDER: plan rate = list × (1−discount); calibrate later")
+    incl = _bundle_rows(inp, "Line 3 — included measurements")
+    for r in incl:
+        inp.cell(r, 12, 960)
+    if incl:
+        inp.cell(incl[0] - 1, 15, "← PLACEHOLDER: plan-heavy (~80% of avg 1200); calibrate later")
+    print(f"  D5a: tier discounts (10/15/20%) + plan-heavy included (960) set")
 
 
 def add_rolls(wb, L_is):
@@ -449,6 +483,7 @@ def build():
     old2new, label_at, _ = rf.reflow(wb)
     rf._gate(wb, old2new, label_at, referenced)
     rf.remap_refs(wb, old2new)
+    set_d5_inputs(wb)            # D5a — populate tier-discount skeletons + plan-heavy included
     # re-sequence the ProForma engine into the skill-outline order (drivers first) + context-aware remap
     import reflow_proforma as rfp
     rfp.reflow(wb)
