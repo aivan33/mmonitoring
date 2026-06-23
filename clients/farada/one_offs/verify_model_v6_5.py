@@ -144,6 +144,12 @@ def main():
     for sec in ("BALANCE SHEET", "WC DRIVERS & RATIOS", "CASH FLOW", "TAXATION", "FUNDING"):
         ck(any(sec in s for s in pf_secs), f"ProForma section: {sec}")
 
+    print("\n[D2] drivers ordered: Sensors → Run-rate → CoS/sensor → Measurements")
+    ck(Lp["Total run-rate (sensors/yr)"] < Lp["Chip EUR/sensor"] < Lp["Measurements Line 3 (monthly)"],
+       "run-rate < CoS/sensor (chip) < measurements")
+    ck(Lp["Sensors per wafer"] < Lp["Chip EUR/sensor"] and Lp["Yield (staged by run-rate)"] < Lp["Chip EUR/sensor"],
+       "sensors-per-wafer + yield sit above chip (its inputs)")
+
     print("\n[D1] run-rate = LTM trailing-12 (per-month, not a frozen constant)")
     rr = Lp["Total run-rate (sensors/yr)"]
     s1, s3 = Lp["Sensors Line 1 (monthly)"], Lp["Sensors Line 3 (monthly)"]

@@ -25,8 +25,11 @@ SHEET = "ProForma"
 STMTS = ("IS", "CF", "BS", "IS_Y", "CF_Y", "BS_Y")
 NCOLS = 62  # A..BJ (months)
 
-# new block order (old-sheet inclusive ranges): HEAD · DRIVERS · REVENUE · COGS · OPEX · BELOW · ROLLS
-BLOCKS = [(1, 2), (63, 83), (4, 22), (24, 41), (85, 114), (120, 139), (143, 155)]
+# DRIVERS reordered (D2): header · sensors · run-rate · CoS/sensor (spw,yield,chip,pkg,sensor-test,
+# final-test,ASIC) · measurements · secondary (blended ASP/cost, capacity, util, clients, expansion)
+DRIVERS = [63, 64, 65, 66, 67, 82, 83, 69, 70, 71, 72, 73, 68, 74, 75, 76, 77, 78, 79, 80, 81]
+# block order: HEAD · DRIVERS · REVENUE · COGS · OPEX · BELOW · ROLLS (ranges as (s,e); lists kept verbatim)
+BLOCKS = [(1, 2), DRIVERS, (4, 22), (24, 41), (85, 114), (120, 139), (143, 155)]
 
 # a cell or range, optionally sheet-qualified (group 'q' present ⇒ external, leave it)
 TOKEN = re.compile(r"(?P<q>'[^']*'!|[A-Za-z_][A-Za-z0-9_]*!)?"
@@ -80,10 +83,11 @@ def reflow(wb):
 
     # plan: assign new rows block-by-block with a spacer before each (except HEAD)
     o2n, plan, nr = {}, [], 0
-    for i, (s, e) in enumerate(BLOCKS):
+    for i, blk in enumerate(BLOCKS):
         if i:
             nr += 1; plan.append((nr, None))
-        for old in range(s, e + 1):
+        rows = range(blk[0], blk[1] + 1) if isinstance(blk, tuple) else blk
+        for old in rows:
             nr += 1; o2n[old] = nr; plan.append((nr, old))
     last = nr
 
