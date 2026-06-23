@@ -169,6 +169,14 @@ def main():
     ck(any("Overage" in k for k in kids), "measurements has an Overage (beyond subscription) child")
     ck(ft(ws.cell(mr, 3)) == f"=C{mr + 1}+C{mr + 2}", "measurements total = Included + Overage")
 
+    print("\n[D4] measurements children accumulate off their OWN prior column (installed base), not the total")
+    def accum_own(child):  # month-2+ cols must self-accumulate: '={prevcol}{child}+...' (cumulative installed base)
+        return all(isinstance(ft(ws.cell(child, c)), str)
+                   and ft(ws.cell(child, c)).startswith(f"={get_column_letter(c - 1)}{child}+")
+                   for c in range(4, 63))
+    ck(accum_own(mr + 1), "Included child accumulates off its own prior column (not the total row)")
+    ck(accum_own(mr + 2), "Overage child accumulates off its own prior column (not the total row)")
+
     print("\n[R3] ProForma rolls; tax-payable & RE reference the IS")
     ck(ft(ws.cell(Lp["Trade receivables (AR)"], 3)).startswith(
         f"=(({PC('Components #1 - Low Volume')}+{PC('Components #2 - High Volume')}+"

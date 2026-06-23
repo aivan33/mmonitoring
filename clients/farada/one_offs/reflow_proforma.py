@@ -243,6 +243,12 @@ def add_measurement_children(wb, FIRST=3, LAST=62):
         it = iter(repls)
         return re.sub(r"' Inputs'!\$J\$71", lambda m: next(it), f)
 
+    def reaccum(f, child):
+        # the source total self-accumulates off '={prevcol}{R}+...' (cumulative installed base);
+        # pasted into a child it must accumulate off the CHILD'S own prior column, not the total row
+        # (D4 — else the total double-counts the prior month every step).
+        return re.sub(rf"^=([A-Z]+){R}\+", rf"=\g<1>{child}+", f)
+
     INCL = ["' Inputs'!$J$58", "' Inputs'!$J$59", "' Inputs'!$J$60"]
     OVER = ["MAX(0,' Inputs'!$J$71-' Inputs'!$J$58)",
             "MAX(0,' Inputs'!$J$71-' Inputs'!$J$59)",
@@ -251,7 +257,7 @@ def add_measurement_children(wb, FIRST=3, LAST=62):
     pf.cell(R + 2, 1, "    Overage (beyond subscription)")._style = lbl_st
     for c in range(FIRST, LAST + 1):
         x = get_column_letter(c)
-        pf.cell(R + 1, c, nth_sub(totals[c], INCL))._style = val_st[c]
-        pf.cell(R + 2, c, nth_sub(totals[c], OVER))._style = val_st[c]
+        pf.cell(R + 1, c, reaccum(nth_sub(totals[c], INCL), R + 1))._style = val_st[c]
+        pf.cell(R + 2, c, reaccum(nth_sub(totals[c], OVER), R + 2))._style = val_st[c]
         pf.cell(R, c, f"={x}{R + 1}+{x}{R + 2}")._style = val_st[c]   # total = Included + Overage
     print(f"  measurements: added Included + Overage children under row {R}")
