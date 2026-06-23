@@ -206,6 +206,12 @@ def main():
     saas3 = Lp["Hardware-enabled SaaS #3"]
     ck(ft(ws.cell(saas3, 3)).count("+") == 2, "SaaS #3 = Hardware + Subscription + Overage (3 terms)")
 
+    print("\n[D5c] overage accrues on the installed base as a top-up beyond the included quota")
+    ov = Lp["SaaS (overage, recurring)"]
+    ck(accum_own(ov + 1), "Overage Bundle S accrues on installed base (own-column accumulator)")
+    fov = ft(ws.cell(ov + 1, 3))
+    ck("MAX(0,' Inputs'!$J$76-' Inputs'!$J$58)" in fov, "Overage rate = MAX(0, avg(J76) − included(J58)) × list")
+
     print("\n[R3] ProForma rolls; tax-payable & RE reference the IS")
     ck(ft(ws.cell(Lp["Trade receivables (AR)"], 3)).startswith(
         f"=(({PC('Components #1 - Low Volume')}+{PC('Components #2 - High Volume')}+"
