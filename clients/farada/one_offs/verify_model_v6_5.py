@@ -148,6 +148,17 @@ def main():
     ck(not any(f"$J${saas_gm}" in (ft(ws.cell(saas_cogs, c)) or "") for c in range(3, 63)),
        "Cloud COGS no longer references the SaaS-GM-target plug")
 
+    print("\n[D5d-cal] cloud_cost calibrated → implied SaaS GM at least 90% (off the 98% placeholder)")
+    cc = inp.cell(cloud, 12).value or 0
+    avg = inp.cell(IJ("Avg measurements"), 12).value
+    disc = [inp.cell(r, 12).value for r in bundle_rows(inp, "Line 3 — plan tier discount")]
+    listp = [inp.cell(r, 12).value for r in bundle_rows(inp, "Line 3 — overage price")]
+    incl = [inp.cell(r, 12).value for r in bundle_rows(inp, "Line 3 — included measurements")]
+    gms = [1 - (avg * cc) / (lp * (ic * (1 - d) + (avg - ic))) for d, lp, ic in zip(disc, listp, incl)]
+    gm_min = min(gms) if gms else 0
+    ck(gm_min >= 0.90, f"worst-bundle SaaS GM ≥ 90% (got {gm_min:.1%})")
+    ck(cc >= 0.0015, f"cloud_cost raised off the €0.0005 placeholder to a realistic level (got {cc})")
+
     print("\n[F2] yield explicit — chip derived in ProForma from wafer ÷ spw ÷ yield")
     ck(any(isinstance(inp.cell(r, 3).value, str) and "wafer cost" in inp.cell(r, 3).value.lower()
            for r in range(1, inp.max_row + 1)), "Inputs has a Wafer cost (€/wafer) block")

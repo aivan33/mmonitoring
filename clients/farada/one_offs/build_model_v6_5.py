@@ -175,7 +175,11 @@ def set_d5_inputs(wb):
         inp.cell(r, 12, 960)
     if incl:
         inp.cell(incl[0] - 1, 15, "← PLACEHOLDER: plan-heavy (~80% of avg 1200); calibrate later")
-    print(f"  D5a: tier discounts (10/15/20%) + plan-heavy included (960) set")
+    # cloud cost calibrated up off the €0.0005 placeholder → implied SaaS GM ~90–94% (worst bundle 90.5%)
+    cloud = next(r for r in range(1, inp.max_row + 1) if isinstance(inp.cell(r, 3).value, str)
+                 and inp.cell(r, 3).value.strip().startswith("Cloud / compute per measurement"))
+    inp.cell(cloud, 12, 0.0016)
+    print(f"  D5a: tier discounts (10/15/20%) + plan-heavy included (960) + cloud_cost 0.0016 set")
 
 
 def add_rolls(wb, L_is):
