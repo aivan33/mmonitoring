@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import re
 import shutil
+from copy import copy
 
 import openpyxl
 from openpyxl.utils import get_column_letter
@@ -150,6 +151,40 @@ def reflow(wb):
     if maxr > last:
         inp.delete_rows(last + 1, maxr - last)
     return old2new, label_at, last
+
+
+def unify_input_formats(wb):
+    """Set each input value cell's (L/M/N) number format from its UNIT — the reflow's new skeleton
+    inputs inherited one numeric format regardless of type (dates/%-as-plain-numbers). Unifies the
+    whole sheet to: date → mmm-yyyy · % → 0.0% · EUR/sensor|wafer → €#,##0.00 · other EUR → €#,##0 ·
+    counts/days/months/years → #,##0."""
+    inp = wb[SHEET]
+
+    def fmt(unit, label):
+        u, lab = str(unit or "").strip().lower(), str(label or "").lower()
+        if "date" in u or "date" in lab:
+            return "mmm-yyyy"
+        if "%" in u:
+            return "0.0%"
+        if "eur/sensor" in u or "eur/wafer" in u:
+            return "€#,##0.00"
+        if u.startswith("eur"):
+            return "€#,##0"
+        if u.startswith("#") or any(k in u for k in ("sensor", "meas", "pcs", "day", "month", "year")):
+            return "#,##0"
+        return "#,##0.00"
+
+    n = 0
+    for r in range(1, inp.max_row + 1):
+        j = inp.cell(r, 10).value
+        if isinstance(j, str) and "OFFSET" in j:                # a real input row
+            f = fmt(inp.cell(r, 4).value, inp.cell(r, 3).value)
+            for c in (12, 13, 14):                              # L/M/N scenario value cells
+                cell = inp.cell(r, c)
+                cell._style = copy(cell._style)                 # break shared-style aliasing
+                cell.number_format = f
+            n += 1
+    print(f"  fmt: unified {n} input value rows by unit")
 
 
 def remap_refs(wb, old2new):

@@ -165,6 +165,14 @@ def main():
                "Opening cash", "Opening retained earnings"):
         ck(any(k.strip().startswith(kw) for k in all_lbls), f"input: {kw}")
 
+    print("\n[fmt] input value cells formatted per unit (no dates/%-as-plain-numbers)")
+    dfmt = inp.cell(IJ("Tranche 1 date"), 12).number_format.lower()
+    ck("yy" in dfmt or "mmm" in dfmt, f"date input 'Tranche 1 date' has a date format (got {dfmt!r})")
+    ck("%" in inp.cell(IJ("Annual interest rate"), 12).number_format,
+       "rate input 'Annual interest rate' has a % format")
+    ck("€" in inp.cell(IJ("Tranche 1 amount"), 12).number_format,
+       "EUR input 'Tranche 1 amount' has a € format")
+
     print("\n[R4] CF statement (direct) present + wired to rolls/IS")
     cf = wb["CF"]
     Lc = labels(cf)

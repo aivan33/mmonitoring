@@ -452,6 +452,7 @@ def build():
     # re-sequence the ProForma engine into the skill-outline order (drivers first) + context-aware remap
     import reflow_proforma as rfp
     rfp.reflow(wb)
+    rf.unify_input_formats(wb)   # LAST — final word on Inputs value-cell number formats
     wb.save(DST)
     print(f"Saved {DST}")
 
