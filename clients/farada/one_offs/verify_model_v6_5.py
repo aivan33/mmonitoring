@@ -191,6 +191,21 @@ def main():
     ck(accum_own(mr + 1), "Included child accumulates off its own prior column (not the total row)")
     ck(accum_own(mr + 2), "Overage child accumulates off its own prior column (not the total row)")
 
+    print("\n[D5b] subscription (recurring) revenue + billings memo in the SaaS group")
+    ck("Subscription (recurring)" in Lp, "ProForma has a 'Subscription (recurring)' line")
+    ck(any("Subscription billings" in str(ws.cell(r, 1).value or "") for r in range(1, ws.max_row + 1)),
+       "ProForma has a 'Subscription billings' memo line")
+    if "Subscription (recurring)" in Lp:
+        sub = Lp["Subscription (recurring)"]
+        ck(ft(ws.cell(sub, 3)) == f"=C{sub + 1}+C{sub + 2}+C{sub + 3}", "Subscription = Σ Bundle S/M/L")
+        ck(accum_own(sub + 1), "Subscription Bundle S accrues on installed base (own-column accumulator)")
+        # rate = included × list × (1−discount): the bundle-S child references J58, J63 and (1−J68)
+        fS = ft(ws.cell(sub + 1, 3))
+        ck(all(t in fS for t in ("$J$58", "$J$63", "(1-' Inputs'!$J$68)")),
+           "Subscription rate = included(J58) × list(J63) × (1−discount(J68))")
+    saas3 = Lp["Hardware-enabled SaaS #3"]
+    ck(ft(ws.cell(saas3, 3)).count("+") == 2, "SaaS #3 = Hardware + Subscription + Overage (3 terms)")
+
     print("\n[R3] ProForma rolls; tax-payable & RE reference the IS")
     ck(ft(ws.cell(Lp["Trade receivables (AR)"], 3)).startswith(
         f"=(({PC('Components #1 - Low Volume')}+{PC('Components #2 - High Volume')}+"

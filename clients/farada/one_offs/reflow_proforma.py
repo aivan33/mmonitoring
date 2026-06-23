@@ -261,3 +261,66 @@ def add_measurement_children(wb, FIRST=3, LAST=62):
         pf.cell(R + 2, c, reaccum(nth_sub(totals[c], OVER), R + 2))._style = val_st[c]
         pf.cell(R, c, f"={x}{R + 1}+{x}{R + 2}")._style = val_st[c]   # total = Included + Overage
     print(f"  measurements: added Included + Overage children under row {R}")
+
+
+def _phase(c, brow, FIRST=3):
+    """Quarter-bookings phasing for ProForma column c and a Revenue_Inputs bundle row — the same
+    INT/MOD spread the hardware/overage lines use (col C → quarter B, threshold 1; +1 per month)."""
+    q = get_column_letter(2 + (c - FIRST) // 3)          # Revenue_Inputs quarter column (B = 2026 Q3)
+    k = (c - FIRST) % 3 + 1                               # month-in-quarter threshold
+    return f"(INT(Revenue_Inputs!{q}${brow}/3)+IF(MOD(Revenue_Inputs!{q}${brow},3)>={k},1,0))"
+
+
+def add_subscription_lines(wb, FIRST=3, LAST=62):
+    """D5b — add the Subscription (recurring) revenue block + a billings memo to the SaaS #3 group.
+    Subscription accrues on the cumulative installed base at the discounted plan rate
+    (included × list × (1−tier_discount)/12, per bundle) — like overage, but on the included quota.
+    Billings is the per-period ANNUAL amount collected upfront (drives the deferred-revenue roll, D5e).
+    SaaS #3 = Hardware + Subscription + Overage; the billings memo is excluded. Inserts 5 rows + remaps.
+    Bundle inputs: sensors J53/54/55 · included J58/59/60 · list(=overage) J63/64/65 · discount J68/69/70."""
+    pf = wb[SHEET]
+    saas = next(r for r in range(1, pf.max_row + 1) if isinstance(pf.cell(r, 1).value, str)
+                and "Hardware-enabled SaaS" in pf.cell(r, 1).value)
+    overage = next(r for r in range(1, pf.max_row + 1) if isinstance(pf.cell(r, 1).value, str)
+                   and "SaaS (overage" in pf.cell(r, 1).value)
+    hw = saas + 1                                         # hardware subtotal (directly under SaaS #3)
+    sub_st = pf.cell(overage, 1)._style                  # overage subtotal label style
+    kid_st = pf.cell(overage + 1, 1)._style              # overage child label style
+    sv = {c: pf.cell(overage, c)._style for c in range(FIRST, LAST + 1)}
+    kv = {c: pf.cell(overage + 1, c)._style for c in range(FIRST, LAST + 1)}
+
+    N = 5
+    pf.insert_rows(overage, N)                           # insert the subscription block BEFORE overage
+    o2n = {r: (r if r < overage else r + N) for r in range(1, pf.max_row + N + 1)}
+    for row in pf.iter_rows():
+        for cell in row:
+            t = _ft(cell)
+            if isinstance(t, str) and t.startswith("="):
+                cell.value = _remap_internal(t, o2n)
+    for sn in STMTS:
+        for row in wb[sn].iter_rows():
+            for cell in row:
+                t = _ft(cell)
+                if isinstance(t, str) and "ProForma!" in t:
+                    cell.value = _remap_pfrefs(t, o2n)
+
+    SUB, S_S, S_M, S_L, BILL = overage, overage + 1, overage + 2, overage + 3, overage + 4
+    OVER = overage + N                                   # overage subtotal, shifted down
+    pf.cell(SUB, 1, "  Subscription (recurring)")._style = sub_st
+    pf.cell(S_S, 1, "    Bundle S")._style = kid_st
+    pf.cell(S_M, 1, "    Bundle M")._style = kid_st
+    pf.cell(S_L, 1, "    Bundle L")._style = kid_st
+    pf.cell(BILL, 1, "  Subscription billings (annual, upfront — memo)")._style = sub_st
+    BUNDLES = [(S_S, 12, 53, 58, 63, 68), (S_M, 13, 54, 59, 64, 69), (S_L, 14, 55, 60, 65, 70)]
+    rate = lambda ir, pr, dr: f"' Inputs'!$J${ir}*' Inputs'!$J${pr}*(1-' Inputs'!$J${dr})"
+    for c in range(FIRST, LAST + 1):
+        x, p = get_column_letter(c), get_column_letter(c - 1)
+        for (row, brow, sr, ir, pr, dr) in BUNDLES:      # subscription children — cumulative installed base
+            add = f"{_phase(c, brow, FIRST)}*' Inputs'!$J${sr}*{rate(ir, pr, dr)}/12"
+            pf.cell(row, c, f"={add}" if c == FIRST else f"={p}{row}+{add}")._style = kv[c]
+        pf.cell(SUB, c, f"={x}{S_S}+{x}{S_M}+{x}{S_L}")._style = sv[c]
+        bill = "+".join(f"{_phase(c, brow, FIRST)}*' Inputs'!$J${sr}*{rate(ir, pr, dr)}"
+                        for (_, brow, sr, ir, pr, dr) in BUNDLES)        # per-period annual (upfront)
+        pf.cell(BILL, c, f"={bill}")._style = sv[c]
+        pf.cell(saas, c, f"={x}{hw}+{x}{SUB}+{x}{OVER}")._style = pf.cell(saas, c)._style
+    print(f"  D5b: subscription block (rev {SUB}, children {S_S}-{S_L}, billings {BILL}); SaaS#3 = HW+Sub+Overage")
