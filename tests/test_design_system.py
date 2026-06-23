@@ -13,7 +13,7 @@ import pytest
 
 from core.model import design_system as ds
 
-FARADA = Path("clients/farada/modeling/farada_model_v6.5.xlsx")
+FARADA = Path("clients/farada/modeling/farada_model_v7.xlsx")
 CUPFFEE = Path("clients/cupffee/budget/cupfee-q2-26.xlsx")
 
 
