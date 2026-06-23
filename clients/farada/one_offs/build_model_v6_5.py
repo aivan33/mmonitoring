@@ -11,8 +11,8 @@ This file does R1–R3 (re-architecture + rolls). R4–R6 (CF/BS statements) fol
       per-bundle GP detail dropped (per-bundle COGS isn't split).
   R3  ProForma WC + financing rolls; the tax-payable & retained-earnings rolls reference IS.
 
-Reads v4 (preserved), writes the FINAL farada_model_v6.xlsx. Idempotent.
-Run:  .venv/bin/python clients/farada/one_offs/build_model_v6.py
+Reads v4 (preserved), writes the FINAL farada_model_v6.5.xlsx. Idempotent.
+Run:  .venv/bin/python clients/farada/one_offs/build_model_v6_5.py
 """
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.formula import ArrayFormula
 
 SRC = "clients/farada/modeling/farada_model_v4.xlsx"
-DST = "clients/farada/modeling/farada_model_v6.xlsx"
+DST = "clients/farada/modeling/farada_model_v6.5.xlsx"
 FIRST, LAST = 3, 62
 
 I = dict(WC_HDR=161, DSO=162, PREPAY=163, SAAS_ANN=164, DPO=165, PAYDAYS=166, TAXLAG=167,

@@ -10,7 +10,7 @@ statements (=ProForma!C44), so the remap is context-aware:
 Comprehensive gate: every relocated formula must reference the SAME logical rows after the move —
 the multiset of referenced-row LABELS is preserved (catches any missed/mis-remapped ref). With no
 recalc engine this label-isomorphism + the balance oracle are the value guarantee. Run after the
-Inputs reflow (build_model_v5 calls it). Rewrites farada_model_v6.xlsx in place.
+Inputs reflow (build_model_v5 calls it). Rewrites farada_model_v6.5.xlsx in place.
 """
 from __future__ import annotations
 
