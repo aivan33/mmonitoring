@@ -34,8 +34,9 @@ def K(*rows): return [("keep", r) for r in rows]
 def NEW(*labels_units): return [("new", lbl, u) for lbl, u in labels_units]
 
 LAYOUT = [
-    # scenario selector preserved at top
-    ("keep", 2), ("keep", 3), ("keep", 4), ("keep", 5), B,
+    # scenario selector MUST stay at its original rows — every OFFSET reads the fixed cell $D$2,
+    # so row 2 (the selector) is pinned. Leading blank keeps row 1 empty as in the source.
+    B, ("keep", 2), ("keep", 3), ("keep", 4), ("keep", 5), B,
 
     H("I.", "FUNDING ASSUMPTIONS"), B,
     S("1.1", "Equity injection"), *K(170, 171),
@@ -117,12 +118,14 @@ def reflow(wb):
             old2new[item[1]] = nr
     last = nr
 
-    # clear the sheet body (rows 1..max), then rewrite per plan
-    maxr = inp.max_row
+    # RESET the whole working region to clean blank (value AND style) — the source sheet carries a
+    # large tail of pre-formatted empty rows; clearing only values would leave stray formatting.
+    maxr, maxc = inp.max_row, max(NCOLS, inp.max_column)
     for r in range(1, maxr + 1):
-        for c in range(1, NCOLS + 1):
+        for c in range(1, maxc + 1):
             cell = inp.cell(r, c)
             cell.value = None
+            cell.style = "Normal"
     for nr, item in plan:
         if item[0] == "keep":
             for c, (val, st) in enumerate(snap[item[1]], start=1):
@@ -143,6 +146,9 @@ def reflow(wb):
             inp.cell(nr, 4, item[2])._style = unit_style
             inp.cell(nr, 10, f"=OFFSET(K{nr},0,$D$2)")._style = act_style
             inp.cell(nr, 12)._style = val_style                  # empty cream value cell
+    # drop the now-blank trailing rows (no refs point below the skeleton)
+    if maxr > last:
+        inp.delete_rows(last + 1, maxr - last)
     return old2new, label_at, last
 
 
@@ -170,7 +176,10 @@ def _gate(wb, old2new, label_at, referenced):
     bad = [(old, new) for old, new in old2new.items()
            if inp.cell(new, 3).value != label_at[old]]
     assert not bad, f"label moved/lost at: {[(o, n, label_at[o]) for o, n in bad[:8]]}"
-    print(f"  gate ✓ {len(old2new)} rows relocated; all {len(referenced)} referenced rows preserved by label")
+    # the scenario selector ($D$2) is read by every OFFSET — it MUST stay numeric at row 2
+    assert isinstance(inp.cell(2, 4).value, (int, float)), \
+        f"scenario selector $D$2 not preserved (got {inp.cell(2, 4).value!r}) — OFFSETs would break"
+    print(f"  gate ✓ {len(old2new)} rows relocated; all {len(referenced)} referenced preserved; selector $D$2 intact")
 
 
 def main():

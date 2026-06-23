@@ -46,12 +46,16 @@ def _fill(cell):
 
 @pytest.mark.skipif(not FARADA.exists(), reason="Farada model gitignored / absent")
 def test_canon_matches_farada():
+    # located by content (not hardcoded cells) so it survives the I–V Inputs reflow
     wb = openpyxl.load_workbook(FARADA)
     inp, isx = wb[" Inputs"], wb["IS"]
-    assert inp["C7"].font.name == ds.FONT
-    assert _fill(inp["C7"]) == ds.PALETTE["section_band"]
-    assert _fill(inp["J16"]) == ds.PALETTE["active"]
-    assert _fill(inp["L16"]) == ds.PALETTE["input_value"]
+    band = next(inp.cell(r, 3) for r in range(1, inp.max_row + 1)
+                if isinstance(inp.cell(r, 1).value, str) and inp.cell(r, 1).value.strip().endswith("."))
+    assert band.font.name == ds.FONT and _fill(band) == ds.PALETTE["section_band"]
+    act = next(r for r in range(1, inp.max_row + 1)
+               if isinstance(inp.cell(r, 10).value, str) and "OFFSET" in inp.cell(r, 10).value)
+    assert _fill(inp.cell(act, 10)) == ds.PALETTE["active"]
+    assert _fill(inp.cell(act, 12)) == ds.PALETTE["input_value"]
     assert _fill(isx["A1"]) == ds.PALETTE["statement_banner"]
 
 
