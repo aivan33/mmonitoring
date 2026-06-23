@@ -191,14 +191,18 @@ def main():
     ck(ft(cf.cell(Lc["Cash received from customers"], 3)) ==
        f"=ProForma!{PC('Revenue')}-(ProForma!{PC('Trade receivables (AR)')}-{JREF('Opening AR')})",
        "Cash from customers = rev − ΔAR")
-    ck(ft(cf.cell(Lc["Ending Cash Balance"], 3)) == "=C22+C21", "Ending cash = beginning + excess (plug)")
+    eb, bg, ex = Lc["Ending Cash Balance"], Lc["Beginning Cash Balance"], Lc["Excess Cash for the Period"]
+    ck(ft(cf.cell(eb, 3)) == f"=C{bg}+C{ex}", "Ending cash = beginning + excess")
+    for line in ("Recovery/(repayment) of VAT", "Distribution of dividends", "Net Cash Burn"):
+        ck(any(isinstance(cf.cell(r, 1).value, str) and line in cf.cell(r, 1).value
+               for r in range(1, cf.max_row + 1)), f"CF has '{line}'")
     ck(ft(cf.cell(Lc["Beginning Cash Balance"], 3)) == f"={JREF('Opening cash')}", "Beginning cash (t0) = opening cash input")
-    ck(ft(cf.cell(Lc["Beginning Cash Balance"], 4)) == "=C23", "Beginning cash (t1) = prior ending")
+    ck(ft(cf.cell(Lc["Beginning Cash Balance"], 4)) == f"=C{eb}", "Beginning cash (t1) = prior ending")
 
     print("\n[R5] BS present; cash=CF ending; check row = Assets − E&L")
     bs = wb["BS"]
     Lb = labels(bs)
-    ck(ft(bs.cell(Lb["Cash & cash equivalents"], 3)) == "=CF!C23", "BS cash = CF ending")
+    ck(ft(bs.cell(Lb["Cash & cash equivalents"], 3)) == f"=CF!C{Lc['Ending Cash Balance']}", "BS cash = CF ending")
     ck(ft(bs.cell(Lb["check (Assets − E&L)"], 3)) == f"=C{Lb['TOTAL ASSETS']}-C{Lb['TOTAL EQUITY & LIABILITIES']}",
        "check = TOTAL ASSETS − TOTAL E&L")
     # reference structure present (blank-but-defined)

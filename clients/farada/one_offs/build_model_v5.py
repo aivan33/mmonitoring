@@ -456,6 +456,7 @@ def build():
     rfp.style_subtotals(wb)            # bold the ProForma sum/subtotal lines (readability)
     import restructure_statements as rs
     rs.restructure_bs(wb)              # BS → reference structure (sub-groups + blank lines + ratios)
+    rs.restructure_cf(wb)             # CF → reference lines (VAT/Other/Dividends/burn) + CF_Y mirror
     rf.unify_input_formats(wb)   # LAST — final word on Inputs value-cell number formats
     wb.save(DST)
     print(f"Saved {DST}")

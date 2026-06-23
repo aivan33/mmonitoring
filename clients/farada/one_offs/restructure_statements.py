@@ -164,3 +164,141 @@ def restructure_bs(wb):
     if ymax > last:
         bsy.delete_rows(last + 1, ymax - last)
     print(f"  BS: restructured + BS_Y mirrored ({last} rows, {len(asset_rows)} assets / {len(el_rows)} E&L)")
+
+
+CF_LAYOUT = [
+    ("title", "Cash Flow Statement — Monthly (Direct method, EUR)"), ("ccy",), ("blank",),
+    ("sub", "Operating activities"),
+    ("op", "Cash received from customers"), ("op", "Cash paid to suppliers"),
+    ("op", "Payment for personnel and social security"), ("op", "Bank charges paid"),
+    ("op_new", "  Recovery/(repayment) of VAT"), ("op", "Corporate and other taxes, net"),
+    ("op", "Movement in deferred revenue"), ("op_new", "  Other (operating)"),
+    ("op_total", "Cash Flow from Operating Activities"), ("blank",),
+    ("sub", "Investing activities"),
+    ("inv", "CAPEX"), ("inv", "R&D (capitalised)"), ("inv_new", "  Other (investing)"),
+    ("inv_total", "Cash Flow from Investing Activities"), ("blank",),
+    ("sub", "Financing activities"),
+    ("fin", "Capital Increase"), ("fin", "Loan facility financing"), ("fin", "Grants"),
+    ("fin_new", "  Other payments / proceeds, net"), ("fin_new", "  Distribution of dividends"),
+    ("fin_total", "Cash Flow from Financing Activities"), ("blank",),
+    ("excess", "Excess Cash for the Period"), ("begin", "Beginning Cash Balance"),
+    ("end", "Ending Cash Balance"), ("pct", "% Change in cash"), ("blank",),
+    ("burn", "Net Cash Burn (Operating + Investing)"), ("new", "  Average Monthly Burn 2026"),
+]
+YEAR_RANGES = [("C", "H"), ("I", "T"), ("U", "AF"), ("AG", "AR"), ("AS", "BD")]  # calendar-year month spans
+
+
+def restructure_cf(wb):
+    from openpyxl.utils import get_column_letter
+    cf = wb["CF"]
+    snap = _snapshot(cf)
+    old_row = {cf.cell(r, 1).value.strip(): r for r in range(1, cf.max_row + 1)
+               if isinstance(cf.cell(r, 1).value, str) and cf.cell(r, 1).value.strip()}
+    sub_st = snap["Cash received from customers"][0][1]
+    tot_st = snap["Cash Flow from Operating Activities"]
+    open_ref = re.search(r"' Inputs'!\$J\$\d+", snap["Beginning Cash Balance"][2][0]).group(0)
+
+    # plan
+    plan, nr, o2n = [], 0, {2: None}
+    op, inv, fin = [], [], []
+    rows = {}
+    for item in CF_LAYOUT:
+        nr += 1
+        plan.append((nr, item))
+        k = item[0]
+        if k in ("op", "op_new"):
+            op.append(nr)
+        elif k in ("inv", "inv_new"):
+            inv.append(nr)
+        elif k in ("fin", "fin_new"):
+            fin.append(nr)
+        if k == "ccy":
+            o2n[2] = nr
+        elif k in ("op", "inv", "fin"):
+            o2n[old_row[item[1]]] = nr
+        elif k in ("op_total", "inv_total", "fin_total", "excess", "begin", "end", "pct"):
+            o2n[old_row[item[1]]] = nr
+            rows[k] = nr
+    last = nr
+
+    maxr = cf.max_row
+    for r in range(1, maxr + 1):
+        for c in range(1, LAST + 1):
+            cell = cf.cell(r, c); cell.value = None; cell.style = "Normal"
+    for nr, item in plan:
+        k = item[0]
+        if k in ("title", "sub"):
+            cf.cell(nr, 1, item[1])._style = (tot_st[0][1] if k == "title" else sub_st)
+        elif k == "ccy":
+            cf.cell(nr, 1, "Currency: EUR")._style = sub_st
+            cf.cell(nr, 3, "=IS!C2")
+        elif k in ("op_new", "inv_new", "fin_new", "new"):
+            cf.cell(nr, 1, item[1])._style = sub_st
+        elif k in ("op", "inv", "fin"):
+            for c, (val, st) in enumerate(snap[item[1]], start=1):
+                cf.cell(nr, c).value = val
+                cf.cell(nr, c)._style = st
+        elif k in ("op_total", "inv_total", "fin_total", "excess", "begin", "end", "pct", "burn"):
+            cf.cell(nr, 1, item[1])._style = tot_st[0][1]
+            for c in range(FIRST, LAST + 1):
+                x, px = get_column_letter(c), get_column_letter(c - 1)
+                if k == "op_total":
+                    f = f"=SUM({x}{op[0]}:{x}{op[-1]})"
+                elif k == "inv_total":
+                    f = f"=SUM({x}{inv[0]}:{x}{inv[-1]})"
+                elif k == "fin_total":
+                    f = f"=SUM({x}{fin[0]}:{x}{fin[-1]})"
+                elif k == "excess":
+                    f = f"={x}{rows['op_total']}+{x}{rows['inv_total']}+{x}{rows['fin_total']}"
+                elif k == "begin":
+                    f = f"={open_ref}" if c == FIRST else f"={px}{rows['end']}"
+                elif k == "end":
+                    f = f"={x}{rows['begin']}+{x}{rows['excess']}"
+                elif k == "pct":
+                    f = f"=IF({x}{rows['begin']}=0,0,{x}{rows['end']}/{x}{rows['begin']}-1)"
+                elif k == "burn":
+                    f = f"={x}{rows['op_total']}+{x}{rows['inv_total']}"
+                cf.cell(nr, c, f)._style = tot_st[c - 1][1]
+    if maxr > last:
+        cf.delete_rows(last + 1, maxr - last)
+
+    # remap BS's =CF! cash ref to the new ending row, then rebuild CF_Y to mirror CF
+    _remap_year(wb, "BS", "CF", o2n)
+    cfy = wb["CF_Y"]
+    yhdr = [(cfy.cell(2, c).value, cfy.cell(2, c)._style) for c in range(1, 9)]
+    title_st = cfy.cell(1, 1)._style
+    ymax = cfy.max_row
+    for r in range(1, ymax + 1):
+        for c in range(1, 9):
+            cell = cfy.cell(r, c); cell.value = None; cell.style = "Normal"
+    cfy.cell(1, 1, "Cash Flow — Yearly (calendar; 2026 = Jul–Dec)")._style = title_st
+    for c, (v, st) in enumerate(yhdr, start=1):
+        cfy.cell(2, c).value = v
+        cfy.cell(2, c)._style = st
+    for nr, item in plan:
+        if nr <= 2:
+            continue
+        k = item[0]
+        if k in ("sub", "op_new", "inv_new", "fin_new", "new"):
+            cfy.cell(nr, 1, item[1])._style = sub_st
+        elif k in ("op", "inv", "fin", "op_total", "inv_total", "fin_total", "excess", "burn"):
+            cfy.cell(nr, 1, item[1])._style = (sub_st if k in ("op", "inv", "fin") else tot_st[0][1])
+            for y, (a, b) in enumerate(YEAR_RANGES):
+                cfy.cell(nr, 3 + y, f"=SUM(CF!{a}{nr}:{b}{nr})")._style = sub_st
+        elif k == "begin":
+            cfy.cell(nr, 1, item[1])._style = tot_st[0][1]
+            for y, (a, b) in enumerate(YEAR_RANGES):
+                cfy.cell(nr, 3 + y, f"=CF!{a}{nr}")._style = sub_st
+        elif k == "end":
+            cfy.cell(nr, 1, item[1])._style = tot_st[0][1]
+            for y in range(len(YEAR_RANGES)):
+                x = get_column_letter(3 + y)
+                cfy.cell(nr, 3 + y, f"={x}{rows['begin']}+{x}{rows['excess']}")._style = sub_st
+        elif k == "pct":
+            cfy.cell(nr, 1, item[1])._style = tot_st[0][1]
+            for y in range(len(YEAR_RANGES)):
+                x = get_column_letter(3 + y)
+                cfy.cell(nr, 3 + y, f"=IF({x}{rows['begin']}=0,0,{x}{rows['end']}/{x}{rows['begin']}-1)")._style = sub_st
+    if ymax > last:
+        cfy.delete_rows(last + 1, ymax - last)
+    print(f"  CF: restructured + CF_Y mirrored ({last} rows)")
