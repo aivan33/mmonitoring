@@ -15,7 +15,9 @@ Inputs reflow (build_model_v5 calls it). Rewrites farada_model_v5.xlsx in place.
 from __future__ import annotations
 
 import re
+from copy import copy
 
+from openpyxl.styles import Font
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.formula import ArrayFormula
 
@@ -139,6 +141,24 @@ def reflow(wb):
 def _ft_snap(snap, row):
     v = snap[row][2][0]  # col C value
     return v.text if isinstance(v, ArrayFormula) else v
+
+
+def style_subtotals(wb, LAST=62):
+    """Bold the ProForma sum/subtotal lines (a row whose formula is purely +-joined internal cell
+    refs or a SUM range) so totals stand out from their indented leaf children — readability (E)."""
+    pf = wb[SHEET]
+    sub = re.compile(r"^=(SUM\([A-Z]+\d+:[A-Z]+\d+\)|[A-Z]+\d+(\+[A-Z]+\d+)+)$")
+    n = 0
+    for r in range(1, pf.max_row + 1):
+        f = _ft(pf.cell(r, 3))
+        if isinstance(f, str) and sub.match(f.replace(" ", "")):
+            for c in [1] + list(range(3, LAST + 1)):
+                cell = pf.cell(r, c)
+                fo = cell.font
+                cell.font = Font(name=fo.name, size=fo.size, bold=True, color=fo.color,
+                                 italic=fo.italic)
+            n += 1
+    print(f"  style: bolded {n} ProForma subtotal lines")
 
 
 def add_measurement_children(wb, FIRST=3, LAST=62):

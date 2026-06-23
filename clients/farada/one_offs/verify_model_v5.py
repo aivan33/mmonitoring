@@ -138,6 +138,11 @@ def main():
     ck(ft(ws.cell(Lp["Chip EUR/sensor"], 3)).endswith(f"/(C{spw}*C{yld})"),
        "Chip €/sensor = wafer cascade ÷ (spw × yield)")
 
+    print("\n[E] ProForma sum/subtotal lines are bold (readability)")
+    ck(ws.cell(Lp["Total run-rate (sensors/yr)"], 1).font.bold, "'Total run-rate' (a SUM) is bold")
+    ck(ws.cell(Lp["Revenue"], 1).font.bold, "'Revenue' (a subtotal) is bold")
+    ck(not ws.cell(Lp["Sensors Line 1 (monthly)"], 1).font.bold, "a leaf driver is NOT bold")
+
     print("\n[F-meas] Line-3 measurements split into Included + Overage children")
     mr = Lp["Measurements Line 3 (monthly)"]
     kids = [str(ws.cell(mr + i, 1).value or "") for i in (1, 2)]

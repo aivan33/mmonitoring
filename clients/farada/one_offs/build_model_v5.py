@@ -453,6 +453,7 @@ def build():
     import reflow_proforma as rfp
     rfp.reflow(wb)
     rfp.add_measurement_children(wb)   # split Line-3 measurements into Included + Overage
+    rfp.style_subtotals(wb)            # bold the ProForma sum/subtotal lines (readability)
     rf.unify_input_formats(wb)   # LAST — final word on Inputs value-cell number formats
     wb.save(DST)
     print(f"Saved {DST}")
