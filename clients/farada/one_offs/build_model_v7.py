@@ -507,6 +507,7 @@ def build():
     import restructure_statements as rs
     rs.restructure_bs(wb)              # BS → reference structure (sub-groups + blank lines + ratios)
     rs.restructure_cf(wb)             # CF → reference lines (VAT/Other/Dividends/burn) + CF_Y mirror
+    rfp.relocate_cf_to_proforma(wb)   # CB1/CB2: CF derivation → ProForma engine; CF statement pure output
     rf.unify_input_formats(wb)   # LAST — final word on Inputs value-cell number formats
     wb.save(DST)
     print(f"Saved {DST}")

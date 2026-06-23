@@ -398,3 +398,74 @@ def add_overage_delay(wb, FIRST=3, LAST=62):
         # measurement total = Included (immediate) + delayed Overage child → cloud COGS follows
         pf.cell(mt, c, f"={x}{incl}+IF({m}<{DLY},0,{shift(ovm)})")
     print(f"  OD: overage revenue (row {ov}) + measurements (row {mt}) ramp-delayed by {DLY}")
+
+
+def relocate_cf_to_proforma(wb, FIRST=3, LAST=62):
+    """CB1+CB2 — move the CF derivation INTO the ProForma (the engine); make the CF statement pure
+    output. The correct post-reflow derivation already exists in the CF statement, so CLONE its rows
+    into the ProForma CASH FLOW section at a constant offset Δ, translating refs: ProForma!X{n}→X{n}
+    (already a ProForma row), bare CF-internal X{n}→X{n+Δ} (now the cloned rows), IS!/Inputs! kept.
+    Then point every CF-statement formula at its cloned ProForma row, and BS cash at the ProForma cash
+    roll. Re-append blank TAXATION/FUNDING placeholders after the block (CB4 fills). Append-only —
+    nothing references past the rolls. Runs AFTER restructure_cf (CF final) + add_proforma_sections."""
+    pf, cf = wb[SHEET], wb["CF"]
+    cfh = next(r for r in range(1, pf.max_row + 1)
+               if isinstance(pf.cell(r, 1).value, str) and pf.cell(r, 1).value.strip() == "CASH FLOW")
+    band_st = pf.cell(cfh, 1)._style
+    lbl_st = pf.cell(next(r for r in range(1, pf.max_row + 1) if isinstance(pf.cell(r, 1).value, str)
+                          and pf.cell(r, 1).value.strip() == "Trade receivables (AR)"), 1)._style
+    for r in range(cfh, pf.max_row + 1):                       # clear CASH FLOW + TAX + FUNDING placeholders
+        for c in range(1, LAST + 1):
+            pf.cell(r, c).value = None
+            pf.cell(r, c).style = "Normal"
+    pf.cell(cfh, 1, "CASH FLOW")._style = band_st
+
+    cf_first = 4
+    cf_last = max(r for r in range(1, cf.max_row + 1) if cf.cell(r, 1).value not in (None, ""))
+    base, = (cfh + 1,)
+    delta = base - cf_first
+
+    def translate(body):
+        def repl(m):
+            if m.group("q") is None:                          # bare CF-internal ref → shift row by Δ
+                return re.sub(r"\d+", lambda d: str(int(d.group()) + delta), m.group("ref"))
+            if m.group("q") == "ProForma!":                   # already a ProForma row → strip prefix
+                return m.group("ref")
+            return m.group(0)                                 # IS! / ' Inputs'! / … → keep
+        return TOKEN.sub(repl, body)
+
+    pf_end = None
+    for cf_r in range(cf_first, cf_last + 1):
+        pr = cf_r + delta
+        pf.cell(pr, 1, cf.cell(cf_r, 1).value)._style = cf.cell(cf_r, 1)._style
+        for c in range(FIRST, LAST + 1):
+            src = cf.cell(cf_r, c)
+            pf.cell(pr, c)._style = src._style
+            f = _ft(src)
+            if isinstance(f, str) and f.startswith("="):
+                pf.cell(pr, c).value = "=" + translate(f[1:])
+            elif f is not None:
+                pf.cell(pr, c).value = f                       # literal (e.g. R&D capitalised = 0)
+        if isinstance(cf.cell(cf_r, 1).value, str) and "Ending Cash Balance" in cf.cell(cf_r, 1).value:
+            pf_end = pr
+
+    nr = base + (cf_last - cf_first)                          # re-append blank TAX + FUNDING placeholders
+    for title, lines in [("TAXATION", ["Tax expense (P&L)", "Tax payable (BS)"]),
+                         ("FUNDING", ["Equity round", "Debt draw", "Grants"])]:
+        nr += 2
+        pf.cell(nr, 1, title)._style = band_st
+        for ln in lines:
+            nr += 1
+            pf.cell(nr, 1, "  " + ln)._style = lbl_st
+
+    for cf_r in range(cf_first, cf_last + 1):                 # CB2 — CF statement → pure =ProForma! pulls
+        for c in range(FIRST, LAST + 1):
+            f = _ft(cf.cell(cf_r, c))
+            if isinstance(f, str) and f.startswith("="):
+                cf.cell(cf_r, c).value = f"=ProForma!{get_column_letter(c)}{cf_r + delta}"
+    bs = wb["BS"]
+    for r in range(1, bs.max_row + 1):                        # BS cash → ProForma cash roll
+        if isinstance(bs.cell(r, 1).value, str) and "Cash & cash equivalents" in bs.cell(r, 1).value:
+            for c in range(FIRST, LAST + 1):
+                bs.cell(r, c).value = f"=ProForma!{get_column_letter(c)}{pf_end}"
+    print(f"  CB1/CB2: CF cloned to ProForma {base}-{base + (cf_last - cf_first)} (Δ={delta}); CF stmt thinned; BS cash→PF")

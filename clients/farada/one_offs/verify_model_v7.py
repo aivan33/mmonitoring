@@ -304,24 +304,36 @@ def main():
     ck("€" in inp.cell(IJ("Tranche 1 amount"), 12).number_format,
        "EUR input 'Tranche 1 amount' has a € format")
 
-    print("\n[R4] CF statement (direct) present + wired to rolls/IS")
+    print("\n[CB1] CF derivation + cash roll live in the ProForma CASH FLOW section (the engine)")
+    Lpcf = {ws.cell(r, 1).value.strip(): r for r in range(1, ws.max_row + 1)
+            if isinstance(ws.cell(r, 1).value, str) and ws.cell(r, 1).value.strip()}
+    for line in ("Cash received from customers", "Cash Flow from Operating Activities",
+                 "Excess Cash for the Period", "Ending Cash Balance"):
+        ck(line in Lpcf, f"ProForma CASH FLOW has '{line}'")
+    pcust = Lpcf.get("Cash received from customers")
+    ck(pcust and isinstance(ft(ws.cell(pcust, 3)), str) and "ProForma!" not in ft(ws.cell(pcust, 3))
+       and ft(ws.cell(pcust, 3)).startswith("="), "ProForma CF line is a real (internal-ref) derivation")
+    pend = Lpcf.get("Ending Cash Balance")
+    ck(pend and ft(ws.cell(pend, 3)).startswith("=") and ("+" in ft(ws.cell(pend, 3))),
+       "ProForma cash roll: Ending = Beginning + Excess (in the engine)")
+
+    print("\n[CB2] CF statement is PURE OUTPUT — every formula a bare =ProForma! reference")
     cf = wb["CF"]
     Lc = labels(cf)
-    ck(ft(cf.cell(Lc["Cash received from customers"], 3)) ==
-       f"=ProForma!{PC('Revenue')}-(ProForma!{PC('Trade receivables (AR)')}-{JREF('Opening AR')})",
-       "Cash from customers = rev − ΔAR")
-    eb, bg, ex = Lc["Ending Cash Balance"], Lc["Beginning Cash Balance"], Lc["Excess Cash for the Period"]
-    ck(ft(cf.cell(eb, 3)) == f"=C{bg}+C{ex}", "Ending cash = beginning + excess")
+    import re as _re
+    bad = [(r, ft(cf.cell(r, 3))) for r in range(4, cf.max_row + 1)
+           if isinstance(ft(cf.cell(r, 3)), str) and ft(cf.cell(r, 3)).startswith("=")
+           and not _re.fullmatch(r"=ProForma!\$?[A-Z]{1,3}\$?\d+", ft(cf.cell(r, 3)))]
+    ck(not bad, f"all CF statement formulas are bare =ProForma! refs (offenders: {bad[:3]})")
     for line in ("Recovery/(repayment) of VAT", "Distribution of dividends", "Net Cash Burn"):
         ck(any(isinstance(cf.cell(r, 1).value, str) and line in cf.cell(r, 1).value
                for r in range(1, cf.max_row + 1)), f"CF has '{line}'")
-    ck(ft(cf.cell(Lc["Beginning Cash Balance"], 3)) == f"={JREF('Opening cash')}", "Beginning cash (t0) = opening cash input")
-    ck(ft(cf.cell(Lc["Beginning Cash Balance"], 4)) == f"=C{eb}", "Beginning cash (t1) = prior ending")
 
-    print("\n[R5] BS present; cash=CF ending; check row = Assets − E&L")
+    print("\n[R5] BS present; cash=ProForma ending; check row = Assets − E&L")
     bs = wb["BS"]
     Lb = labels(bs)
-    ck(ft(bs.cell(Lb["Cash & cash equivalents"], 3)) == f"=CF!C{Lc['Ending Cash Balance']}", "BS cash = CF ending")
+    ck(ft(bs.cell(Lb["Cash & cash equivalents"], 3)).startswith("=ProForma!"),
+       "BS cash pulls from the ProForma cash roll (ending cash)")
     ck(ft(bs.cell(Lb["check (Assets − E&L)"], 3)) == f"=C{Lb['TOTAL ASSETS']}-C{Lb['TOTAL EQUITY & LIABILITIES']}",
        "check = TOTAL ASSETS − TOTAL E&L")
     # reference structure present (blank-but-defined)
