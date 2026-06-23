@@ -507,3 +507,28 @@ def populate_wc_ratios(wb, FIRST=3, LAST=62):
                 for c in range(FIRST, LAST + 1):
                     bs.cell(r, c, f"=ProForma!{get_column_letter(c)}{tgt}").number_format = "0.0"
     print(f"  CB3: WC ratios (DSO/DPO/current/quick/cash) computed in ProForma; BS pulls them")
+
+
+def populate_tax_funding(wb, FIRST=3, LAST=62):
+    """CB4 — fill the TAXATION + FUNDING sections (were blank) as thin reference rows: Tax expense
+    (P&L)→IS tax line, Tax payable (BS)→the tax-payable roll, and Equity round / Debt draw / Grants →
+    the cloned CF financing lines (Capital Increase / Loan facility financing / Grants). The calc lives
+    in the rolls/CF engine; these present it. Runs after relocate_cf_to_proforma."""
+    pf, iss = wb[SHEET], wb["IS"]
+    L = {pf.cell(r, 1).value.strip(): r for r in range(1, pf.max_row + 1)
+         if isinstance(pf.cell(r, 1).value, str) and pf.cell(r, 1).value.strip()}
+    istax = next(r for r in range(1, iss.max_row + 1)
+                 if isinstance(iss.cell(r, 1).value, str) and "Income tax (expense)" in iss.cell(r, 1).value)
+    tax_hdr = L["TAXATION"]
+    cf_grants = next(r for r in range(1, tax_hdr)                 # the CF-clone "Grants" (above TAXATION)
+                     if isinstance(pf.cell(r, 1).value, str) and pf.cell(r, 1).value.strip() == "Grants")
+    base_st = pf.cell(L["Trade receivables (AR)"], FIRST)._style
+    refs = {L["Tax expense (P&L)"]: lambda x: f"=IS!{x}{istax}",
+            L["Tax payable (BS)"]:  lambda x: f"={x}{L['Tax payable']}",
+            L["Equity round"]:      lambda x: f"={x}{L['Capital Increase']}",
+            L["Debt draw"]:         lambda x: f"={x}{L['Loan facility financing']}",
+            L["Grants"]:            lambda x: f"={x}{cf_grants}"}
+    for r, fn in refs.items():
+        for c in range(FIRST, LAST + 1):
+            pf.cell(r, c, fn(get_column_letter(c)))._style = base_st
+    print(f"  CB4: TAXATION + FUNDING populated (thin refs to IS tax / tax-payable roll / financing)")

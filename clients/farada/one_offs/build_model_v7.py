@@ -509,6 +509,7 @@ def build():
     rs.restructure_cf(wb)             # CF → reference lines (VAT/Other/Dividends/burn) + CF_Y mirror
     rfp.relocate_cf_to_proforma(wb)   # CB1/CB2: CF derivation → ProForma engine; CF statement pure output
     rfp.populate_wc_ratios(wb)        # CB3: WC drivers & ratios in ProForma; BS pulls them
+    rfp.populate_tax_funding(wb)      # CB4: TAXATION + FUNDING sections (thin refs)
     rf.unify_input_formats(wb)   # LAST — final word on Inputs value-cell number formats
     wb.save(DST)
     print(f"Saved {DST}")

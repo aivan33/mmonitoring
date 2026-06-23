@@ -343,6 +343,14 @@ def main():
                 and "Current ratio" in wb["BS"].cell(r, 1).value), None)
     ck(bsr and str(ft(wb["BS"].cell(bsr, 3)) or "").startswith("=ProForma!"), "BS Current ratio pulls from ProForma")
 
+    print("\n[CB4] TAXATION + FUNDING sections populated (thin refs in the engine)")
+    for line in ("Tax expense (P&L)", "Tax payable (BS)", "Equity round", "Debt draw", "Grants"):
+        r = Lpcf.get(line)
+        ck(r is not None and isinstance(ft(ws.cell(r, 3)), str) and ft(ws.cell(r, 3)).startswith("="),
+           f"ProForma section row populated: {line}")
+    txe = Lpcf.get("Tax expense (P&L)")
+    ck(txe and "IS!" in ft(ws.cell(txe, 3)), "Tax expense (P&L) references the IS tax line")
+
     print("\n[R5] BS present; cash=ProForma ending; check row = Assets − E&L")
     bs = wb["BS"]
     Lb = labels(bs)
