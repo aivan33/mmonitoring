@@ -199,7 +199,12 @@ def main():
     bs = wb["BS"]
     Lb = labels(bs)
     ck(ft(bs.cell(Lb["Cash & cash equivalents"], 3)) == "=CF!C23", "BS cash = CF ending")
-    ck(ft(bs.cell(Lb["check (Assets − E&L)"], 3)) == "=C9-C19", "check = TOTAL ASSETS − TOTAL E&L")
+    ck(ft(bs.cell(Lb["check (Assets − E&L)"], 3)) == f"=C{Lb['TOTAL ASSETS']}-C{Lb['TOTAL EQUITY & LIABILITIES']}",
+       "check = TOTAL ASSETS − TOTAL E&L")
+    # reference structure present (blank-but-defined)
+    for line in ("Inventory", "Business equipment", "Grants", "Other payables", "Current ratio"):
+        ck(any(isinstance(bs.cell(r, 1).value, str) and line in bs.cell(r, 1).value
+               for r in range(1, bs.max_row + 1)), f"BS has '{line}'")
 
     print("\n[R6] yearly CF_Y / BS_Y (calendar 2026–2030)")
     for s in ("CF_Y", "BS_Y"):
