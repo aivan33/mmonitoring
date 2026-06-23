@@ -175,6 +175,22 @@ def add_proforma_sections(wb):
     print("  PF sections: BALANCE SHEET + appended WC / Cash Flow / Taxation / Funding (blank-but-defined)")
 
 
+def fix_run_rate(wb, FIRST=3, LAST=62):
+    """D1 — replace the frozen `Total run-rate (sensors/yr) = SUM(C5:N7)` (identical in every column)
+    with a real **LTM trailing-12-months** run-rate: for month m, Σ of the 3 sensor rows over the
+    window [max(first, m-11) … m]. Drives the 6-point cost curve off realised scale (early months
+    partial → lower volume → higher unit cost, which is correct). Label-based (survives the reorder)."""
+    pf = wb[SHEET]
+    L = {pf.cell(r, 1).value.strip(): r for r in range(1, pf.max_row + 1)
+         if isinstance(pf.cell(r, 1).value, str) and pf.cell(r, 1).value.strip()}
+    rr = L["Total run-rate (sensors/yr)"]
+    s1, s3 = L["Sensors Line 1 (monthly)"], L["Sensors Line 3 (monthly)"]
+    for c in range(FIRST, LAST + 1):
+        a, x = get_column_letter(max(FIRST, c - 11)), get_column_letter(c)
+        pf.cell(rr, c, f"=SUM({a}{s1}:{x}{s3})")
+    print(f"  D1: run-rate → LTM trailing-12 over sensor rows {s1}-{s3}")
+
+
 def style_subtotals(wb, LAST=62):
     """Bold the ProForma sum/subtotal lines (a row whose formula is purely +-joined internal cell
     refs or a SUM range) so totals stand out from their indented leaf children — readability (E)."""

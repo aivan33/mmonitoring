@@ -144,6 +144,13 @@ def main():
     for sec in ("BALANCE SHEET", "WC DRIVERS & RATIOS", "CASH FLOW", "TAXATION", "FUNDING"):
         ck(any(sec in s for s in pf_secs), f"ProForma section: {sec}")
 
+    print("\n[D1] run-rate = LTM trailing-12 (per-month, not a frozen constant)")
+    rr = Lp["Total run-rate (sensors/yr)"]
+    s1, s3 = Lp["Sensors Line 1 (monthly)"], Lp["Sensors Line 3 (monthly)"]
+    ck(ft(ws.cell(rr, 3)) == f"=SUM(C{s1}:C{s3})", "run-rate month-1 = current-month sensors only")
+    ck(ft(ws.cell(rr, 15)).startswith("=SUM(") and ft(ws.cell(rr, 15)) != ft(ws.cell(rr, 3)),
+       "run-rate varies by month (LTM window grows; not the frozen =SUM(C5:N7))")
+
     print("\n[E] ProForma sum/subtotal lines are bold (readability)")
     ck(ws.cell(Lp["Total run-rate (sensors/yr)"], 1).font.bold, "'Total run-rate' (a SUM) is bold")
     ck(ws.cell(Lp["Revenue"], 1).font.bold, "'Revenue' (a subtotal) is bold")

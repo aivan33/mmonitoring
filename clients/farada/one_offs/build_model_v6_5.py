@@ -453,6 +453,7 @@ def build():
     import reflow_proforma as rfp
     rfp.reflow(wb)
     rfp.add_measurement_children(wb)   # split Line-3 measurements into Included + Overage
+    rfp.fix_run_rate(wb)               # D1: LTM trailing-12 run-rate (was a frozen constant)
     rfp.add_proforma_sections(wb)      # skill-outline lower sections (BS rolls + WC/CF/Tax/Funding)
     rfp.style_subtotals(wb)            # bold the ProForma sum/subtotal lines (readability)
     import restructure_statements as rs
