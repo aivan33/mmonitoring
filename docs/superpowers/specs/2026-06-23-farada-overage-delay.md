@@ -55,7 +55,10 @@ later if needed).
   no `#REF!`, schema broken=0, full pytest. Eyeball: overage = 0 for the first X months, then ramps to
   the undelayed curve shifted right by X.
 
-### Checkpoint — overage starts X months in, input is live, model still balances.
+### Checkpoint — overage starts X months in, input is live, model still balances. ✅ SHIPPED (50c2f06)
+OD1–OD4 done in v7 (in place): input + OFFSET shift on overage revenue (r48) & measurements (r16).
+All gates green (balance oracle BS check=0, no #REF!, schema, 392 tests). Overage = 0 for the first
+3 months, then the undelayed curve shifted right by 3. Delay default 3mo is a placeholder to calibrate.
 
 ## Risks
 | Risk | Mitigation |
