@@ -179,9 +179,13 @@ SAAS_ANN=100%. CF/BS flow through the existing direct-method structure.
 - **Verify:** balance oracle (extend synthetic run for deferred running-balance + upfront cash); schema; pytest.
 - **Files:** `build_model_v6_5.py` (`add_rolls`, `add_cf_inputs`), `verify_model_v6_5.py`.
 
-### Checkpoint — after D4 (done), and again after D5e
-- Balance oracle (BS check=0, no #REF!) · SaaS oracle ties · schema broken=0 · pytest green ·
-  eyeball revenue/EBITDA/ending-cash. Review with user before promoting v6.5 → v7.
+### Checkpoint — after D4 (done), and again after D5e  ✅ REACHED (2026-06-23)
+- D4 (852260c) · D5a (33c51a2) · D5b (2a68b3a) · D5c (31f9503) · D5d (7702689) · D5e (8ef1f54).
+- All gates green: balance oracle BS check=0 · schema broken-ref=0 · 392 pytest · no #REF! ·
+  CF/BS articulate (subscription cash = upfront billings via Rev − ΔAR + ΔDeferred).
+- **Calibration flags (placeholders, for your review before promoting v6.5 → v7):**
+  - `cloud_cost` €0.0005/meas vs list €0.02–0.03 ⇒ implied SaaS GM ~98% (structure right; value low).
+  - `included` = 960 (plan-heavy, ~80% of avg 1200); tier discounts S/M/L = 10/15/20% — all mockups.
 
 ## Risks
 | Risk | Mitigation |
