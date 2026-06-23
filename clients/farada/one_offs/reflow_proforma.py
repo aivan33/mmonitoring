@@ -343,3 +343,30 @@ def cloud_cogs_measurement_driven(wb, FIRST=3, LAST=62):
     inp.cell(cloud, 15, "← drives SaaS/cloud COGS = total measurements × this (SaaS GM is an output)")
     inp.cell(gm, 15, "← SUPERSEDED by measurement-driven cloud COGS (D5d); kept for reference")
     print(f"  D5d: cloud COGS = measurements(row {meas}) × cloud_cost(J{cloud}); 80% GM plug retired")
+
+
+def rework_wc_rolls(wb, FIRST=3, LAST=62):
+    """D5e — re-wire the working-capital rolls to the split SaaS streams (the 3-statement seam):
+      • Trade receivables = (components + hardware) × (1−prepay) + overage, spread over DSO.
+        Subscription is EXCLUDED (billed annually upfront → deferred, no receivable).
+      • Deferred revenue = running balance: prior + subscription billings − subscription revenue
+        (replaces the =overage×SAAS_ANN×6 proxy). The CF Δ-deferred then resolves subscription cash to
+        the upfront billings. AP is unchanged (COGS TOTAL already includes the cloud COGS)."""
+    pf, inp = wb[SHEET], wb[" Inputs"]
+    L = {pf.cell(r, 1).value.strip(): r for r in range(1, pf.max_row + 1)
+         if isinstance(pf.cell(r, 1).value, str) and pf.cell(r, 1).value.strip()}
+    ar, dfr = L["Trade receivables (AR)"], L["Deferred revenue (SaaS annual)"]
+    comp1, comp2, hwdev = (L["Components #1 - Low Volume"], L["Components #2 - High Volume"],
+                           L["Hardware (device, cost + markup)"])
+    sub, bill, ov = (L["Subscription (recurring)"],
+                     L["Subscription billings (annual, upfront — memo)"], L["SaaS (overage, recurring)"])
+    jrow = lambda pfx: next(r for r in range(1, inp.max_row + 1) if isinstance(inp.cell(r, 3).value, str)
+                            and inp.cell(r, 3).value.strip().startswith(pfx))
+    PREPAY, DSO, OBDEF = jrow("Hardware prepayment"), jrow("Receivable days"), jrow("Opening deferred revenue")
+    for c in range(FIRST, LAST + 1):
+        x, p = get_column_letter(c), get_column_letter(c - 1)
+        pf.cell(ar, c, f"=(({x}{comp1}+{x}{comp2}+{x}{hwdev})*(1-' Inputs'!$J${PREPAY})"
+                       f"+{x}{ov})/30*' Inputs'!$J${DSO}")
+        pf.cell(dfr, c, (f"=' Inputs'!$J${OBDEF}+{x}{bill}-{x}{sub}" if c == FIRST
+                         else f"={p}{dfr}+{x}{bill}-{x}{sub}"))
+    print(f"  D5e: AR=(comp+hw)(1−prepay)+overage; deferred=running(billings−subscription)")

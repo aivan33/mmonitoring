@@ -45,10 +45,12 @@ def bundle_rows(inp, subheader_prefix, n=3):
 def _balance_oracle():
     """Replicate the CF/BS formula logic on synthetic monthly leaves and assert the BS balances
     (Assets = Equity + Liabilities) every month — independent of the sheet's computed P&L."""
-    rate, DSO, DPO, PAYD, PREPAY, SAASANN, LIFE_M = 0.25, 30, 30, 30, 0.5, 0.0, 60
+    rate, DSO, DPO, PAYD, PREPAY, LIFE_M = 0.25, 30, 30, 30, 0.5, 60
     OB_CASH, OB_AR, OB_AP, OB_PAY, OB_DEF, OB_DEBT, OB_SC, OPEN_PPE = 2e6, 0, 0, 0, 0, 0, 5e6, 0
-    H = [100000, 120000, 0, 200000]        # hardware+components revenue
-    S = [10000, 12000, 15000, 18000]       # SaaS revenue
+    H = [100000, 120000, 0, 200000]        # hardware + components revenue (recognised at sale)
+    SUBR = [10000, 10000, 15000, 15000]    # subscription RECOGNISED (straight-line 1/12)
+    OV = [2000, 2500, 3000, 3500]          # overage (recognised monthly as used)
+    BILL = [120000, 0, 60000, 0]           # subscription BILLINGS (annual, collected upfront)
     COGS = [40000, 48000, 5000, 60000]
     OPEX = [50000, 50000, 50000, 50000]
     PAY = [30000, 30000, 30000, 30000]     # payroll (⊂ OPEX)
@@ -61,7 +63,7 @@ def _balance_oracle():
     ar_prev, ap_prev, pay_prev, def_prev, taxp_prev, sc_prev, debt_prev, re_prev = (
         OB_AR, OB_AP, OB_PAY, OB_DEF, 0.0, OB_SC, OB_DEBT, plug_re)
     for m in range(4):
-        rev = H[m] + S[m]
+        rev = H[m] + SUBR[m] + OV[m]
         dep = min((ppe_prev + CAPEX[m]) / LIFE_M, ppe_prev + CAPEX[m])   # P&L D&A == schedule dep
         ppe = ppe_prev + CAPEX[m] - dep
         ebitda = rev - COGS[m] - OPEX[m]
@@ -69,11 +71,12 @@ def _balance_oracle():
         pbt = ebit - FIN[m]                          # finance income 0
         tax = -max(0.0, pbt) * rate
         np = pbt + tax
-        # rolls (closing balances)
-        ar = (H[m] * (1 - PREPAY) + S[m] * (1 - SAASANN)) / 30 * DSO
+        # rolls (closing balances) — D5e seam: AR = hardware+overage (subscription excluded, billed
+        # upfront); deferred = running balance (prior + subscription billings − subscription recognised)
+        ar = (H[m] * (1 - PREPAY) + OV[m]) / 30 * DSO
         ap = (COGS[m] + (OPEX[m] - PAY[m])) / 30 * DPO
         pay = PAY[m] / 30 * PAYD
-        deferred = S[m] * SAASANN * 6
+        deferred = def_prev + BILL[m] - SUBR[m]
         taxp = 0.0                                   # lag 0
         sc, debt = OB_SC, OB_DEBT                    # no tranches in test window
         re = re_prev + np
@@ -227,6 +230,18 @@ def main():
     ck(ft(ws.cell(re, 3)).startswith(f"=({JREF('Opening cash')}+{JREF('Opening AR')}+{JREF('Opening PP&E (NBV)')}")
        and ft(ws.cell(re, 3)).endswith(f"+IS!C{np}"), "RE roll t0 = balancing plug + IS net profit")
     ck(ft(ws.cell(re, 4)) == f"=C{re}+IS!D{np}", "RE roll month 2 = prior + IS NP")
+
+    print("\n[D5e] WC seam: deferred = running balance (billings − subscription); AR excludes subscription")
+    arr, dfr = Lp["Trade receivables (AR)"], Lp["Deferred revenue (SaaS annual)"]
+    sub, bill = Lp["Subscription (recurring)"], Lp["Subscription billings (annual, upfront — memo)"]
+    ov = Lp["SaaS (overage, recurring)"]
+    arf = ft(ws.cell(arr, 3))
+    ck(f"C{ov}" in arf and f"C{sub}" not in arf, "AR includes overage, excludes subscription")
+    ck(f"$J${IJ('SaaS billed annually')}" not in arf, "AR no longer keys off the SAAS_ANN annual-billing knob")
+    ck(ft(ws.cell(dfr, 3)) == f"={JREF('Opening deferred revenue')}+C{bill}-C{sub}",
+       "Deferred t0 = opening + billings − subscription revenue")
+    ck(ft(ws.cell(dfr, 4)) == f"=C{dfr}+D{bill}-D{sub}",
+       "Deferred t1 = prior + billings − subscription revenue (running balance)")
 
     print("\n[inputs] sections I–V + funding/WC/opening groups present (post-reflow)")
     secs = {inp.cell(r, 3).value.strip() for r in range(1, inp.max_row + 1)
