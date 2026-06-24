@@ -516,8 +516,11 @@ def build_cupffee_cf(wb, FIRST=3, LAST=62):
             for c in range(FIRST, LAST + 1):
                 bs.cell(rr, c).value = f"=CF!{get_column_letter(c)}{strow['ending']}"
 
-    nr = max(pfrow.values())                                  # re-append blank TAX + FUNDING (CB4/RB2 fill)
-    for title, lines in [("TAXATION", ["Tax expense (P&L)", "Tax payable (BS)"]),
+    nr = max(pfrow.values())                                  # re-append blank TAX + FUNDING (RB2/CB4 fill)
+    for title, lines in [("TAXATION", ["Taxable profit before utilisation", "Utilisation of tax loss",
+                                       "Taxable profit after utilisation", "Total taxation",
+                                       "Tax-loss control — opening", "Additions", "Utilisation",
+                                       "Tax-loss control — closing", "Corporate tax"]),
                          ("FUNDING", ["Equity round", "Debt draw", "Grants"])]:
         nr += 2
         pf.cell(nr, 1, title)._style = band_st
@@ -566,25 +569,44 @@ def populate_wc_ratios(wb, FIRST=3, LAST=62):
 
 
 def populate_tax_funding(wb, FIRST=3, LAST=62):
-    """CB4 — fill the TAXATION + FUNDING sections (were blank) as thin reference rows: Tax expense
-    (P&L)→IS tax line, Tax payable (BS)→the tax-payable roll, and Equity round / Debt draw / Grants →
-    the cloned CF financing lines (Capital Increase / Loan facility financing / Grants). The calc lives
-    in the rolls/CF engine; these present it. Runs after relocate_cf_to_proforma."""
-    pf, iss = wb[SHEET], wb["IS"]
+    """RB2/CB4 — TAXATION as a Cupffee tax-loss carryforward + FUNDING thin refs. Taxable profit (IS
+    PBT) is reduced by utilisation of carried-forward losses via a tax-loss control account (opening →
+    additions when loss → utilisation against profit → closing); Total taxation = MAX(after×rate, 0);
+    Corporate tax = −Total taxation. The IS 'Income tax (expense)' now references this corporate tax
+    (was the inline −MAX(0,PBT)×rate) — so the model only taxes profit net of accumulated losses.
+    FUNDING presents the financing movements. Runs after build_cupffee_cf."""
+    pf, iss, inp = wb[SHEET], wb["IS"], wb[" Inputs"]
     L = {pf.cell(r, 1).value.strip(): r for r in range(1, pf.max_row + 1)
          if isinstance(pf.cell(r, 1).value, str) and pf.cell(r, 1).value.strip()}
     istax = next(r for r in range(1, iss.max_row + 1)
                  if isinstance(iss.cell(r, 1).value, str) and "Income tax (expense)" in iss.cell(r, 1).value)
-    tax_hdr = L["TAXATION"]
-    cf_grants = next(r for r in range(1, tax_hdr)                 # the CF-clone "Grants" (above TAXATION)
-                     if isinstance(pf.cell(r, 1).value, str) and pf.cell(r, 1).value.strip() == "Grants")
+    pbt = next(r for r in range(1, iss.max_row + 1)
+               if isinstance(iss.cell(r, 1).value, str) and "before income tax" in iss.cell(r, 1).value)
+    rate = next(f"' Inputs'!$J${r}" for r in range(1, inp.max_row + 1)
+                if isinstance(inp.cell(r, 3).value, str) and "Corporate tax rate" in inp.cell(r, 3).value)
     base_st = pf.cell(L["Trade receivables (AR)"], FIRST)._style
-    refs = {L["Tax expense (P&L)"]: lambda x: f"=IS!{x}{istax}",
-            L["Tax payable (BS)"]:  lambda x: f"={x}{L['Tax payable']}",
-            L["Equity round"]:      lambda x: f"={x}{L['Capital Increase']}",
-            L["Debt draw"]:         lambda x: f"={x}{L['Loan facility financing']}",
-            L["Grants"]:            lambda x: f"={x}{cf_grants}"}
-    for r, fn in refs.items():
-        for c in range(FIRST, LAST + 1):
-            pf.cell(r, c, fn(get_column_letter(c)))._style = base_st
-    print(f"  CB4: TAXATION + FUNDING populated (thin refs to IS tax / tax-payable roll / financing)")
+    tax_hdr = L["TAXATION"]
+    cf_grants = next(r for r in range(1, tax_hdr)
+                     if isinstance(pf.cell(r, 1).value, str) and pf.cell(r, 1).value.strip() == "Grants")
+    bf, ut, af, tt = (L["Taxable profit before utilisation"], L["Utilisation of tax loss"],
+                      L["Taxable profit after utilisation"], L["Total taxation"])
+    op_, ad, uc, cl, ct = (L["Tax-loss control — opening"], L["Additions"], L["Utilisation"],
+                           L["Tax-loss control — closing"], L["Corporate tax"])
+    for c in range(FIRST, LAST + 1):
+        x, p, first = get_column_letter(c), get_column_letter(c - 1), c == FIRST
+        F = {bf: f"=IS!{x}{pbt}",
+             uc: f"=-MIN({x}{op_},MAX(IS!{x}{pbt},0))",          # utilise losses against positive profit
+             ut: f"={x}{uc}",
+             af: f"={x}{bf}+{x}{ut}",
+             tt: f"=MAX({x}{af}*{rate},0)",
+             op_: ("0" if first else f"={p}{cl}"),               # opening loss balance = prior closing
+             ad: f"=-MIN(IS!{x}{pbt},0)",                        # add losses (positive) when PBT < 0
+             cl: f"={x}{op_}+{x}{ad}+{x}{uc}",
+             ct: f"=-{x}{tt}",
+             L["Equity round"]: f"={x}{L['Capital Increase']}",
+             L["Debt draw"]: f"={x}{L['Loan facility financing']}",
+             L["Grants"]: f"={x}{cf_grants}"}
+        for r, f in F.items():
+            pf.cell(r, c, f)._style = base_st
+        iss.cell(istax, c).value = f"=ProForma!{x}{ct}"          # IS tax → carryforward corporate tax
+    print("  RB2: TAXATION = tax-loss carryforward; IS tax → ProForma corporate tax; FUNDING refs")

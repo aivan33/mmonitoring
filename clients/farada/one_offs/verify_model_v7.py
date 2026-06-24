@@ -59,7 +59,7 @@ def _balance_oracle():
     CAPEX = [5000, 5000, 5000, 5000]
     plug_re = OB_CASH + OB_AR + OPEN_PPE - OB_AP - OB_PAY - OB_DEF - OB_DEBT - OB_SC
 
-    ppe_prev, cash_prev = OPEN_PPE, OB_CASH
+    ppe_prev, cash_prev, loss_prev = OPEN_PPE, OB_CASH, 0.0
     ar_prev, ap_prev, pay_prev, def_prev, taxp_prev, sc_prev, debt_prev, re_prev = (
         OB_AR, OB_AP, OB_PAY, OB_DEF, 0.0, OB_SC, OB_DEBT, plug_re)
     for m in range(4):
@@ -69,7 +69,10 @@ def _balance_oracle():
         ebitda = rev - COGS[m] - OPEX[m]
         ebit = ebitda + GRANT[m] - dep
         pbt = ebit - FIN[m]                          # finance income 0
-        tax = -max(0.0, pbt) * rate
+        # RB2 tax-loss carryforward: utilise carried-forward losses before taxing
+        util = -min(loss_prev, max(pbt, 0.0))
+        tax = -max((pbt + util) * rate, 0.0)
+        loss_close = loss_prev + (-min(pbt, 0.0)) + util
         np = pbt + tax
         # rolls (closing balances) — D5e seam: AR = hardware+overage (subscription excluded, billed
         # upfront); deferred = running balance (prior + subscription billings − subscription recognised)
@@ -95,6 +98,7 @@ def _balance_oracle():
             return False
         ppe_prev, cash_prev, ar_prev, ap_prev, pay_prev, def_prev, taxp_prev, sc_prev, debt_prev, re_prev = (
             ppe, cash, ar, ap, pay, deferred, taxp, sc, debt, re)
+        loss_prev = loss_close
     return True
 
 
@@ -132,7 +136,7 @@ def main():
     ck(ft(iss.cell(L["Gross profit TOTAL (€)"], 3)) == f"=C{L['Revenue']}-C{L['COGS TOTAL']}", "GP = Rev − COGS")
     ck(ft(iss.cell(L["EBITDA"], 3)) == f"=C{L['Gross profit TOTAL (€)']}-C{L['Operating expenses']}", "EBITDA = GP − OPEX")
     ck(ft(iss.cell(L["EBIT"], 3)) == f"=C{L['EBITDA']}+C{L['Grant financing']}-C{L['Depreciation & amortisation']}", "EBIT = EBITDA + grant − D&A")
-    ck(ft(iss.cell(L["Income tax (expense)"], 3)) == f"=-MAX(0,C{L['Profit / (loss) before income tax']})*{JREF('Corporate tax rate')}", "Tax = −MAX(0,PBT)×rate (on IS)")
+    ck(ft(iss.cell(L["Income tax (expense)"], 3)).startswith("=ProForma!"), "IS tax pulls the ProForma carryforward corporate tax (RB2)")
     ck(ft(iss.cell(L["Net profit / (loss) for the period"], 3)) == f"=C{L['Profit / (loss) before income tax']}+C{L['Income tax (expense)']}", "NP = PBT + tax")
     # per-bundle GP dropped
     hwgp = L["Hardware GP (€)"]
@@ -339,13 +343,17 @@ def main():
                 and "Current ratio" in wb["BS"].cell(r, 1).value), None)
     ck(bsr and str(ft(wb["BS"].cell(bsr, 3)) or "").startswith("=ProForma!"), "BS Current ratio pulls from ProForma")
 
-    print("\n[CB4] TAXATION + FUNDING sections populated (thin refs in the engine)")
-    for line in ("Tax expense (P&L)", "Tax payable (BS)", "Equity round", "Debt draw", "Grants"):
+    print("\n[RB2] TAXATION = tax-loss carryforward; FUNDING populated")
+    for line in ("Taxable profit before utilisation", "Utilisation of tax loss", "Total taxation",
+                 "Tax-loss control — opening", "Tax-loss control — closing", "Corporate tax",
+                 "Equity round", "Debt draw", "Grants"):
         r = Lpcf.get(line)
-        ck(r is not None and isinstance(ft(ws.cell(r, 3)), str) and ft(ws.cell(r, 3)).startswith("="),
-           f"ProForma section row populated: {line}")
-    txe = Lpcf.get("Tax expense (P&L)")
-    ck(txe and "IS!" in ft(ws.cell(txe, 3)), "Tax expense (P&L) references the IS tax line")
+        ck(r is not None and ft(ws.cell(r, 3)) not in (None, "")
+           and ft(ws.cell(r, 4)).startswith("="), f"ProForma section row populated: {line}")
+    clo = Lpcf.get("Tax-loss control — closing")
+    ck(clo and ft(ws.cell(clo, 4)).count("+") == 2, "tax-loss closing = opening + additions + utilisation")
+    cto = Lpcf.get("Corporate tax")
+    ck(cto and ft(ws.cell(cto, 3)).startswith("=-"), "corporate tax = −Total taxation")
 
     print("\n[R5] BS present; cash=ProForma ending; check row = Assets − E&L")
     bs = wb["BS"]
