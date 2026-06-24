@@ -6,7 +6,7 @@ Only cross-sheet `' Inputs'!$X$NN` references (X∈J/F/G/H/K) are rewritten via 
 
 Safety gate (`_gate`): every input row that is *referenced* anywhere must be MOVEd (not dropped),
 and each moved row must keep its label at the new position — so the ref graph is isomorphic and the
-computed values are unchanged. Run after build_model_v7; rewrites farada_model_v7.xlsx in place
+computed values are unchanged. Run after build_model_v8; rewrites farada_model_v8.xlsx in place
 (.prereflow backup). No recalc engine → correctness = the equivalence gate + the balance oracle.
 
 Run:  .venv/bin/python clients/farada/one_offs/reflow_inputs.py
@@ -21,7 +21,7 @@ import openpyxl
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.formula import ArrayFormula
 
-P = "clients/farada/modeling/farada_model_v7.xlsx"
+P = "clients/farada/modeling/farada_model_v8.xlsx"
 SHEET = " Inputs"
 NCOLS = 16  # A..P
 
