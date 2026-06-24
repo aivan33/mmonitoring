@@ -51,6 +51,16 @@ label** (never hardcoded) so it's robust.
 
 ### Checkpoint — after V1 (yield) and again after V4 (revenue), before promotion.
 
+### ✅ SHIPPED — v8 (2026-06-24)
+- V1 (50c1229): yield curve + sensors-per-wafer are staged Inputs (cascade off `$F/$J` rungs); no
+  literals; chip €/sensor unchanged.
+- V2-V4 (78d8688): explicit per-bundle **Installed base** rows = the single accumulator; subscription/
+  overage/measurements are clean LEVELS (`IB × rate`); **Included ≠ Overage** (stale-`$J$71` bug
+  fixed), measurements **total = clean `=Included+Overage`**, cloud COGS corrected (~2× → avg).
+- V5 (6897925): promoted v7 → v8 (`build_model_v8` / `verify_model_v8` → `farada_model_v8.xlsx`).
+- Gates: balance oracle BS check=0 · schema broken-ref=0 · no #REF! · 392 pytest.
+- The overage ramp delay was already the input `$J$79`; v8 keeps the month-index guard.
+
 ## Risks
 | Risk | Mitigation |
 |---|---|
