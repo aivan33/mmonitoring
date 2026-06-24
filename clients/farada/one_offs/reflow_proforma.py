@@ -400,56 +400,123 @@ def add_overage_delay(wb, FIRST=3, LAST=62):
     print(f"  OD: overage revenue (row {ov}) + measurements (row {mt}) ramp-delayed by {DLY}")
 
 
-def relocate_cf_to_proforma(wb, FIRST=3, LAST=62):
-    """CB1+CB2 — move the CF derivation INTO the ProForma (the engine); make the CF statement pure
-    output. The correct post-reflow derivation already exists in the CF statement, so CLONE its rows
-    into the ProForma CASH FLOW section at a constant offset Δ, translating refs: ProForma!X{n}→X{n}
-    (already a ProForma row), bare CF-internal X{n}→X{n+Δ} (now the cloned rows), IS!/Inputs! kept.
-    Then point every CF-statement formula at its cloned ProForma row, and BS cash at the ProForma cash
-    roll. Re-append blank TAXATION/FUNDING placeholders after the block (CB4 fills). Append-only —
-    nothing references past the rolls. Runs AFTER restructure_cf (CF final) + add_proforma_sections."""
-    pf, cf = wb[SHEET], wb["CF"]
-    cfh = next(r for r in range(1, pf.max_row + 1)
-               if isinstance(pf.cell(r, 1).value, str) and pf.cell(r, 1).value.strip() == "CASH FLOW")
-    band_st = pf.cell(cfh, 1)._style
-    lbl_st = pf.cell(next(r for r in range(1, pf.max_row + 1) if isinstance(pf.cell(r, 1).value, str)
-                          and pf.cell(r, 1).value.strip() == "Trade receivables (AR)"), 1)._style
-    for r in range(cfh, pf.max_row + 1):                       # clear CASH FLOW + TAX + FUNDING placeholders
+def build_cupffee_cf(wb, FIRST=3, LAST=62):
+    """RB1 — rebuild the ProForma CASH FLOW as a Cupffee-style BY-COMPONENT direct method (replaces the
+    earlier clone). Each line = accrual ± Δ(working-capital balance), itemised by category using
+    Farada's per-category AP buckets (COGS/S&M/G&A/R&D) + payroll payable. Value-NEUTRAL vs the prior
+    lumped CF (the category lines sum to the same operating total). The CF statement then PULLS each
+    line (=ProForma!) and SUMS the subtotals in-statement (Cupffee-style, not 100% bare refs); BS cash =
+    CF ending. Re-appends blank TAXATION/FUNDING (CB4/RB2 fill). Runs after restructure_cf."""
+    pf, cf, iss, inp = wb[SHEET], wb["CF"], wb["IS"], wb[" Inputs"]
+    Lp = {pf.cell(r, 1).value.strip(): r for r in range(1, pf.max_row + 1)
+          if isinstance(pf.cell(r, 1).value, str) and pf.cell(r, 1).value.strip()}
+    istax = next(r for r in range(1, iss.max_row + 1)
+                 if isinstance(iss.cell(r, 1).value, str) and "Income tax (expense)" in iss.cell(r, 1).value)
+    def jr(prefix):
+        r = next(rr for rr in range(1, inp.max_row + 1) if isinstance(inp.cell(rr, 3).value, str)
+                 and inp.cell(rr, 3).value.strip().startswith(prefix))
+        return f"' Inputs'!$J${r}"
+    REV, AR, DEFr = Lp["Revenue"], Lp["Trade receivables (AR)"], Lp["Deferred revenue (SaaS annual)"]
+    COGS, SM, GA, RD = Lp["COGS TOTAL"], Lp["S&M"], Lp["G&A"], Lp["R&D"]
+    SMp, GAp, RDp = SM + 1, GA + 1, RD + 1
+    APc, APs, APg, APr = (Lp["Trade payables — COGS"], Lp["Trade payables — S&M"],
+                          Lp["Trade payables — G&A"], Lp["Trade payables — R&D"])
+    PAY, TAXP, CAPEX = Lp["Payroll payable"], Lp["Tax payable"], Lp["Capex – PP&E"]
+    SC, DEBT, GRANT, FINc = Lp["Share capital"], Lp["Debt"], Lp["Grant financing"], Lp["Finance costs"]
+    OBcash, OBar, OBdef, OBsc, OBdebt = (jr("Opening cash"), jr("Opening AR"), jr("Opening deferred"),
+                                         jr("Opening share capital"), jr("Opening debt"))
+    band_st = pf.cell(Lp["CASH FLOW"], 1)._style
+    lbl_st = pf.cell(AR, 1)._style
+    valc = {c: pf.cell(AR, c)._style for c in range(1, LAST + 1)}
+    st_lbl, st_val = cf.cell(5, 1)._style, {c: cf.cell(5, c)._style for c in range(1, LAST + 1)}
+    st_tot, st_totv = cf.cell(13, 1)._style, {c: cf.cell(13, c)._style for c in range(1, LAST + 1)}
+    st_sub = cf.cell(4, 1)._style
+
+    def Dr(roll, base, x, p, first):                          # Δ(balance): close − (opening | prior col)
+        return f"({x}{roll}-{base if first else f'{p}{roll}'})"
+    O = "0"
+    spec = [  # (key, label, kind, payload)  kind: band/sub/blank/line/subtotal/roll
+        ("_b", "CASH FLOW", "band", None), ("_x0", "", "blank", None),
+        ("_oh", "Operating activities", "sub", None),
+        ("inflow", "  Cash inflow / clients", "line", lambda x, p, f: f"={x}{REV}-{Dr(AR, OBar, x, p, f)}"),
+        ("deferred", "  Movement in deferred revenue", "line", lambda x, p, f: f"={Dr(DEFr, OBdef, x, p, f)}"),
+        ("sup_cogs", "  Suppliers — Direct (COGS)", "line", lambda x, p, f: f"=-({x}{COGS}-{Dr(APc, O, x, p, f)})"),
+        ("sup_sm", "  Suppliers — S&M", "line", lambda x, p, f: f"=-(({x}{SM}-{x}{SMp})-{Dr(APs, O, x, p, f)})"),
+        ("sup_ga", "  Suppliers — G&A", "line", lambda x, p, f: f"=-(({x}{GA}-{x}{GAp})-{Dr(APg, O, x, p, f)})"),
+        ("sup_rd", "  Suppliers — R&D", "line", lambda x, p, f: f"=-(({x}{RD}-{x}{RDp})-{Dr(APr, O, x, p, f)})"),
+        ("suppliers", "  Cash outflow — Suppliers", "subtotal", ["sup_cogs", "sup_sm", "sup_ga", "sup_rd"]),
+        ("per_sm", "  Personnel — S&M", "line", lambda x, p, f: f"=-{x}{SMp}"),
+        ("per_ga", "  Personnel — G&A", "line", lambda x, p, f: f"=-{x}{GAp}"),
+        ("per_rd", "  Personnel — R&D", "line", lambda x, p, f: f"=-{x}{RDp}"),
+        ("mv_pay", "  Movement in payroll payable", "line", lambda x, p, f: f"={Dr(PAY, O, x, p, f)}"),
+        ("personnel", "  Payments to personnel", "subtotal", ["per_sm", "per_ga", "per_rd", "mv_pay"]),
+        ("taxes", "  Corporate & other taxes, net", "line", lambda x, p, f: f"=IS!{x}{istax}+{Dr(TAXP, O, x, p, f)}"),
+        ("bank", "  Bank charges paid", "line", lambda x, p, f: f"=-{x}{FINc}"),
+        ("op", "Cash Flow from Operating Activities", "subtotal",
+         ["inflow", "deferred", "suppliers", "personnel", "taxes", "bank"]),
+        ("_x1", "", "blank", None), ("_ih", "Investing activities", "sub", None),
+        ("capex", "  CAPEX", "line", lambda x, p, f: f"=-{x}{CAPEX}"),
+        ("rdcap", "  R&D (capitalised)", "line", lambda x, p, f: "0"),
+        ("inv", "Cash Flow from Investing Activities", "subtotal", ["capex", "rdcap"]),
+        ("_x2", "", "blank", None), ("_fh", "Financing activities", "sub", None),
+        ("equity", "  Capital Increase", "line", lambda x, p, f: f"={Dr(SC, OBsc, x, p, f)}"),
+        ("debt", "  Loan facility financing", "line", lambda x, p, f: f"={Dr(DEBT, OBdebt, x, p, f)}"),
+        ("grants", "  Grants", "line", lambda x, p, f: f"={x}{GRANT}"),
+        ("fin", "Cash Flow from Financing Activities", "subtotal", ["equity", "debt", "grants"]),
+        ("_x3", "", "blank", None),
+        ("excess", "Excess Cash for the Period", "subtotal", ["op", "inv", "fin"]),
+        ("begin", "Beginning Cash Balance", "roll", "begin"),
+        ("ending", "Ending Cash Balance", "roll", "ending"),
+    ]
+    cfh = Lp["CASH FLOW"]
+    for r in range(cfh, pf.max_row + 1):                       # clear ProForma CASH FLOW+TAX+FUNDING
         for c in range(1, LAST + 1):
-            pf.cell(r, c).value = None
-            pf.cell(r, c).style = "Normal"
-    pf.cell(cfh, 1, "CASH FLOW")._style = band_st
+            pf.cell(r, c).value = None; pf.cell(r, c).style = "Normal"
+    cf_max = max(r for r in range(1, cf.max_row + 1) if cf.cell(r, 1).value not in (None, ""))
+    for r in range(3, cf_max + 1):                            # clear CF statement (keep title rows 1-2)
+        for c in range(1, LAST + 1):
+            cf.cell(r, c).value = None; cf.cell(r, c).style = "Normal"
 
-    cf_first = 4
-    cf_last = max(r for r in range(1, cf.max_row + 1) if cf.cell(r, 1).value not in (None, ""))
-    base, = (cfh + 1,)
-    delta = base - cf_first
+    def lay(sheet, start, label_styles):                      # write labels, return key→row
+        rowmap, r = {}, start
+        for key, label, kind, _ in spec:
+            if kind == "blank":
+                r += 1; continue
+            if sheet is cf and kind == "band":
+                continue                                       # statement keeps its own title; no band row
+            rowmap[key] = r
+            sheet.cell(r, 1, label)._style = label_styles[kind]
+            r += 1
+        return rowmap
+    pfrow = lay(pf, cfh, {"band": band_st, "sub": lbl_st, "line": lbl_st, "subtotal": lbl_st, "roll": lbl_st})
+    strow = lay(cf, 4, {"sub": st_sub, "line": st_lbl, "subtotal": st_tot, "roll": st_tot})
 
-    def translate(body):
-        def repl(m):
-            if m.group("q") is None:                          # bare CF-internal ref → shift row by Δ
-                return re.sub(r"\d+", lambda d: str(int(d.group()) + delta), m.group("ref"))
-            if m.group("q") == "ProForma!":                   # already a ProForma row → strip prefix
-                return m.group("ref")
-            return m.group(0)                                 # IS! / ' Inputs'! / … → keep
-        return TOKEN.sub(repl, body)
+    for c in range(FIRST, LAST + 1):
+        x, p, first = get_column_letter(c), get_column_letter(c - 1), c == FIRST
+        for key, label, kind, payload in spec:
+            if kind in ("blank", "band", "sub"):
+                continue
+            pr, sr = pfrow[key], strow[key]
+            if kind == "line":
+                pf.cell(pr, c, payload(x, p, first))._style = valc[c]
+                cf.cell(sr, c, f"=ProForma!{x}{pr}")._style = st_val[c]
+            elif kind == "subtotal":
+                pf.cell(pr, c, "=" + "+".join(f"{x}{pfrow[k]}" for k in payload))._style = valc[c]
+                cf.cell(sr, c, "=" + "+".join(f"{x}{strow[k]}" for k in payload))._style = st_totv[c]
+            elif kind == "roll":
+                for sh, rm, vs in ((pf, pfrow, valc), (cf, strow, st_totv)):
+                    R = rm[key]
+                    if payload == "begin":
+                        sh.cell(R, c, f"={OBcash}" if first else f"={p}{rm['ending']}")._style = vs[c]
+                    else:
+                        sh.cell(R, c, f"={x}{rm['begin']}+{x}{rm['excess']}")._style = vs[c]
+    bs = wb["BS"]
+    for rr in range(1, bs.max_row + 1):                        # BS cash → CF ending (statement-driven)
+        if isinstance(bs.cell(rr, 1).value, str) and "Cash & cash equivalents" in bs.cell(rr, 1).value:
+            for c in range(FIRST, LAST + 1):
+                bs.cell(rr, c).value = f"=CF!{get_column_letter(c)}{strow['ending']}"
 
-    pf_end = None
-    for cf_r in range(cf_first, cf_last + 1):
-        pr = cf_r + delta
-        pf.cell(pr, 1, cf.cell(cf_r, 1).value)._style = cf.cell(cf_r, 1)._style
-        for c in range(FIRST, LAST + 1):
-            src = cf.cell(cf_r, c)
-            pf.cell(pr, c)._style = src._style
-            f = _ft(src)
-            if isinstance(f, str) and f.startswith("="):
-                pf.cell(pr, c).value = "=" + translate(f[1:])
-            elif f is not None:
-                pf.cell(pr, c).value = f                       # literal (e.g. R&D capitalised = 0)
-        if isinstance(cf.cell(cf_r, 1).value, str) and "Ending Cash Balance" in cf.cell(cf_r, 1).value:
-            pf_end = pr
-
-    nr = base + (cf_last - cf_first)                          # re-append blank TAX + FUNDING placeholders
+    nr = max(pfrow.values())                                  # re-append blank TAX + FUNDING (CB4/RB2 fill)
     for title, lines in [("TAXATION", ["Tax expense (P&L)", "Tax payable (BS)"]),
                          ("FUNDING", ["Equity round", "Debt draw", "Grants"])]:
         nr += 2
@@ -457,18 +524,7 @@ def relocate_cf_to_proforma(wb, FIRST=3, LAST=62):
         for ln in lines:
             nr += 1
             pf.cell(nr, 1, "  " + ln)._style = lbl_st
-
-    for cf_r in range(cf_first, cf_last + 1):                 # CB2 — CF statement → pure =ProForma! pulls
-        for c in range(FIRST, LAST + 1):
-            f = _ft(cf.cell(cf_r, c))
-            if isinstance(f, str) and f.startswith("="):
-                cf.cell(cf_r, c).value = f"=ProForma!{get_column_letter(c)}{cf_r + delta}"
-    bs = wb["BS"]
-    for r in range(1, bs.max_row + 1):                        # BS cash → ProForma cash roll
-        if isinstance(bs.cell(r, 1).value, str) and "Cash & cash equivalents" in bs.cell(r, 1).value:
-            for c in range(FIRST, LAST + 1):
-                bs.cell(r, c).value = f"=ProForma!{get_column_letter(c)}{pf_end}"
-    print(f"  CB1/CB2: CF cloned to ProForma {base}-{base + (cf_last - cf_first)} (Δ={delta}); CF stmt thinned; BS cash→PF")
+    print(f"  RB1: CASH FLOW rebuilt Cupffee by-component (ProForma {cfh}-{max(pfrow.values())}); CF stmt pull+sum; BS cash→CF")
 
 
 def populate_wc_ratios(wb, FIRST=3, LAST=62):
