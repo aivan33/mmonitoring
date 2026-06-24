@@ -263,6 +263,32 @@ def add_measurement_children(wb, FIRST=3, LAST=62):
     print(f"  measurements: added Included + Overage children under row {R}")
 
 
+def wire_yield_inputs(wb, FIRST=3, LAST=62):
+    """V1 — point the ProForma yield row at the staged Yield Inputs (was a hardcoded IF curve with
+    literal 4000000/0.95/… breakpoints) and the sensors-per-wafer row at its Input (was literal 4000).
+    Cascades high→low run-rate threshold off ' Inputs'!$F/$J rungs, exactly like the cost-of-sales
+    curves. Chip = wafer ÷ spw ÷ yield unchanged. Post-reflow, by label."""
+    pf, inp = wb[SHEET], wb[" Inputs"]
+    Lp = {pf.cell(r, 1).value.strip(): r for r in range(1, pf.max_row + 1)
+          if isinstance(pf.cell(r, 1).value, str) and pf.cell(r, 1).value.strip()}
+    def irow(prefix):
+        return next(r for r in range(1, inp.max_row + 1) if isinstance(inp.cell(r, 3).value, str)
+                    and inp.cell(r, 3).value.strip().startswith(prefix))
+    spw_in = irow("Sensors per wafer")
+    rungs = [irow(t) for t in ("Yield @ 1 /yr", "Yield @ 10,000", "Yield @ 100,000",
+                               "Yield @ 1,000,000", "Yield @ 4,000,000")]
+    rr, spw_row, yld_row = (Lp["Total run-rate (sensors/yr)"], Lp["Sensors per wafer"],
+                            Lp["Yield (staged by run-rate)"])
+    for c in range(FIRST, LAST + 1):
+        x = get_column_letter(c)
+        pf.cell(spw_row, c, f"=' Inputs'!$J${spw_in}")
+        casc = f"' Inputs'!$J${rungs[0]}"                       # base rung (@1) = fallback
+        for rg in rungs[1:]:
+            casc = f"IF({x}{rr}>=' Inputs'!$F${rg},' Inputs'!$J${rg},{casc})"
+        pf.cell(yld_row, c, f"={casc}")
+    print("  V1: ProForma yield cascades off staged Inputs; spw → Input (no literals)")
+
+
 def _phase(c, brow, FIRST=3):
     """Quarter-bookings phasing for ProForma column c and a Revenue_Inputs bundle row — the same
     INT/MOD spread the hardware/overage lines use (col C → quarter B, threshold 1; +1 per month)."""

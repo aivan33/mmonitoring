@@ -187,6 +187,24 @@ def set_d5_inputs(wb):
     print(f"  D5a: tier discounts + plan-heavy included + cloud_cost 0.0016 + overage delay 3mo set")
 
 
+def seed_yield_inputs(wb):
+    """V1 — seed the new staged-yield + sensors-per-wafer Inputs with today's curve so chip €/sensor is
+    unchanged: spw=4000; yield rungs (run-rate threshold in col F, yield in col L) 1→0.70, 10k→0.73,
+    100k→0.82, 1M→0.90, 4M→0.95. Runs after the Inputs reflow (rung rows exist), by label."""
+    inp = wb[" Inputs"]
+    def row(prefix):
+        return next(r for r in range(1, inp.max_row + 1) if isinstance(inp.cell(r, 3).value, str)
+                    and inp.cell(r, 3).value.strip().startswith(prefix))
+    inp.cell(row("Sensors per wafer"), 12, 4000)
+    for lbl, thr, y in [("Yield @ 1 /yr", 1, 0.70), ("Yield @ 10,000 /yr", 10000, 0.73),
+                        ("Yield @ 100,000 /yr", 100000, 0.82), ("Yield @ 1,000,000 /yr", 1000000, 0.90),
+                        ("Yield @ 4,000,000 /yr", 4000000, 0.95)]:
+        r = row(lbl)
+        inp.cell(r, 6, thr)        # F = run-rate threshold (like the cost-of-sales curves)
+        inp.cell(r, 12, y)         # L = Realistic yield
+    print("  V1: seeded sensors-per-wafer (4000) + staged yield (0.70..0.95)")
+
+
 def add_rolls(wb, L_is):
     ws = wb["ProForma"]
     leaf = {c: ws.cell(89, c)._style for c in range(1, LAST + 1)}
@@ -493,6 +511,7 @@ def build():
     rf._gate(wb, old2new, label_at, referenced)
     rf.remap_refs(wb, old2new)
     set_d5_inputs(wb)            # D5a — populate tier-discount skeletons + plan-heavy included
+    seed_yield_inputs(wb)        # V1 — seed staged-yield + sensors-per-wafer Inputs (today's curve)
     # re-sequence the ProForma engine into the skill-outline order (drivers first) + context-aware remap
     import reflow_proforma as rfp
     rfp.reflow(wb)
@@ -504,6 +523,7 @@ def build():
     rfp.add_proforma_sections(wb)      # skill-outline lower sections (BS rolls + WC/CF/Tax/Funding)
     rfp.style_subtotals(wb)            # bold the ProForma sum/subtotal lines (readability)
     rfp.add_overage_delay(wb)          # OD: ramp-delay overage rev + measurements (OFFSET, guarded)
+    rfp.wire_yield_inputs(wb)          # V1: ProForma yield/spw → staged Inputs (no hardcoded curve)
     import restructure_statements as rs
     rs.restructure_bs(wb)              # BS → reference structure (sub-groups + blank lines + ratios)
     rs.restructure_cf(wb)             # CF → reference lines (VAT/Other/Dividends/burn) + CF_Y mirror

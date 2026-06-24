@@ -163,13 +163,18 @@ def main():
     ck(gm_min >= 0.90, f"worst-bundle SaaS GM ≥ 90% (got {gm_min:.1%})")
     ck(cc >= 0.0015, f"cloud_cost raised off the €0.0005 placeholder to a realistic level (got {cc})")
 
-    print("\n[F2] yield explicit — chip derived in ProForma from wafer ÷ spw ÷ yield")
+    print("\n[F2/V1] yield + sensors-per-wafer are Inputs (no hardcoded curve); chip = wafer ÷ spw ÷ yield")
     ck(any(isinstance(inp.cell(r, 3).value, str) and "wafer cost" in inp.cell(r, 3).value.lower()
            for r in range(1, inp.max_row + 1)), "Inputs has a Wafer cost (€/wafer) block")
-    ck("Yield (staged by run-rate)" in Lp, "ProForma has a Yield calc row (staged)")
+    ck(any(isinstance(inp.cell(r, 3).value, str) and inp.cell(r, 3).value.strip().startswith("Yield @")
+           for r in range(1, inp.max_row + 1)), "Inputs has a staged Yield block (Yield @ N /yr rungs)")
     spw, yld = Lp["Sensors per wafer"], Lp["Yield (staged by run-rate)"]
     ck(ft(ws.cell(Lp["Chip EUR/sensor"], 3)).endswith(f"/(C{spw}*C{yld})"),
        "Chip €/sensor = wafer cascade ÷ (spw × yield)")
+    fy = ft(ws.cell(yld, 3))
+    ck("' Inputs'!$J$" in fy and "' Inputs'!$F$" in fy and "4000000" not in fy and "0.95" not in fy,
+       "Yield row cascades off Input rungs ($F/$J) — no hardcoded thresholds/values")
+    ck(ft(ws.cell(spw, 3)).startswith("=' Inputs'!$J$"), "Sensors-per-wafer reads its Input (not literal 4000)")
 
     print("\n[A] ProForma carries the skill-outline lower sections")
     pf_secs = {str(ws.cell(r, 1).value).strip() for r in range(1, ws.max_row + 1)
