@@ -200,52 +200,42 @@ def main():
     ck(ws.cell(Lp["Revenue"], 1).font.bold, "'Revenue' (a subtotal) is bold")
     ck(not ws.cell(Lp["Sensors Line 1 (monthly)"], 1).font.bold, "a leaf driver is NOT bold")
 
-    print("\n[F-meas] Line-3 measurements split into Included + Overage children")
+    print("\n[V2] installed-base rows (cumulative sensors per bundle) accumulate off own column")
+    IBS = Lp["Installed base — Bundle S"]
+    ck(all(isinstance(ft(ws.cell(IBS, c)), str) and ft(ws.cell(IBS, c)).startswith(f"={get_column_letter(c - 1)}{IBS}+")
+           for c in range(4, 63)), "Installed base — Bundle S is the cumulative accumulator")
+
+    print("\n[V4] measurements off IB: Included ≠ Overage (bug fixed), clean total")
     mr = Lp["Measurements Line 3 (monthly)"]
-    kids = [str(ws.cell(mr + i, 1).value or "") for i in (1, 2)]
-    ck(any("Included" in k for k in kids), "measurements has an Included (subscription) child")
-    ck(any("Overage" in k for k in kids), "measurements has an Overage (beyond subscription) child")
-    ck(ft(ws.cell(mr, 3)).startswith(f"=C{mr + 1}+") and f"OFFSET(C{mr + 2}" in ft(ws.cell(mr, 3)),
-       "measurements total = Included + (ramp-delayed) Overage")
+    inc, ovr, grs = mr + 1, mr + 2, mr + 3
+    ck("Included" in str(ws.cell(inc, 1).value) and "Overage" in str(ws.cell(ovr, 1).value), "Included + Overage children present")
+    ck(ft(ws.cell(mr, 3)) == f"=C{inc}+C{ovr}", "measurements total = Included + Overage (CLEAN sum)")
+    finc, fgrs = ft(ws.cell(inc, 3)), ft(ws.cell(grs, 3))
+    ck(finc != fgrs, "Included formula ≠ Overage formula (the stale-$J$71 bug is fixed)")
+    ck(f"C{IBS}" in finc and "MAX(0," not in finc, "Included = Σ IB × included/12 (level off IB, no MAX)")
+    ck(f"C{IBS}" in fgrs and "MAX(0,' Inputs'!$J$" in fgrs, "Overage-gross = Σ IB × MAX(0, avg − included)/12")
+    ck(ft(ws.cell(ovr, 3)).startswith("=IF(0<") and f"OFFSET(C{grs}" in ft(ws.cell(ovr, 3)),
+       "Overage (displayed) = ramp-delayed gross (OFFSET, guarded)")
 
-    print("\n[D4] measurements children accumulate off their OWN prior column (installed base), not the total")
-    def accum_own(child):  # month-2+ cols must self-accumulate: '={prevcol}{child}+...' (cumulative installed base)
-        return all(isinstance(ft(ws.cell(child, c)), str)
-                   and ft(ws.cell(child, c)).startswith(f"={get_column_letter(c - 1)}{child}+")
-                   for c in range(4, 63))
-    ck(accum_own(mr + 1), "Included child accumulates off its own prior column (not the total row)")
-    ck(accum_own(mr + 2), "Overage child accumulates off its own prior column (not the total row)")
-
-    print("\n[D5b] subscription (recurring) revenue + billings memo in the SaaS group")
-    ck("Subscription (recurring)" in Lp, "ProForma has a 'Subscription (recurring)' line")
+    print("\n[V3] subscription / overage revenue are LEVELS off the installed base")
+    sub, ov = Lp["Subscription (recurring)"], Lp["SaaS (overage, recurring)"]
     ck(any("Subscription billings" in str(ws.cell(r, 1).value or "") for r in range(1, ws.max_row + 1)),
        "ProForma has a 'Subscription billings' memo line")
-    if "Subscription (recurring)" in Lp:
-        sub = Lp["Subscription (recurring)"]
-        ck(ft(ws.cell(sub, 3)) == f"=C{sub + 1}+C{sub + 2}+C{sub + 3}", "Subscription = Σ Bundle S/M/L")
-        ck(accum_own(sub + 1), "Subscription Bundle S accrues on installed base (own-column accumulator)")
-        # rate = included × list × (1−discount): the bundle-S child references J58, J63 and (1−J68)
-        fS = ft(ws.cell(sub + 1, 3))
-        ck(all(t in fS for t in ("$J$58", "$J$63", "(1-' Inputs'!$J$68)")),
-           "Subscription rate = included(J58) × list(J63) × (1−discount(J68))")
+    ck(ft(ws.cell(sub, 3)) == f"=C{sub + 1}+C{sub + 2}+C{sub + 3}", "Subscription = Σ Bundle S/M/L")
+    fsub = ft(ws.cell(sub + 1, 3))
+    ck(f"C{IBS}" in fsub and all(t in fsub for t in ("$J$58", "$J$63", "(1-' Inputs'!$J$68)")),
+       "Subscription Bundle S = IB × included(J58) × list(J63) × (1−disc(J68))/12")
+    fov = ft(ws.cell(ov + 1, 3))
+    ck(f"C{IBS}" in fov and "MAX(0,' Inputs'!$J$76-' Inputs'!$J$58)" in fov,
+       "Overage Bundle S = IB × MAX(0, avg−incl) × list /12 (gross, off IB)")
     saas3 = Lp["Hardware-enabled SaaS #3"]
     ck(ft(ws.cell(saas3, 3)).count("+") == 2, "SaaS #3 = Hardware + Subscription + Overage (3 terms)")
 
-    print("\n[D5c] overage accrues on the installed base as a top-up beyond the included quota")
-    ov = Lp["SaaS (overage, recurring)"]
-    ck(accum_own(ov + 1), "Overage Bundle S accrues on installed base (own-column accumulator)")
-    fov = ft(ws.cell(ov + 1, 3))
-    ck("MAX(0,' Inputs'!$J$76-' Inputs'!$J$58)" in fov, "Overage rate = MAX(0, avg(J76) − included(J58)) × list")
-
-    print("\n[OD2/3] overage revenue + measurements shifted right by the ramp delay (OFFSET, guarded)")
+    print("\n[OD] overage ramp-delayed (revenue subtotal + measurement overage), guarded")
     D = IJ("Overage ramp delay")
-    mt = Lp["Measurements Line 3 (monthly)"]
-    f48c, f48e = ft(ws.cell(ov, 3)), ft(ws.cell(ov, 5))           # overage subtotal, col C (m=0) & E (m=2)
-    ck("OFFSET" in f48e and f"$J${D}" in f48e, "overage subtotal = OFFSET shift by the delay input")
-    ck(f48c.startswith("=IF(0<") and f48e.startswith("=IF(2<"), "overage subtotal guarded by month-index < delay (0 in ramp)")
-    f16 = ft(ws.cell(mt, 3))
-    ck(f16.startswith(f"=C{mt + 1}+IF(0<") and "OFFSET" in f16 and f"$J${D}" in f16,
-       "measurement total = Included + guarded-delayed Overage (cloud COGS follows)")
+    fove = ft(ws.cell(ov, 5))
+    ck("OFFSET" in fove and f"$J${D}" in fove, "overage revenue subtotal = OFFSET shift by the delay input")
+    ck(ft(ws.cell(ov, 3)).startswith("=IF(0<"), "overage subtotal guarded by month-index < delay (0 in ramp)")
 
     print("\n[R3] ProForma rolls; tax-payable & RE reference the IS")
     ck(ft(ws.cell(Lp["Trade receivables (AR)"], 3)).startswith(

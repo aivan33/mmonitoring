@@ -213,20 +213,38 @@ def style_subtotals(wb, LAST=62):
     print(f"  style: bolded {n} ProForma subtotal lines")
 
 
-def add_measurement_children(wb, FIRST=3, LAST=62):
-    """Split 'Measurements Line 3 (monthly)' into two children — Included (subscription) and Overage
-    (beyond subscription) — keeping the total (= their sum). Each column's total has one $J$71 (avg
-    meas/sensor/yr) per bundle S/M/L; the Included child swaps each for the bundle's included-meas
-    input (J58/59/60), the Overage child for MAX(0, J71 − included). Inserts 2 rows + shifts refs."""
-    pf = wb[SHEET]
+def _line3_bundle_inputs(inp):
+    """Resolve the Line-3 per-bundle Input rows by label (robust to the reflow): returns dicts of
+    sensors / included / list-price / discount rows + the avg-meas row, all for S/M/L."""
+    def bundles(prefix):
+        hdr = next(r for r in range(1, inp.max_row + 1) if isinstance(inp.cell(r, 3).value, str)
+                   and inp.cell(r, 3).value.strip().startswith(prefix))
+        out, r = [], hdr + 1
+        while len(out) < 3 and r <= inp.max_row:
+            if isinstance(inp.cell(r, 10).value, str) and "OFFSET" in inp.cell(r, 10).value:
+                out.append(r)
+            r += 1
+        return out
+    avg = next(r for r in range(1, inp.max_row + 1) if isinstance(inp.cell(r, 3).value, str)
+               and inp.cell(r, 3).value.strip().startswith("Avg measurements"))
+    return dict(sens=bundles("Line 3 — sensors per bundle"), incl=bundles("Line 3 — included measurements"),
+                price=bundles("Line 3 — overage price"), disc=bundles("Line 3 — plan tier discount"), avg=avg)
+
+
+def add_installed_base(wb, FIRST=3, LAST=62):
+    """V2 — explicit per-bundle Installed base (cumulative sensors) driver rows: IB_b(c) = prior +
+    phased new bundles(c) × sensors/bundle_b. This is the single accumulator the subscription / overage
+    / measurements read as `IB × rate` — removing the per-line re-accumulation that bred the stale-ref
+    and double-count bugs. Inserts 3 rows just before the measurements block + remaps. Value-neutral
+    (new driver rows, not yet referenced). Runs after the ProForma reflow, before the SaaS rebuild."""
+    pf, inp = wb[SHEET], wb[" Inputs"]
     R = next(r for r in range(1, pf.max_row + 1)
              if isinstance(pf.cell(r, 1).value, str) and "Measurements Line 3" in pf.cell(r, 1).value)
-    totals = {c: _ft(pf.cell(R, c)) for c in range(FIRST, LAST + 1)}
+    I = _line3_bundle_inputs(inp)
     lbl_st = pf.cell(R, 1)._style
     val_st = {c: pf.cell(R, c)._style for c in range(FIRST, LAST + 1)}
-
-    pf.insert_rows(R + 1, 2)
-    o2n = {r: (r if r <= R else r + 2) for r in range(1, pf.max_row + 3)}
+    pf.insert_rows(R, 3)                                       # 3 IB rows BEFORE the measurements total
+    o2n = {r: (r if r < R else r + 3) for r in range(1, pf.max_row + 4)}
     for row in pf.iter_rows():
         for cell in row:
             t = _ft(cell)
@@ -238,29 +256,57 @@ def add_measurement_children(wb, FIRST=3, LAST=62):
                 t = _ft(cell)
                 if isinstance(t, str) and "ProForma!" in t:
                     cell.value = _remap_pfrefs(t, o2n)
+    names = ["  Installed base — Bundle S", "  Installed base — Bundle M", "  Installed base — Bundle L"]
+    for i, (br, sr, nm) in enumerate(zip([12, 13, 14], I["sens"], names)):
+        ib = R + i
+        pf.cell(ib, 1, nm)._style = lbl_st
+        for c in range(FIRST, LAST + 1):
+            x, p = get_column_letter(c), get_column_letter(c - 1)
+            add = f"{_phase(c, br, FIRST)}*' Inputs'!$J${sr}"
+            pf.cell(ib, c, f"={add}" if c == FIRST else f"={p}{ib}+{add}")._style = val_st[c]
+    print(f"  V2: installed-base rows {R}-{R + 2} (cumulative sensors per bundle)")
 
-    def nth_sub(f, repls):
-        it = iter(repls)
-        return re.sub(r"' Inputs'!\$J\$71", lambda m: next(it), f)
 
-    def reaccum(f, child):
-        # the source total self-accumulates off '={prevcol}{R}+...' (cumulative installed base);
-        # pasted into a child it must accumulate off the CHILD'S own prior column, not the total row
-        # (D4 — else the total double-counts the prior month every step).
-        return re.sub(rf"^=([A-Z]+){R}\+", rf"=\g<1>{child}+", f)
-
-    INCL = ["' Inputs'!$J$58", "' Inputs'!$J$59", "' Inputs'!$J$60"]
-    OVER = ["MAX(0,' Inputs'!$J$71-' Inputs'!$J$58)",
-            "MAX(0,' Inputs'!$J$71-' Inputs'!$J$59)",
-            "MAX(0,' Inputs'!$J$71-' Inputs'!$J$60)"]
-    pf.cell(R + 1, 1, "    Included (subscription)")._style = lbl_st
-    pf.cell(R + 2, 1, "    Overage (beyond subscription)")._style = lbl_st
+def add_measurement_children(wb, FIRST=3, LAST=62):
+    """V4 — measurements off the installed base. Included = Σ IB_b × included_b /12; Overage (gross) =
+    Σ IB_b × MAX(0, avg − included_b)/12 — both LEVELS (IB is already cumulative → NO re-accumulation).
+    The displayed Overage = the gross initially; add_overage_delay ramp-delays it. Total = Included +
+    Overage (clean =C+C). Fixes the old stale-$J$71 bug (Included == Overage, ~2× cloud COGS). Input
+    rows resolved by label. Inserts 3 rows (Included, Overage, Overage-gross helper)."""
+    pf, inp = wb[SHEET], wb[" Inputs"]
+    R = next(r for r in range(1, pf.max_row + 1)
+             if isinstance(pf.cell(r, 1).value, str) and "Measurements Line 3" in pf.cell(r, 1).value)
+    I = _line3_bundle_inputs(inp)
+    IB = [next(r for r in range(1, pf.max_row + 1) if isinstance(pf.cell(r, 1).value, str)
+               and pf.cell(r, 1).value.strip() == f"Installed base — Bundle {b}") for b in ("S", "M", "L")]
+    lbl_st = pf.cell(R, 1)._style
+    val_st = {c: pf.cell(R, c)._style for c in range(FIRST, LAST + 1)}
+    pf.insert_rows(R + 1, 3)
+    o2n = {r: (r if r <= R else r + 3) for r in range(1, pf.max_row + 4)}
+    for row in pf.iter_rows():
+        for cell in row:
+            t = _ft(cell)
+            if isinstance(t, str) and t.startswith("="):
+                cell.value = _remap_internal(t, o2n)
+    for sn in STMTS:
+        for row in wb[sn].iter_rows():
+            for cell in row:
+                t = _ft(cell)
+                if isinstance(t, str) and "ProForma!" in t:
+                    cell.value = _remap_pfrefs(t, o2n)
+    INC, OVR, GRS, avg = R + 1, R + 2, R + 3, I["avg"]
+    pf.cell(INC, 1, "    Included (subscription)")._style = lbl_st
+    pf.cell(OVR, 1, "    Overage (beyond subscription)")._style = lbl_st
+    pf.cell(GRS, 1, "    Overage — gross (pre-ramp, calc)")._style = lbl_st
     for c in range(FIRST, LAST + 1):
         x = get_column_letter(c)
-        pf.cell(R + 1, c, reaccum(nth_sub(totals[c], INCL), R + 1))._style = val_st[c]
-        pf.cell(R + 2, c, reaccum(nth_sub(totals[c], OVER), R + 2))._style = val_st[c]
-        pf.cell(R, c, f"={x}{R + 1}+{x}{R + 2}")._style = val_st[c]   # total = Included + Overage
-    print(f"  measurements: added Included + Overage children under row {R}")
+        inc = "+".join(f"{x}{ib}*' Inputs'!$J${ir}/12" for ib, ir in zip(IB, I["incl"]))
+        grs = "+".join(f"{x}{ib}*MAX(0,' Inputs'!$J${avg}-' Inputs'!$J${ir})/12" for ib, ir in zip(IB, I["incl"]))
+        pf.cell(INC, c, f"={inc}")._style = val_st[c]
+        pf.cell(GRS, c, f"={grs}")._style = val_st[c]
+        pf.cell(OVR, c, f"={x}{GRS}")._style = val_st[c]            # undelayed; add_overage_delay ramp-delays
+        pf.cell(R, c, f"={x}{INC}+{x}{OVR}")._style = val_st[c]     # total = Included + Overage (clean)
+    print(f"  V4: measurements off IB — Included {INC}, Overage {OVR} (gross {GRS}); total = clean sum")
 
 
 def wire_yield_inputs(wb, FIRST=3, LAST=62):
@@ -352,6 +398,32 @@ def add_subscription_lines(wb, FIRST=3, LAST=62):
     print(f"  D5b: subscription block (rev {SUB}, children {S_S}-{S_L}, billings {BILL}); SaaS#3 = HW+Sub+Overage")
 
 
+def rewire_saas_off_ib(wb, FIRST=3, LAST=62):
+    """V3 — point the SaaS revenue lines at the installed base (levels), removing the per-line cohort
+    accumulation: Subscription_b = IB_b × included_b × list_b × (1−disc_b)/12; Overage_b (gross) = IB_b
+    × MAX(0, avg − included_b) × list_b /12; Subscription billings_b = ΔIB_b × included_b × list_b ×
+    (1−disc_b) (the new annual plans sold). Value-equivalent to the old cohort sums, but clean (no
+    double-accumulate). Subtotals already sum the children. Runs after add_subscription_lines."""
+    pf, inp = wb[SHEET], wb[" Inputs"]
+    L = {pf.cell(r, 1).value.strip(): r for r in range(1, pf.max_row + 1)
+         if isinstance(pf.cell(r, 1).value, str) and pf.cell(r, 1).value.strip()}
+    I = _line3_bundle_inputs(inp)
+    IB = [L[f"Installed base — Bundle {b}"] for b in ("S", "M", "L")]
+    sub, ov = L["Subscription (recurring)"], L["SaaS (overage, recurring)"]
+    bill, avg = L["Subscription billings (annual, upfront — memo)"], I["avg"]
+    rate = lambda ir, pr, dr: f"' Inputs'!$J${ir}*' Inputs'!$J${pr}*(1-' Inputs'!$J${dr})"
+    for c in range(FIRST, LAST + 1):
+        x, p = get_column_letter(c), get_column_letter(c - 1)
+        billterms = []
+        for i, (ib, ir, pr, dr) in enumerate(zip(IB, I["incl"], I["price"], I["disc"])):
+            pf.cell(sub + 1 + i, c, f"={x}{ib}*{rate(ir, pr, dr)}/12")                      # subscription
+            pf.cell(ov + 1 + i, c, f"={x}{ib}*MAX(0,' Inputs'!$J${avg}-' Inputs'!$J${ir})*' Inputs'!$J${pr}/12")  # overage gross
+            dib = f"{x}{ib}" if c == FIRST else f"({x}{ib}-{p}{ib})"                          # ΔIB = new sensors
+            billterms.append(f"{dib}*{rate(ir, pr, dr)}")
+        pf.cell(bill, c, "=" + "+".join(billterms))
+    print("  V3: subscription / overage / billings rewired off the installed base (IB × rate)")
+
+
 def cloud_cogs_measurement_driven(wb, FIRST=3, LAST=62):
     """D5d — replace the SaaS-COGS gross-margin plug (overage × (1−GM-target)) with a real
     measurement-driven cost: cloud COGS = total Line-3 measurements × cloud_cost/measurement. The
@@ -409,8 +481,8 @@ def add_overage_delay(wb, FIRST=3, LAST=62):
     pf = wb[SHEET]
     L = {pf.cell(r, 1).value.strip(): r for r in range(1, pf.max_row + 1)
          if isinstance(pf.cell(r, 1).value, str) and pf.cell(r, 1).value.strip()}
-    ov, mt = L["SaaS (overage, recurring)"], L["Measurements Line 3 (monthly)"]
-    incl, ovm = L["Included (subscription)"], L["Overage (beyond subscription)"]
+    ov = L["SaaS (overage, recurring)"]
+    ovm, grs = L["Overage (beyond subscription)"], L["Overage — gross (pre-ramp, calc)"]
     inp = wb[" Inputs"]
     drow = next(r for r in range(1, inp.max_row + 1) if isinstance(inp.cell(r, 3).value, str)
                 and inp.cell(r, 3).value.strip().startswith("Overage ramp delay"))
@@ -421,9 +493,9 @@ def add_overage_delay(wb, FIRST=3, LAST=62):
         # overage revenue subtotal → delayed sum of the (undelayed) children, 0 during the ramp
         kids = "+".join(shift(ov + i) for i in (1, 2, 3))
         pf.cell(ov, c, f"=IF({m}<{DLY},0,{kids})")
-        # measurement total = Included (immediate) + delayed Overage child → cloud COGS follows
-        pf.cell(mt, c, f"={x}{incl}+IF({m}<{DLY},0,{shift(ovm)})")
-    print(f"  OD: overage revenue (row {ov}) + measurements (row {mt}) ramp-delayed by {DLY}")
+        # measurement Overage (displayed) = ramp-delayed gross; the TOTAL stays a clean Included+Overage
+        pf.cell(ovm, c, f"=IF({m}<{DLY},0,{shift(grs)})")
+    print(f"  OD: overage revenue (row {ov}) + measurement overage (row {ovm}) ramp-delayed by {DLY}")
 
 
 def build_cupffee_cf(wb, FIRST=3, LAST=62):

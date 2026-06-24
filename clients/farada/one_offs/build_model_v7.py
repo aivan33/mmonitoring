@@ -515,8 +515,10 @@ def build():
     # re-sequence the ProForma engine into the skill-outline order (drivers first) + context-aware remap
     import reflow_proforma as rfp
     rfp.reflow(wb)
-    rfp.add_measurement_children(wb)   # split Line-3 measurements into Included + Overage
+    rfp.add_installed_base(wb)         # V2: per-bundle installed-base (cumulative sensors) driver rows
+    rfp.add_measurement_children(wb)   # V4: measurements off IB (Included≠Overage, clean total)
     rfp.add_subscription_lines(wb)     # D5b: Subscription (recurring) revenue + billings memo
+    rfp.rewire_saas_off_ib(wb)         # V3: subscription/overage/billings off the installed base
     rfp.cloud_cogs_measurement_driven(wb)  # D5d: cloud COGS = measurements × cloud_cost (retire GM plug)
     rfp.rework_wc_rolls(wb)            # D5e: deferred=running(billings−sub); AR excludes subscription
     rfp.fix_run_rate(wb)               # D1: LTM trailing-12 run-rate (was a frozen constant)
