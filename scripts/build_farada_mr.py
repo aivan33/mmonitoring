@@ -20,6 +20,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 import openpyxl
+from openpyxl.formula.translate import Translator
+from openpyxl.utils import get_column_letter
 
 RAW = Path("clients/farada/raw/accounting")
 MR_DIR = Path("clients/farada/raw")
@@ -128,6 +130,61 @@ def golden_april(mr_path: Path) -> int:
     return mism
 
 
+# --- Serbia: row-label-matched copy of the template's month column ----------
+SERBIA_TPL = "FaradaIC Serbia_ 01_2026_new template_NVS_{stamp}.xlsx"
+SERBIA_STAMP = {"04": "20260522", "05": "20260622"}
+SERBIA_PL_ROWS = range(5, 16)   # R&D Payroll .. Depreciation (label rows)
+
+
+def populate_serbia(wb, month: int, mm: str):
+    """Fill the MR Serbia sheet's month column from the template, by label.
+
+    MR Serbia: Jan=col3 .. May=col7.  Template: Jan=col4 .. May=col8.
+    Returns (written, restatements) — restatements = prior months the template
+    revised vs what the MR already holds.
+    """
+    mr = wb["Serbia"]
+    tpl_path = (RAW / f"{mm}-2026" / "Serbia"
+                / SERBIA_TPL.format(stamp=SERBIA_STAMP[mm]))
+    tpl = openpyxl.load_workbook(tpl_path, data_only=True)["FaradaIC Serbia"]
+    mr_col = 2 + month        # May -> 7
+    tpl_col = 3 + month       # May -> 8
+
+    written, restated = 0, []
+    for r in SERBIA_PL_ROWS:
+        mr_lab = str(mr.cell(r, 2).value or "").strip()
+        tpl_lab = str(tpl.cell(r, 3).value or "").strip()
+        # labels are abbreviated identically; compare on a common prefix
+        if mr_lab[:12].lower() != tpl_lab[:12].lower():
+            raise ValueError(f"Serbia row {r} label mismatch: MR={mr_lab!r} tpl={tpl_lab!r}")
+        val = _num(tpl.cell(r, tpl_col).value) or 0.0
+        mr.cell(r, mr_col).value = val
+        written += 1
+        # restatement check on prior months (Jan..month-1)
+        for pm in range(1, month):
+            a = _num(mr.cell(r, 2 + pm).value) or 0.0
+            b = _num(tpl.cell(r, 3 + pm).value) or 0.0
+            if abs(a - b) > 0.5:
+                restated.append((mr_lab, pm, a, b))
+    return written, restated
+
+
+# --- Front statements: extend a formula column to the right (relative refs) --
+def extend_formula_column(ws, src_col: int, dst_col: int):
+    """Copy every formula in src_col to dst_col, translating relative refs."""
+    n = 0
+    for r in range(1, ws.max_row + 1):
+        cell = ws.cell(r, src_col)
+        f = cell.value
+        if isinstance(f, str) and f.startswith("="):
+            src = f"{get_column_letter(src_col)}{r}"
+            dst = f"{get_column_letter(dst_col)}{r}"
+            ws.cell(r, dst_col).value = Translator(f, origin=src).translate_formula(dst)
+            ws.cell(r, dst_col).number_format = cell.number_format
+            n += 1
+    return n
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--golden", action="store_true", help="reproduce April and diff")
@@ -145,12 +202,32 @@ def main():
     mm = f"{args.month:02d}"
     print(f"Building {args.out} — populating month {mm} data columns from raw {mm}...")
     wb = openpyxl.load_workbook(args.base)  # keep formulas
+
+    # 1) German P&L data: paste BWA month column (validated, account-keyed).
     for sheet, spec in DATA_SHEETS.items():
         rep = populate_sheet(wb, sheet, spec, args.month, mm, write=True)
         print(f"  {sheet}: wrote {rep['written']} accounts into col {rep['mr_col']} "
               f"({rep['changed']} changed); unmapped={len(rep['unmapped'])}")
         for acc, val in rep["unmapped"]:
             print(f"      UNMAPPED account {acc} = {val:.2f}  (raw has it, MR has no row)")
+
+    # 2) Serbia P&L: label-matched copy of the template month column.
+    written, restated = populate_serbia(wb, args.month, mm)
+    print(f"  Serbia: wrote {written} P&L rows into col {2 + args.month}")
+    for lab, pm, a, b in restated:
+        print(f"      RESTATED Serbia {lab!r} month {pm}: MR={a:.2f} -> template={b:.2f}")
+
+    # 3) Front P&L: extend the formula column from the last built month (March,
+    #    col 16) into April (17) and May (18). Relative refs shift to the
+    #    matching P&L Mapping / Serbia columns, which are now populated.
+    pl = wb["P&L"]
+    for dst in (17, 18):
+        n = extend_formula_column(pl, src_col=16, dst_col=dst)
+        print(f"  Front P&L: extended {n} formulas into col {dst} "
+              f"({'Apr' if dst == 17 else 'May'} 2026)")
+    print("  NOTE: CF + BS fronts NOT extended — they need CR-Upload (manual CF "
+          "reclassifications) and the Trial balance / Balance Sheet data layers first.")
+
     wb.save(args.out)
     print(f"Saved {args.out}")
 

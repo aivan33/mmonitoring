@@ -44,3 +44,23 @@ def test_only_bwa_is_a_paste_target():
     """
     build = _load_build()
     assert set(build.DATA_SHEETS) == {"BWA"}
+
+
+def test_extend_formula_column_shifts_relative_refs():
+    """Front-statement extension must shift relative refs to the next month.
+
+    Pure unit test (no client data) — always runs.
+    """
+    import openpyxl
+    build = _load_build()
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    # March col = 16 (P); a SUM over P&L-Mapping-style range + a cross-sheet ref
+    ws.cell(5, 16).value = "=SUM('P&L Mapping'!D28:D30)"
+    ws.cell(6, 16).value = "=Serbia!E5"
+    ws.cell(7, 16).value = "=P5+P6"          # self-ref subtotal in col P(16)
+    n = build.extend_formula_column(ws, src_col=16, dst_col=18)  # -> May col R
+    assert n == 3
+    assert ws.cell(5, 18).value == "=SUM('P&L Mapping'!F28:F30)"  # D->F (+2)
+    assert ws.cell(6, 18).value == "=Serbia!G5"                   # E->G (+2)
+    assert ws.cell(7, 18).value == "=R5+R6"                       # P->R (+2)
