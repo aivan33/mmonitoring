@@ -299,6 +299,14 @@ BS_ADD = {
 }
 BS_RETAG = {
     "1790 0": "Other payables",               # USt-Verbindlichkeiten Vorjahr (was untagged)
+    # Pass-through / clearing accounts that the raw BS sits on the ASSET side this
+    # month (debit balances) but the data sheet dropped or mis-sided. Tagged
+    # directly so they're not orphaned by the 1790 0 subtotal boundary.
+    "1590 0": "Other receivables",            # Durchlaufende Posten (was Other payables)
+    "1591 0": "Other receivables",            # Hin- und Rückbuchungen (was orphaned)
+    "1610 0": "Other receivables",            # Verbindl. L+L ohne Kontokorrent (debit bal.)
+    "1766 0": "Other receivables",            # USt nicht fällig (input-VAT timing)
+    "1530 0": "Other receivables",            # Forderungen gg. Personal (staff receivable)
 }
 BS_JFB_ROW = 165                              # Jahresfehlbetrag -> Retained earnings
 
