@@ -175,6 +175,51 @@ cause, mirroring April (dropped account vs intercompany lag vs group residual).
 | Serbia month-only bruto bilans missing | Low | Derive May = cumulative(May) − cumulative(Apr); note in build log |
 | Mojibake filenames break globbing | Low | Rename in Task 0 |
 
+## CURRENT STATUS (2026-06-29) — what's done vs missing
+
+### Done & verified (committed)
+- Raw layout standardized; `pdfplumber` added.
+- **BWA** May paste (account-keyed, golden April = 0 mismatches).
+- **Serbia** May paste (label-matched; restatements flagged, immaterial).
+- **Front P&L** extended through **April + May** (formula extension, Translator).
+- **New accounts wired** (BWA + P&L Mapping + Check):
+  - 83380 → revenue 'Other' (May revenue 4,482).
+  - 31004 €54,789 → **capitalised** like 31014 (out of opex, in the Check).
+  - 49203 → G&A Office; 46680 → G&A Travel; 46502 → S&M (catch-all sub-line).
+- **P&L is complete & reconciled through May.** 395 tests pass.
+
+### Missing — remaining work to a full MR (dependency-ordered)
+
+**Phase A — Cash Flow (biggest gap).** The CF chain is built only through March.
+- A1. CR-Upload Apr+May: paste raw Controlling-BWA as a mechanical base, then
+  apply the **manual CF reclassifications** (the ~7% of accounts: 15900, 14000,
+  9800, …). Blocker = the reclassification rules live with the user. *(S + manual)*
+- A2. Extend ControllingReport BWA VLOOKUP cols (Apr=8, May=9). *(XS)*
+- A3. Extend front CF formulas (Apr=6, May=7) via Translator. *(XS)*
+- A4. Verify CF Check / direct-method residual. *(S)*
+
+**Phase B — Balance Sheet.** Front BS + data layers, all through March now.
+- B1. Trial balance May from Susa (bespoke Soll/Haben). *(M)*
+- B2. Balance Sheet data sheet from the BS file (bespoke). *(M)*
+- B3. Serbia **BS section** (template rows 18+: PP&E, Cash, receivables) into the
+  MR Serbia sheet — not yet mapped. *(S)*
+- B4. **PP&E / development assets**: dev-assets PDF gives YTD additions €135,299,
+  depreciation €48,026 — wire into BS PP&E + the D&A line; reflect the **capitalised
+  31004/31014** as the intangible/development asset addition. *(M)*
+- B5. Extend front BS formulas; verify Assets = Liabilities + Equity. *(S)*
+
+**Phase C — Cleanup / robustness.**
+- C1. 37360 (Skonti −4.38) — decide treatment + make COGS-range room. *(XS)*
+- C2. **Structural**: several P&L Mapping ranges (COGS 28–30, S&M Travel 52–64)
+  have **no spare rows** — new accounts there need row-insertion + range-repair.
+  Add buffer rows so future months don't hit this. *(M)*
+- C3. Serbia prior-month restatements — decide whether to refresh Jan–Apr. *(XS)*
+- C4. Run the full consolidation Check (P&L/CF/BS) for Apr + May → all ≈ 0. *(S)*
+
+### Checkpoint before Phase A
+- [ ] User reviews the May P&L in Excel (open → recompute).
+- [ ] User provides CF reclassification rules (or confirms mechanical-only first pass).
+
 ## Resolved Decisions
 
 - **No LibreOffice.** Write values, leave formulas for Excel to recompute on open;
