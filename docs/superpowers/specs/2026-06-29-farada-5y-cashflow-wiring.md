@@ -53,8 +53,13 @@ personnel cash mirror COGS (69–86) and OpEx (89–117).
 
 ## Task List
 
+> **Status 2026-06-29:** Phase 1 (Tasks 1–4b) COMPLETE, committed, and verified via an
+> independent oracle over the WIP's cached accruals (`scratchpad/verify_5y.py`). Build:
+> `.venv/bin/python scripts/build_farada_5y.py` → `farada_5y_v1.xlsx`. Phase 2 (Tasks 5–6)
+> pending; needs authoritative recalc (LibreOffice) for the BS tie-out.
+
 ### Phase 1: Inputs & WC balances (foundation)
-- [ ] **Task 1 — Set the day driver.** Change ` Inputs` row 188 (Payroll payable days) L & M
+- [x] **Task 1 — Set the day driver.** Change ` Inputs` row 188 (Payroll payable days) L & M
   from 30 → 14. Confirm DSO/DPO stay 30; J-selector resolves via `OFFSET($D$2)`.
   *Accept:* `ProForma` can read Payroll days = 14, DSO/DPO = 30 for the active scenario.
   *Verify:* read-back of evaluated `J188=14`, `J184=J187=30`. Scope: XS (1 sheet).
