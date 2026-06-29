@@ -150,11 +150,34 @@ def task3_supplier_payables(wb) -> None:
     _sum(ws, 210, 211, 214)                  # Cash Paid to Suppliers
 
 
+# Personnel payroll buckets: (payable-balance row, payment row, payroll expr).
+# CoS has no payroll in this model (COGS is materials/usage only) -> 0.
+PERSONNEL = [
+    (179, 217, lambda c: "0"),            # Payroll CoS (none)
+    (180, 218, lambda c: f"{col(c)}91"),  # Payroll S&M
+    (181, 219, lambda c: f"{col(c)}100"), # Payroll G&A
+    (182, 220, lambda c: f"{col(c)}111"), # Payroll R&D (Germany + Serbia)
+]
+
+
+# ---------------------------------------------------------------------------
+# Task 4 — personnel payables (178-182) + payments to personnel (216-220).
+# ---------------------------------------------------------------------------
+def task4_personnel_payables(wb) -> None:
+    ws = wb[PF]
+    for bal_row, pay_row, expr in PERSONNEL:
+        _balance(ws, bal_row, expr, PAYDAYS)   # payable = 14/30 * payroll
+        _lag_expr(ws, pay_row, expr, PAYDAYS)  # paid = payroll - Δpayable
+    _sum(ws, 178, 179, 182)                    # Account payables to personnel
+    _sum(ws, 216, 217, 220)                    # Payments to Personnel
+
+
 def build() -> Path:
     wb = openpyxl.load_workbook(SRC, data_only=False)
     task1_payroll_days(wb)
     task2_ar_cashin(wb)
     task3_supplier_payables(wb)
+    task4_personnel_payables(wb)
     # Force Excel/LibreOffice to recompute on open (openpyxl writes no cached values).
     wb.calculation.fullCalcOnLoad = True
     wb.save(DST)
