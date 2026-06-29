@@ -215,6 +215,54 @@ def task4b_subscription_deferred(wb) -> None:
         ws.cell(DEFERRED_ROW, c).value = f
 
 
+# ---------------------------------------------------------------------------
+# Task 5b — clear the stray #REF! depreciation so the P&L is clean. The balance
+# sheet is NOT built this iteration, so PP&E depreciation is left at 0 (no D&A).
+# ---------------------------------------------------------------------------
+def task5b_clear_depreciation(wb) -> None:
+    ws = wb[PF]
+    for c in range(C0, C1 + 1):
+        ws.cell(122, c).value = 0  # Depreciation (PP&E) -> 0; row 121 D&A (=C122) follows
+
+
+# ---------------------------------------------------------------------------
+# Task 5 — complete (direct-method) Cash Flow statement on the CF sheet.
+# Direct method needs no depreciation: CFO = cash receipts − cash payments.
+# ---------------------------------------------------------------------------
+def task5_cf_statement(wb) -> None:
+    cf = wb["CF"]
+    for c in range(C0, C1 + 1):
+        L = col(c)
+        d = f"ProForma!{L}2"  # month date
+        # Operating
+        cf.cell(3, c).value = f"=ProForma!{L}186"            # cash received from customers
+        cf.cell(4, c).value = f"=-ProForma!{L}210"           # cash paid to suppliers
+        cf.cell(5, c).value = f"=-ProForma!{L}216"           # payment for personnel
+        cf.cell(6, c).value = f"=-ProForma!{L}124"           # bank charges / finance costs
+        cf.cell(7, c).value = 0                              # VAT (not modelled)
+        cf.cell(8, c).value = f"=ProForma!{L}233"            # corporate tax (already negative)
+        cf.cell(9, c).value = 0
+        cf.cell(10, c).value = f"={L}3+{L}4+{L}5+{L}6+{L}7+{L}8+{L}9"
+        # Investing — CAPEX from the input schedule (no BS needed)
+        cf.cell(11, c).value = (
+            f"=-IF(AND({d}>=' Inputs'!$G$177,{d}<=' Inputs'!$H$177),' Inputs'!$J$177,0)")
+        cf.cell(12, c).value = 0                             # R&D (not capitalised)
+        cf.cell(13, c).value = 0
+        cf.cell(14, c).value = f"={L}11+{L}12+{L}13"
+        # Financing — equity round, grants, debt draw from the funding inputs
+        cf.cell(15, c).value = f"=IF({d}=' Inputs'!$J$11,' Inputs'!$J$10,0)"
+        cf.cell(16, c).value = (
+            f"=IF(AND({d}>=' Inputs'!$G$30,{d}<=' Inputs'!$H$30),' Inputs'!$J$30,0)")
+        cf.cell(17, c).value = f"=IF({d}=' Inputs'!$J$19,' Inputs'!$J$18,0)"
+        cf.cell(18, c).value = 0
+        cf.cell(19, c).value = 0                             # dividends (none)
+        cf.cell(20, c).value = f"={L}15+{L}16+{L}17+{L}18+{L}19"
+        # Roll-up
+        cf.cell(22, c).value = f"={L}10+{L}14+{L}20"
+        cf.cell(23, c).value = "=' Inputs'!$J$192" if c == C0 else f"={col(c - 1)}24"
+        cf.cell(24, c).value = f"={L}23+{L}22"
+
+
 def build() -> Path:
     wb = openpyxl.load_workbook(SRC, data_only=False)
     task1_payroll_days(wb)
@@ -222,6 +270,8 @@ def build() -> Path:
     task3_supplier_payables(wb)
     task4_personnel_payables(wb)
     task4b_subscription_deferred(wb)
+    task5b_clear_depreciation(wb)
+    task5_cf_statement(wb)
     # Force Excel/LibreOffice to recompute on open (openpyxl writes no cached values).
     wb.calculation.fullCalcOnLoad = True
     wb.save(DST)
