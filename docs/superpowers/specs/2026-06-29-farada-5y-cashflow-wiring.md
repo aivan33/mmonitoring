@@ -53,10 +53,18 @@ personnel cash mirror COGS (69–86) and OpEx (89–117).
 
 ## Task List
 
-> **Status 2026-06-29:** Phase 1 (Tasks 1–4b) COMPLETE, committed, and verified via an
-> independent oracle over the WIP's cached accruals (`scratchpad/verify_5y.py`). Build:
-> `.venv/bin/python scripts/build_farada_5y.py` → `farada_5y_v1.xlsx`. Phase 2 (Tasks 5–6)
-> pending; needs authoritative recalc (LibreOffice) for the BS tie-out.
+> **Status 2026-06-29:**
+> - **Phase 1 (Tasks 1–4b) COMPLETE** — verified via an independent oracle over the WIP's
+>   cached accruals (`scratchpad/verify_5y.py`).
+> - **v2 review fix:** cash flow now tracks deviations via the WC-driver balance rows
+>   (Receivables/Payables/Deferred), not recomputed P&L deltas. Numerically identical.
+> - **Phase 2 = Cash Flow only (per review):** complete direct-method CF statement built and
+>   verified via authoritative **LibreOffice recalc** (`scratchpad/verify_cf.py`). Stray #REF
+>   depreciation cleared → clean P&L, no D&A. **Balance sheet intentionally NOT built** this
+>   iteration. Build → `farada_5y_v2.xlsx`.
+> - **Flag:** ending cash goes negative (~−€0.85m) around Jan-2028; modelled equity raise is
+>   Jan-2031 — funding-timing question for the user (input, not a wiring issue).
+> - **Deferred:** Task 6 (full balance sheet + funding/PPE/retained-earnings roll-forwards).
 
 ### Phase 1: Inputs & WC balances (foundation)
 - [x] **Task 1 — Set the day driver.** Change ` Inputs` row 188 (Payroll payable days) L & M
