@@ -169,6 +169,80 @@ def populate_serbia(wb, month: int, mm: str):
     return written, restated
 
 
+# --- New-account mapping rows (resolves the May unmapped-account flags) -------
+# P&L Mapping month columns 2..13 (Jan..Dec) each VLOOKUP the matching BWA month
+# column; for mapping col c the BWA index is c+1 (verified against acct 83360).
+def _vlookup(row: int, c: int) -> str:
+    return f"=VLOOKUP($A{row},BWA!$B:$P,{c + 1},FALSE)"
+
+
+# May's new accounts. Each must be added to BOTH the BWA sheet (the data the
+# P&L Mapping VLOOKUPs) and P&L Mapping (the leaf/Type routing).
+NEW_ACCOUNTS = [
+    # 83380: tax-exempt 3rd-country sales -> revenue 'Other' (spare row 19, which
+    # the template already tags Revenue/Other; front Sales 'Other' sums 19:21).
+    dict(acct=83380, name="Tax-exempt sales 3rd country",
+         bwa_row=157, pm_row=19, capitalise=False),
+    # 31004: Fremdleistungen (R&D), Fraunhofer -> CAPITALISED like sibling 31014:
+    # tracked on spare row 150 (outside every opex sum) + subtracted in the Check.
+    dict(acct=31004, name="Fremdleistungen (R&D)",
+         bwa_row=158, pm_row=150, capitalise=True),
+]
+
+
+def add_mapping_rows(wb, mm: str):
+    """Wire May's new accounts into the BWA + P&L Mapping chain (nothing dropped)."""
+    bwa = wb["BWA"]
+    pm = wb["P&L Mapping"]
+    pl = wb["P&L"]
+    raw_path = RAW / f"{mm}-2026" / "BWA - Jahresübersicht {mm}-2026.xlsx".format(mm=mm)
+    raw = openpyxl.load_workbook(raw_path, data_only=True).worksheets[0]
+    # raw account -> {raw_col: value} for the 12 month columns (Jan col4 .. Dec col15)
+    raw_rows = {str(raw.cell(r, 2).value).strip(): r
+                for r in range(3, raw.max_row + 1) if raw.cell(r, 2).value not in (None, "")}
+
+    done = []
+    for spec in NEW_ACCOUNTS:
+        acc = str(spec["acct"])
+        # 1) BWA sheet row: account in col 2, monthly values (cols 4..15) from raw
+        br = spec["bwa_row"]
+        bwa.cell(br, 2).value = spec["acct"]
+        bwa.cell(br, 3).value = spec["name"]
+        rr = raw_rows.get(acc)
+        if rr:
+            for col in range(4, 16):          # Jan..Dec
+                v = _num(raw.cell(rr, col).value)
+                if v is not None:
+                    bwa.cell(br, col).value = v
+        # 2) P&L Mapping row: VLOOKUP the BWA month columns
+        pr = spec["pm_row"]
+        pm.cell(pr, 1).value = spec["acct"]
+        if spec["capitalise"]:
+            pm.cell(pr, 18).value = "R&D"     # mirror 31014; no leaf -> not in opex sums
+        for c in range(2, 14):
+            pm.cell(pr, c).value = _vlookup(pr, c)
+        # 3) capitalised accounts: subtract in the front-P&L 'Check' row 84
+        if spec["capitalise"]:
+            for col in (16, 17, 18):
+                f = pl.cell(84, col).value
+                ml = get_column_letter(col_to_mapping_letter(col))
+                if isinstance(f, str) and f"{ml}146" in f and f"{ml}{pr}" not in f:
+                    pl.cell(84, col).value = f.replace(
+                        f"'P&L Mapping'!{ml}146",
+                        f"'P&L Mapping'!{ml}146-'P&L Mapping'!{ml}{pr}")
+        done.append((spec["acct"], "capitalised" if spec["capitalise"] else "revenue", pr))
+    return done
+
+
+def col_to_mapping_letter(front_col: int) -> int:
+    """Front P&L month col -> the P&L Mapping month col it references.
+
+    Front col 16 (Mar) references mapping col D(4); each +1 front col -> +1
+    mapping col.  So mapping_col = front_col - 12.
+    """
+    return front_col - 12
+
+
 # --- Front statements: extend a formula column to the right (relative refs) --
 def extend_formula_column(ws, src_col: int, dst_col: int):
     """Copy every formula in src_col to dst_col, translating relative refs."""
@@ -227,6 +301,10 @@ def main():
               f"({'Apr' if dst == 17 else 'May'} 2026)")
     print("  NOTE: CF + BS fronts NOT extended — they need CR-Upload (manual CF "
           "reclassifications) and the Trial balance / Balance Sheet data layers first.")
+
+    # 4) Resolve May's new accounts: 83380 -> revenue 'Other'; 31004 -> capitalised
+    for acct, kind, pr in add_mapping_rows(wb, mm):
+        print(f"  Mapping: {acct} -> {kind} (BWA + P&L Mapping row {pr})")
 
     wb.save(args.out)
     print(f"Saved {args.out}")
