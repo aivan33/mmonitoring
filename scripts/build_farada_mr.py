@@ -285,16 +285,43 @@ def bs_eur_col(month: int) -> int:
     return 1 + 3 * month
 
 
+# Reconciliation map — accounts the 'Balance Sheet' sheet was missing/mistagging
+# (its account map had drifted from the current German chart of accounts).
+# account -> (tag, spare data-sheet row).  Spare rows are blank rows in 1..168;
+# the front SUMIF aggregates by tag, so row position does not matter.
+# Spare rows are in the 150-168 SAFE zone (below all subtotal blocks, so they
+# can't interfere with the subtotal back-walk; still inside the SUMIF 1:168 range).
+BS_ADD = {
+    "1600 0": ("Trade payables", 150),       # Verbindlichkeiten aus L+L
+    "1780 0": ("Other receivables", 153),    # USt-Vorauszahlungen (net VAT, negative)
+    "490 0":  ("Business equipment", 156),    # Sonstige BGA
+    "498 0":  ("Business equipment", 160),    # BGA im Bau
+}
+BS_RETAG = {
+    "1790 0": "Other payables",               # USt-Verbindlichkeiten Vorjahr (was untagged)
+}
+BS_JFB_ROW = 165                              # Jahresfehlbetrag -> Retained earnings
+
+
 def populate_balance_sheet(wb, mm: str, month: int):
     """Paste a month's German BS balances into the 'Balance Sheet' data sheet."""
     bsd = wb["Balance Sheet"]
     raw = openpyxl.load_workbook(
         RAW / f"{mm}-2026" / f"BS {mm}-2026.xlsx", data_only=True).worksheets[0]
+    # The raw BS repeats some accounts on "davon ..." sub-lines with blank values;
+    # keep the FIRST occurrence that actually carries a value (don't let a blank
+    # repeat overwrite it).
+    def _empty(t):
+        return (t[0] in (None, 0)) and (t[1] in (None, 0))
+
     raw_vals = {}
     for r in range(3, raw.max_row + 1):
         a = raw.cell(r, 1).value
         if a not in (None, "") and str(a).strip() not in ("", "Konto"):
-            raw_vals[str(a).strip()] = (_num(raw.cell(r, 3).value), _num(raw.cell(r, 4).value))
+            key = str(a).strip()
+            new = (_num(raw.cell(r, 3).value), _num(raw.cell(r, 4).value))
+            if key not in raw_vals or _empty(raw_vals[key]):   # keep first non-zero
+                raw_vals[key] = new
     rows = {}
     for r in range(9, bsd.max_row + 1):
         a = bsd.cell(r, 2).value
@@ -312,19 +339,51 @@ def populate_balance_sheet(wb, mm: str, month: int):
         bsd.cell(row, eur_col + 1).value = finyr
         written += 1
 
+    # Reconciliation fixes (account map drifted from the current German chart):
+    # add accounts the data sheet is missing, with the correct tag, into spare
+    # rows; re-tag accounts present-but-untagged.
+    for acc, (tag, spare) in BS_ADD.items():
+        if acc in raw_vals and acc not in rows:
+            bsd.cell(spare, 2).value = acc
+            bsd.cell(spare, 1).value = tag
+            e, fy = raw_vals[acc]
+            bsd.cell(spare, eur_col).value = e
+            bsd.cell(spare, eur_col + 1).value = fy
+            written += 1
+    for acc, tag in BS_RETAG.items():
+        r = rows.get(acc)
+        if r:
+            bsd.cell(r, 1).value = tag
+    # Jahresfehlbetrag: current-year loss, carried on a no-account line in the raw
+    # BS -> Retained earnings (so equity reflects the period result).
+    jfb = 0.0
+    for r in range(3, raw.max_row + 1):
+        if "Jahresfehlbetrag" in str(raw.cell(r, 2).value or ""):
+            jfb += (_num(raw.cell(r, 3).value) or 0) + (_num(raw.cell(r, 4).value) or 0)
+    if jfb:
+        bsd.cell(BS_JFB_ROW, 1).value = "Retained earnings"
+        bsd.cell(BS_JFB_ROW, 2).value = "Jahresfehlbetrag"
+        bsd.cell(BS_JFB_ROW, eur_col + 1).value = jfb
+
     # Manual subtotal rows: a tagged row with no account number holds the sum of
-    # the contiguous untagged account rows above it (e.g. Cash = the 4 bank
-    # accounts, PP&E = 200 0 + 210 0). Recompute them into the FinYr column.
+    # the untagged account rows in its block above (e.g. Cash = the 4 bank
+    # accounts, PP&E = 200 0 + 210 0, Other receivables = the VAT block). Walk
+    # back skipping BLANK rows, stopping at the next tagged row (the category
+    # boundary) — the VAT block has blank separators before its subtotal.
     for r in range(9, bsd.max_row + 1):
         if bsd.cell(r, 1).value in (None, "") or bsd.cell(r, 2).value not in (None, ""):
             continue
-        total, rr = 0.0, r - 1
-        while rr >= 9 and bsd.cell(rr, 2).value not in (None, "") \
-                and bsd.cell(rr, 1).value in (None, ""):
-            total += (_num(bsd.cell(rr, eur_col).value) or 0)
-            total += (_num(bsd.cell(rr, eur_col + 1).value) or 0)
+        total, found, rr = 0.0, False, r - 1
+        while rr >= 9:
+            if bsd.cell(rr, 1).value not in (None, ""):
+                break                       # hit another category's tagged row
+            acc = bsd.cell(rr, 2).value
+            if acc not in (None, "") and str(acc).strip():
+                total += (_num(bsd.cell(rr, eur_col).value) or 0)
+                total += (_num(bsd.cell(rr, eur_col + 1).value) or 0)
+                found = True
             rr -= 1
-        if rr < r - 1:                      # found at least one untagged account
+        if found:
             bsd.cell(r, eur_col + 1).value = total
     return written, unmapped
 

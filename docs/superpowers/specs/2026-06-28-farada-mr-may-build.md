@@ -215,21 +215,20 @@ raw BS 05-2026.xlsx          ->  'Balance Sheet' data sheet  ->  front BS
   Grants, Trade/Other payables, Payables to personnel, Loans L.
 - Like everything else, the data sheet + front BS are built **through March only**.
 
-  - B1. **DONE (asset side) / BLOCKED (equity+liab).** Built: account-keyed
-    paste into `Balance Sheet` May cols (16,17) + the 5 manual subtotal rows
-    (Cash = 4 bank accts, PP&E = 200 0+210 0, etc.) + front BS extension to
-    Apr/May. **Asset side populates cleanly.** Equity/liability side does NOT
-    balance yet — discovered three issues:
-      - **Stale account numbers**: convertible loan is `1705 0` in the raw BS but
-        the data sheet expects `735 0`/`740 0` → unmatched. Several liability tags
-        read 0.
-      - **No-account lines**: `Jahresfehlbetrag` (net loss €90,564) and
-        `Saldenvorträge` (retained-earnings opening €3,490,248) carry NO account
-        number → can't be account-matched.
-      - **3 new untagged accounts**: 490 0 (€3,778, Business equipment), 498 0
-        (€11), 1780 0 (−€38,136, VAT → Other receivables/payable).
-    → Needs a one-time reconciliation of the data sheet's equity/liability
-    account map against the current German chart of accounts. *(M, manual-ish)*
+  - B1. **RECONCILED to within €14,532** (from €57k off). Built: account-keyed
+    paste + the manual subtotal rows (now blank-gap-aware, so the VAT block feeds
+    Other receivables) + front BS extension to Apr/May. Fixes applied:
+      - dedup of repeated raw rows (the "davon …" / zero-first-line trap) — loan
+        `1705 1` (€185k), `740 0`, `1790 0` (€61k VAT) now populate
+      - `Jahresfehlbetrag` (€90,564 net loss) → Retained earnings; `Saldenvorträge`
+        (€3,490,248) already tagged → equity now reconciles **exactly**
+      - added 1600 0 (Trade payables €134k), 1780 0, 490 0, 498 0 in the 150-168
+        safe zone; re-tagged 1790 0 → Other payables
+    - **Remaining €14,532 residual** = a few ambiguous transit/clearing accounts
+      whose asset-vs-payable side is an accountant judgement: 1590 0 Durchlaufende
+      Posten (€6,513), 1610 0 (€1,166), 1766 0 (€247), 1591 0 (€49) + minor VAT
+      netting. The raw BS itself balances (€5,749,175), so it's purely a
+      classification call on these pass-through accounts. *(XS, needs sign-off)*
   - B2. Extend front BS `SUMIF` formulas to Apr (col18) + May (col19) via
     Translator (shifts the month-column refs). *(XS)*
   - B3. **Serbia BS — DECISION NEEDED.** The front BS is **Germany-only**; it
