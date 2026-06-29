@@ -20,8 +20,9 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 import openpyxl
+import re
 from openpyxl.formula.translate import Translator
-from openpyxl.utils import get_column_letter
+from openpyxl.utils import get_column_letter, column_index_from_string
 
 RAW = Path("clients/farada/raw/accounting")
 MR_DIR = Path("clients/farada/raw")
@@ -276,6 +277,91 @@ def extend_formula_column(ws, src_col: int, dst_col: int):
     return n
 
 
+# --- Balance Sheet (Germany-only, mirrors the BWA->Mapping->front pattern) ----
+# raw BS file (Kontennachweis): account col1, EUR col3, Geschäftsjahr col4.
+# 'Balance Sheet' data sheet: account col2; each month = 3 cols (EUR/FinYr/PY),
+#   Jan EUR=4 -> month m EUR col = 1 + 3*m, FinYr = +1.  (May EUR=16, FinYr=17.)
+def bs_eur_col(month: int) -> int:
+    return 1 + 3 * month
+
+
+def populate_balance_sheet(wb, mm: str, month: int):
+    """Paste a month's German BS balances into the 'Balance Sheet' data sheet."""
+    bsd = wb["Balance Sheet"]
+    raw = openpyxl.load_workbook(
+        RAW / f"{mm}-2026" / f"BS {mm}-2026.xlsx", data_only=True).worksheets[0]
+    raw_vals = {}
+    for r in range(3, raw.max_row + 1):
+        a = raw.cell(r, 1).value
+        if a not in (None, "") and str(a).strip() not in ("", "Konto"):
+            raw_vals[str(a).strip()] = (_num(raw.cell(r, 3).value), _num(raw.cell(r, 4).value))
+    rows = {}
+    for r in range(9, bsd.max_row + 1):
+        a = bsd.cell(r, 2).value
+        if a not in (None, ""):
+            rows.setdefault(str(a).strip(), r)
+    eur_col = bs_eur_col(month)
+    written, unmapped = 0, []
+    for acc, (eur, finyr) in raw_vals.items():
+        row = rows.get(acc)
+        if row is None:
+            if (eur or finyr):
+                unmapped.append((acc, eur, finyr))
+            continue
+        bsd.cell(row, eur_col).value = eur
+        bsd.cell(row, eur_col + 1).value = finyr
+        written += 1
+
+    # Manual subtotal rows: a tagged row with no account number holds the sum of
+    # the contiguous untagged account rows above it (e.g. Cash = the 4 bank
+    # accounts, PP&E = 200 0 + 210 0). Recompute them into the FinYr column.
+    for r in range(9, bsd.max_row + 1):
+        if bsd.cell(r, 1).value in (None, "") or bsd.cell(r, 2).value not in (None, ""):
+            continue
+        total, rr = 0.0, r - 1
+        while rr >= 9 and bsd.cell(rr, 2).value not in (None, "") \
+                and bsd.cell(rr, 1).value in (None, ""):
+            total += (_num(bsd.cell(rr, eur_col).value) or 0)
+            total += (_num(bsd.cell(rr, eur_col + 1).value) or 0)
+            rr -= 1
+        if rr < r - 1:                      # found at least one untagged account
+            bsd.cell(r, eur_col + 1).value = total
+    return written, unmapped
+
+
+def _shift_bs_cols(formula: str, step: int) -> str:
+    """Shift the absolute 'Balance Sheet'!$X$1:$X$168 column refs by `step`."""
+    def repl(m):
+        n1 = get_column_letter(column_index_from_string(m.group(1)) + step)
+        n2 = get_column_letter(column_index_from_string(m.group(2)) + step)
+        return f"'Balance Sheet'!${n1}$1:${n2}$168"
+    return re.sub(r"'Balance Sheet'!\$([A-Z]+)\$1:\$([A-Z]+)\$168", repl, formula)
+
+
+def extend_bs_front(wb):
+    """Build front-BS April (col18) + May (col19) from March (col17).
+
+    SUMIF rows use ABSOLUTE Balance-Sheet column refs -> shift by +3/+6 explicitly
+    (the row's own tag ref A{r} stays). Subtotal rows use relative front refs ->
+    Translator shifts them correctly.
+    """
+    bs = wb["BS"]
+    n = 0
+    for r in range(1, bs.max_row + 1):
+        f = bs.cell(r, 17).value          # March
+        if not isinstance(f, str) or not f.startswith("="):
+            continue
+        for dst, step in ((18, 3), (19, 6)):
+            if "'Balance Sheet'" in f:
+                bs.cell(r, dst).value = _shift_bs_cols(f, step)
+            else:
+                bs.cell(r, dst).value = Translator(
+                    f, origin=f"Q{r}").translate_formula(f"{get_column_letter(dst)}{r}")
+            bs.cell(r, dst).number_format = bs.cell(r, 17).number_format
+            n += 1
+    return n
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--golden", action="store_true", help="reproduce April and diff")
@@ -322,6 +408,16 @@ def main():
     # 4) Resolve May's new accounts: 83380 -> revenue 'Other'; 31004 -> capitalised
     for acct, kind, pr in add_mapping_rows(wb, mm):
         print(f"  Mapping: {acct} -> {kind} (BWA + P&L Mapping row {pr})")
+
+    # 5) Balance Sheet (Germany-only): paste Apr + May German balances, then
+    #    extend the front BS formulas to cover both months.
+    for pm_mm, pm_month in (("04", 4), (str(args.month).zfill(2), args.month)):
+        w, un = populate_balance_sheet(wb, pm_mm, pm_month)
+        print(f"  Balance Sheet {pm_mm}: pasted {w} accounts; unmapped={len(un)}")
+        for acc, e, fy in un:
+            print(f"      UNMAPPED BS account {acc} = EUR {e or 0:.2f} / FinYr {fy or 0:.2f}")
+    nbs = extend_bs_front(wb)
+    print(f"  Front BS: extended {nbs} formulas into Apr (col18) + May (col19)")
 
     wb.save(args.out)
     print(f"Saved {args.out}")

@@ -215,9 +215,21 @@ raw BS 05-2026.xlsx          ->  'Balance Sheet' data sheet  ->  front BS
   Grants, Trade/Other payables, Payables to personnel, Loans L.
 - Like everything else, the data sheet + front BS are built **through March only**.
 
-  - B1. Paste raw BS file May (EUR col3 + Geschäftsjahr col4) → `Balance Sheet`
-    sheet May cols (16,17), account-keyed; tags already assigned. Flag + tag any
-    new account (same engine as the BWA paste). *(S)*
+  - B1. **DONE (asset side) / BLOCKED (equity+liab).** Built: account-keyed
+    paste into `Balance Sheet` May cols (16,17) + the 5 manual subtotal rows
+    (Cash = 4 bank accts, PP&E = 200 0+210 0, etc.) + front BS extension to
+    Apr/May. **Asset side populates cleanly.** Equity/liability side does NOT
+    balance yet — discovered three issues:
+      - **Stale account numbers**: convertible loan is `1705 0` in the raw BS but
+        the data sheet expects `735 0`/`740 0` → unmatched. Several liability tags
+        read 0.
+      - **No-account lines**: `Jahresfehlbetrag` (net loss €90,564) and
+        `Saldenvorträge` (retained-earnings opening €3,490,248) carry NO account
+        number → can't be account-matched.
+      - **3 new untagged accounts**: 490 0 (€3,778, Business equipment), 498 0
+        (€11), 1780 0 (−€38,136, VAT → Other receivables/payable).
+    → Needs a one-time reconciliation of the data sheet's equity/liability
+    account map against the current German chart of accounts. *(M, manual-ish)*
   - B2. Extend front BS `SUMIF` formulas to Apr (col18) + May (col19) via
     Translator (shifts the month-column refs). *(XS)*
   - B3. **Serbia BS — DECISION NEEDED.** The front BS is **Germany-only**; it
