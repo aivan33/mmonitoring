@@ -17,7 +17,7 @@ from openpyxl.utils import get_column_letter as gc
 
 MODELING = Path("clients/farada/modeling")
 SRC = MODELING / "FaradaIC - 5Y plan - WIP.xlsx"
-DST = MODELING / "farada_5y_v1.xlsx"
+DST = MODELING / "farada_5y_v2.xlsx"
 
 PF = "ProForma"
 INP = " Inputs"  # note leading space
@@ -69,21 +69,21 @@ def _lag(ws, cash_row: int, src_row: int, ratio: str) -> None:
         ws.cell(cash_row, c).value = f
 
 
-def _lag_expr(ws, cash_row: int, expr_fn, ratio: str) -> None:
-    """Like _lag but the accrual is an arbitrary per-column expression (e.g. C90-C91)."""
-    for c in range(C0, C1 + 1):
-        cur = expr_fn(c)
-        if c == C0:
-            f = f"={cur}-{ratio}*{cur}"
-        else:
-            f = f"={cur}-{ratio}*({cur}-{expr_fn(c - 1)})"
-        ws.cell(cash_row, c).value = f
-
-
 def _balance(ws, bal_row: int, expr_fn, ratio: str) -> None:
     """Closing payable/receivable balance = ratio * accrual expression."""
     for c in range(C0, C1 + 1):
         ws.cell(bal_row, c).value = f"={ratio}*{expr_fn(c)}"
+
+
+def _cash_from_balance(ws, cash_row: int, accrual_fn, bal_row: int, opening="0") -> None:
+    """Cash = accrual − Δ(working-capital balance row). The deviation is tracked by
+    the WC driver balance, not recomputed from the P&L line. month-1 prior = opening."""
+    for c in range(C0, C1 + 1):
+        if c == C0:
+            delta = f"({col(c)}{bal_row}-{opening})"
+        else:
+            delta = f"({col(c)}{bal_row}-{col(c - 1)}{bal_row})"
+        ws.cell(cash_row, c).value = f"={accrual_fn(c)}-{delta}"
 
 
 def _sum(ws, row: int, lo: int, hi: int) -> None:
@@ -120,7 +120,15 @@ def task2_ar_cashin(wb) -> None:
     _sum(ws, 197, 198, 200)   # Hardware
     _sum(ws, 201, 202, 204)   # Subscription (0 until Task 4b)
     _add(ws, 196, [197, 201, 205])  # SaaS #3 (205 overage set above)
-    _add(ws, 186, [187, 191, 196])  # Total cash in from clients
+    # Total cash in from clients — balance-driven: cash = Revenue − ΔReceivables(166)
+    # + ΔDeferred revenue(183). The timing deviation comes from the WC drivers, not a
+    # recomputed P&L delta. (Detail rows 187-208 remain a by-product collection memo.)
+    for c in range(C0, C1 + 1):
+        if c == C0:
+            dev = f"({col(c)}166-' Inputs'!$J$193)-({col(c)}183-' Inputs'!$J$196)"
+        else:
+            dev = f"({col(c)}166-{col(c - 1)}166)-({col(c)}183-{col(c - 1)}183)"
+        ws.cell(186, c).value = f"={col(c)}45-({dev})"
 
 
 # Supplier (non-payroll) cost buckets: (payable-balance row, cash-paid row, cost expr).
@@ -144,8 +152,8 @@ SUPPLIERS = [
 def task3_supplier_payables(wb) -> None:
     ws = wb[PF]
     for bal_row, cash_row, expr in SUPPLIERS:
-        _balance(ws, bal_row, expr, DPO)     # closing payable = DPO/30 * cost
-        _lag_expr(ws, cash_row, expr, DPO)   # cash paid = cost - Δpayable
+        _balance(ws, bal_row, expr, DPO)               # closing payable = DPO/30 * cost
+        _cash_from_balance(ws, cash_row, expr, bal_row)  # cash = cost − Δ(payable balance)
     _add(ws, 168, [170, 172, 174, 176])      # Trade payables (excl. payroll)
     _sum(ws, 210, 211, 214)                  # Cash Paid to Suppliers
 
@@ -166,8 +174,8 @@ PERSONNEL = [
 def task4_personnel_payables(wb) -> None:
     ws = wb[PF]
     for bal_row, pay_row, expr in PERSONNEL:
-        _balance(ws, bal_row, expr, PAYDAYS)   # payable = 14/30 * payroll
-        _lag_expr(ws, pay_row, expr, PAYDAYS)  # paid = payroll - Δpayable
+        _balance(ws, bal_row, expr, PAYDAYS)               # payable = 14/30 * payroll
+        _cash_from_balance(ws, pay_row, expr, bal_row)     # paid = payroll − Δ(payable balance)
     _sum(ws, 178, 179, 182)                    # Account payables to personnel
     _sum(ws, 216, 217, 220)                    # Payments to Personnel
 
