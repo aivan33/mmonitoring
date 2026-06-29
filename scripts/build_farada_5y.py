@@ -172,12 +172,48 @@ def task4_personnel_payables(wb) -> None:
     _sum(ws, 216, 217, 220)                    # Payments to Personnel
 
 
+# Subscription recognised-revenue rows (Bundle S/M/L) -> annual-billing cash rows.
+SUBSCRIPTION = {202: 61, 203: 62, 204: 63}
+RENEWAL_LAGS = [0, 12, 24, 36, 48]  # annual re-billing across the 60-month horizon
+DEFERRED_ROW = 183                  # repurposed blank separator -> Deferred revenue
+
+
+def _drec(x: int, rr: int) -> str:
+    """Monthly increment of recognised subscription (new ARR) in column x."""
+    if x == C0:
+        return f"{col(x)}{rr}"
+    return f"({col(x)}{rr}-{col(x - 1)}{rr})"
+
+
+# ---------------------------------------------------------------------------
+# Task 4b — SaaS subscription billed annually in advance + deferred revenue.
+# ---------------------------------------------------------------------------
+def task4b_subscription_deferred(wb) -> None:
+    ws = wb[PF]
+    # Each cohort prepays 12 months at signup and re-bills every 12 months, so the
+    # billing in month c = 12 × Σ ΔARR at lags 0,12,24,36,48 (months still on the grid).
+    for cash_row, rec_row in SUBSCRIPTION.items():
+        for c in range(C0, C1 + 1):
+            terms = [_drec(c - k, rec_row) for k in RENEWAL_LAGS if c - k >= C0]
+            ws.cell(cash_row, c).value = "=12*(" + "+".join(terms) + ")"
+    # 201 = SUM(202:204) already wired in Task 2; it now picks up the billings.
+    # Deferred revenue (row 183) = prior + billings(201) − recognised(60); opening J196.
+    ws.cell(DEFERRED_ROW, 1).value = "Deferred revenue"
+    for c in range(C0, C1 + 1):
+        if c == C0:
+            f = f"=' Inputs'!$J$196+{col(c)}201-{col(c)}60"
+        else:
+            f = f"={col(c - 1)}{DEFERRED_ROW}+{col(c)}201-{col(c)}60"
+        ws.cell(DEFERRED_ROW, c).value = f
+
+
 def build() -> Path:
     wb = openpyxl.load_workbook(SRC, data_only=False)
     task1_payroll_days(wb)
     task2_ar_cashin(wb)
     task3_supplier_payables(wb)
     task4_personnel_payables(wb)
+    task4b_subscription_deferred(wb)
     # Force Excel/LibreOffice to recompute on open (openpyxl writes no cached values).
     wb.calculation.fullCalcOnLoad = True
     wb.save(DST)
