@@ -198,15 +198,42 @@ cause, mirroring April (dropped account vs intercompany lag vs group residual).
 - A3. Extend front CF formulas (Apr=6, May=7) via Translator. *(XS)*
 - A4. Verify CF Check / direct-method residual. *(S)*
 
-**Phase B — Balance Sheet.** Front BS + data layers, all through March now.
-- B1. Trial balance May from Susa (bespoke Soll/Haben). *(M)*
-- B2. Balance Sheet data sheet from the BS file (bespoke). *(M)*
-- B3. Serbia **BS section** (template rows 18+: PP&E, Cash, receivables) into the
-  MR Serbia sheet — not yet mapped. *(S)*
-- B4. **PP&E / development assets**: dev-assets PDF gives YTD additions €135,299,
-  depreciation €48,026 — wire into BS PP&E + the D&A line; reflect the **capitalised
-  31004/31014** as the intangible/development asset addition. *(M)*
-- B5. Extend front BS formulas; verify Assets = Liabilities + Equity. *(S)*
+**Phase B — Balance Sheet.** MAPPED (2026-06-29). The BS chain mirrors the P&L:
+
+```
+raw BS 05-2026.xlsx          ->  'Balance Sheet' data sheet  ->  front BS
+(Kontennachweis zur Bilanz)      (account-level, TAGGED in        (SUMIF by tag,
+ account | EUR | Gesch.jahr        col A, values PASTED;            summing the EUR +
+ | Vorjahr)                        month = 3 cols EUR/FinYr/PY)     FinancialYear cols)
+```
+- Front BS line = `SUMIF('Balance Sheet'!$A,<tag>,EURcol) + SUMIF(...,FinYrcol)`.
+  Month cols on the data sheet: Jan EUR=4,FinYr=5 (+3/month) → **May EUR=16, FinYr=17**.
+  Front BS month cols: col3=Jan-2025 → **Mar=17, Apr=18, May=19**.
+- The **col-A tag is the manual BS categorisation** (BS analogue of P&L Mapping's
+  leaf): 14 tags — R&D, PP&E, Business equipment, Cash, Trade/Other receivables,
+  Prepaid, Loans A, Inventory, Share capital, Retained earnings, Loan facility,
+  Grants, Trade/Other payables, Payables to personnel, Loans L.
+- Like everything else, the data sheet + front BS are built **through March only**.
+
+  - B1. Paste raw BS file May (EUR col3 + Geschäftsjahr col4) → `Balance Sheet`
+    sheet May cols (16,17), account-keyed; tags already assigned. Flag + tag any
+    new account (same engine as the BWA paste). *(S)*
+  - B2. Extend front BS `SUMIF` formulas to Apr (col18) + May (col19) via
+    Translator (shifts the month-column refs). *(XS)*
+  - B3. **Serbia BS — DECISION NEEDED.** The front BS is **Germany-only**; it
+    references no Serbia cell, yet the Serbia sheet carries a full BS section
+    (rows 19–30: PP&E, Cash, receivables, equity, current liabilities). Either
+    (a) keep Germany-only (current behaviour) or (b) consolidate Serbia in
+    (add Serbia refs to the front BS rows + eliminate the intercompany
+    investment/loans). *(S–M, gated on the decision)*
+  - B4. Cross-check: dev-assets register (YTD additions €135,299, deprec €48,026)
+    should reconcile to BS PP&E movement; capitalised 31004/31014 land in the R&D
+    intangible. The raw BS already reflects these, so B1 captures them — this is a
+    reconciliation check, not extra entry. *(S)*
+  - B5. Verify front BS check row (Assets − Equity&Liab = 0) for Apr + May. *(XS)*
+
+- Trial balance sheet (from Susa) is **not on the front-BS path** (front SUMIFs
+  only 'Balance Sheet'); treat as reference unless a check needs it.
 
 **Phase C — Cleanup / robustness.**
 - C1. 37360 (Skonti −4.38) — decide treatment + make COGS-range room. *(XS)*
