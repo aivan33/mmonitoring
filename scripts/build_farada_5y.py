@@ -263,6 +263,26 @@ def task5_cf_statement(wb) -> None:
         cf.cell(24, c).value = f"={L}23+{L}22"
 
 
+# Yearly columns -> (first month col, last month col). Calendar years; 2026 is the
+# Jul–Dec half-year, matching IS_Y / BS_Y (which run 2026–2030, omitting 2031 H1).
+CF_Y_YEARS = {3: (3, 8), 4: (9, 20), 5: (21, 32), 6: (33, 44), 7: (45, 56)}
+
+
+# ---------------------------------------------------------------------------
+# Task 7 — yearly Cash Flow (CF_Y), aggregated from the monthly CF sheet.
+# ---------------------------------------------------------------------------
+def task7_cf_yearly(wb) -> None:
+    cfy = wb["CF_Y"]
+    for yc, (m0, m1) in CF_Y_YEARS.items():
+        Y = col(yc)
+        rng = lambda r: f"CF!{col(m0)}{r}:{col(m1)}{r}"
+        # Flow rows 4-21 + Excess 23 each aggregate the matching monthly row (offset −1).
+        for r in list(range(4, 22)) + [23]:
+            cfy.cell(r, yc).value = f"=SUM({rng(r - 1)})"
+        cfy.cell(24, yc).value = f"=CF!{col(m0)}23"  # beginning = first month's beginning
+        cfy.cell(25, yc).value = f"=CF!{col(m1)}24"  # ending = last month's ending
+
+
 def build() -> Path:
     wb = openpyxl.load_workbook(SRC, data_only=False)
     task1_payroll_days(wb)
@@ -272,6 +292,7 @@ def build() -> Path:
     task4b_subscription_deferred(wb)
     task5b_clear_depreciation(wb)
     task5_cf_statement(wb)
+    task7_cf_yearly(wb)
     # Force Excel/LibreOffice to recompute on open (openpyxl writes no cached values).
     wb.calculation.fullCalcOnLoad = True
     wb.save(DST)
