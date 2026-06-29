@@ -187,6 +187,21 @@ NEW_ACCOUNTS = [
     # tracked on spare row 150 (outside every opex sum) + subtracted in the Check.
     dict(acct=31004, name="Fremdleistungen (R&D)",
          bwa_row=158, pm_row=150, capitalise=True),
+    # --- tiny new accounts, mapped to their functional bucket via a free row ---
+    # 49203 Telephone (G&A) -> G&A Office Expenses (exact).
+    dict(acct=49203, name="Telephone (G&A)",
+         bwa_row=159, pm_row=96, capitalise=False),
+    # 46680 Employee mileage -> G&A Travel & Representative (row labelled
+    # "travel costs employees" — exact).
+    dict(acct=46680, name="Employee mileage reimbursement",
+         bwa_row=160, pm_row=111, capitalise=False),
+    # 46502 Entertainment (S&M) -> S&M; Travel range is full, so the only free
+    # S&M row is 'Other marketing expenses' (r73): S&M total correct, sub-line is
+    # a catch-all. NOTE the compromise.
+    dict(acct=46502, name="Entertainment expenses (S&M)",
+         bwa_row=161, pm_row=73, capitalise=False),
+    # 37360 (Skonti received, -4.38) intentionally NOT mapped: COGS range is full
+    # and discounts-received treatment is a judgement call. Left flagged.
 ]
 
 
@@ -230,7 +245,9 @@ def add_mapping_rows(wb, mm: str):
                     pl.cell(84, col).value = f.replace(
                         f"'P&L Mapping'!{ml}146",
                         f"'P&L Mapping'!{ml}146-'P&L Mapping'!{ml}{pr}")
-        done.append((spec["acct"], "capitalised" if spec["capitalise"] else "revenue", pr))
+        kind = ("capitalised" if spec["capitalise"]
+                else "revenue" if pr == 19 else "expense")
+        done.append((spec["acct"], kind, pr))
     return done
 
 
