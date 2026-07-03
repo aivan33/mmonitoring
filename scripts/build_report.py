@@ -1,9 +1,11 @@
 """CLI: build the monthly reporting pack for a client.
 
 Pipeline (--all):
-    extract → reload-DB → variance → commentary
+    extract → variance → commentary
 
-Each phase has its own flag for partial runs. Outputs land under
+Each phase has its own flag for partial runs. Under ``--all`` a phase that
+isn't implemented yet prints a skip line and does not fail the run; asking
+for it explicitly (``--<phase>-only``) still errors. Outputs land under
 ``clients/<client>/reports/<YYYY-MM>/``.
 
 Usage:
@@ -144,6 +146,19 @@ def _phase_commentary(*_args, **_kwargs) -> None:
     raise NotImplementedError("commentary phase ships in F4 (Task 11)")
 
 
+def _run_phase(name: str, feature: str, fn, *args, explicit: bool) -> None:
+    """Run a pipeline phase. Under ``--all`` an unimplemented phase prints a
+    skip line to stdout and lets the run continue; when the phase was requested
+    explicitly (``--<name>-only``) the NotImplementedError propagates so the
+    caller fails loud."""
+    try:
+        fn(*args)
+    except NotImplementedError:
+        if explicit:
+            raise
+        print(f"  {name}: not yet implemented ({feature}), skipping")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Build a client's monthly reporting pack.")
     parser.add_argument("client")
@@ -181,10 +196,15 @@ def main() -> int:
         if args.extract_only or run_all:
             _phase_extract(client_dir, config, period)
         if args.variance_only or run_all:
-            _phase_variance(client_dir, config, period, args.client)
+            _run_phase("variance", "F3", _phase_variance,
+                       client_dir, config, period, args.client,
+                       explicit=args.variance_only)
         if args.commentary_only or run_all:
-            _phase_commentary(client_dir, config, period)
+            _run_phase("commentary", "F4", _phase_commentary,
+                       client_dir, config, period,
+                       explicit=args.commentary_only)
     except NotImplementedError as exc:
+        # Reached only when a phase was requested explicitly (--*-only).
         print(f"  {exc}", file=sys.stderr)
         return 1
     except Exception as exc:

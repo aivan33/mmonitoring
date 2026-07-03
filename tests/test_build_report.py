@@ -95,3 +95,26 @@ def test_find_prev_taxonomi_fallback_without_suffix(tmp_path, caplog):
     assert got.name == "taxonomi_actual_second.xlsx"
     assert any("fall" in r.getMessage().lower() or "order" in r.getMessage().lower()
                for r in caplog.records)
+
+
+@pytest.mark.skipif(not _REAL_MR.exists(),
+                    reason="real farada files not present")
+def test_all_skips_unimplemented_and_returns_zero(monkeypatch, capsys):
+    """--all runs the implemented phases, prints a skip line for the
+    unimplemented commentary phase, and exits 0 (Fix 5)."""
+    monkeypatch.setattr(sys, "argv",
+                        ["build_report.py", "farada", "2026-03", "--all"])
+    rc = br.main()
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "commentary: not yet implemented" in out
+    assert "skipping" in out
+
+
+def test_commentary_only_hard_fails(monkeypatch, capsys):
+    """Explicitly asking for an unimplemented phase still errors (Fix 5)."""
+    monkeypatch.setattr(sys, "argv",
+                        ["build_report.py", "farada", "2026-03",
+                         "--commentary-only"])
+    rc = br.main()
+    assert rc == 1
