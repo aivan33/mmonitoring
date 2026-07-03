@@ -126,16 +126,47 @@ def _evaluate_formula(
     )
 
 
-def _formula_sum(entry: dict, extracts: dict) -> float:
-    """Σ over a list of source rows. Missing components count as 0."""
-    return sum(_get_source(extracts, src) for src in entry.get("sources") or [])
+def _formula_sum(entry: dict, extracts: dict) -> float | None:
+    """Σ over a list of source rows. Returns None (and logs a warning naming the
+    missing key(s)) if any component is absent from the extract or present with
+    a None/non-numeric value — a dropped extract must fail loud, not silently
+    count as 0 and yield a plausible-but-wrong total."""
+    total, missing = _sum_sources(entry.get("sources") or [], extracts)
+    if missing:
+        logger.warning("kpi %s: missing component(s) %s → value is None",
+                       entry.get("target"), missing)
+        return None
+    return total
 
 
-def _formula_working_capital(entry: dict, extracts: dict) -> float:
-    """Working Capital = Σ(current_assets) − Σ(current_liabilities)."""
-    ca = sum(_get_source(extracts, s) for s in entry.get("current_assets") or [])
-    cl = sum(_get_source(extracts, s) for s in entry.get("current_liabilities") or [])
+def _formula_working_capital(entry: dict, extracts: dict) -> float | None:
+    """Working Capital = Σ(current_assets) − Σ(current_liabilities). Returns None
+    (with a warning naming the missing key(s)) if any component is absent or
+    None, rather than treating a dropped BS line as 0."""
+    ca, miss_a = _sum_sources(entry.get("current_assets") or [], extracts)
+    cl, miss_l = _sum_sources(entry.get("current_liabilities") or [], extracts)
+    missing = miss_a + miss_l
+    if missing:
+        logger.warning("kpi %s: missing component(s) %s → value is None",
+                       entry.get("target"), missing)
+        return None
     return ca - cl
+
+
+def _sum_sources(
+    sources: list, extracts: dict,
+) -> tuple[float, list[tuple[str, str, str]]]:
+    """Sum source values, collecting the keys of any that are missing. A key
+    that is absent and one present with value None are both 'missing'."""
+    total = 0.0
+    missing: list[tuple[str, str, str]] = []
+    for src in sources:
+        v = _get_source_opt(extracts, src)
+        if v is None:
+            missing.append(tuple(src["key"]))
+        else:
+            total += v
+    return total, missing
 
 
 def _formula_turnover_ratio(
@@ -209,6 +240,13 @@ def _get_source(extracts: dict, src: dict) -> float:
     """Extract one source value; missing/None counts as 0.0."""
     v = extracts.get(src["statement"], {}).get(tuple(src["key"]))
     return float(v) if isinstance(v, (int, float)) else 0.0
+
+
+def _get_source_opt(extracts: dict, src: dict) -> float | None:
+    """Like ``_get_source`` but distinguishes missing from zero: returns None
+    when the statement/key is absent, or present with a None/non-numeric value."""
+    v = extracts.get(src["statement"], {}).get(tuple(src["key"]))
+    return float(v) if isinstance(v, (int, float)) else None
 
 
 def _read_prior_month(

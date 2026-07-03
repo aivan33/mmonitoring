@@ -285,6 +285,51 @@ def test_kpi_derivations_sum(mini_prev, mini_extracts, tmp_path):
     pytest.fail("Gross Fixed assets row not found in output")
 
 
+def test_kpi_sum_missing_component_is_none_and_warns(
+    mini_prev, mini_extracts, tmp_path, caplog,
+):
+    """A sum-formula KPI with a component absent from the extract yields None
+    (not a plausible-but-wrong partial sum) and logs a warning naming the key."""
+    wb = load_workbook(mini_prev)
+    cf = wb["CF Indirect (Actual)"]
+    cf.append(["Gross Fixed assets", "Gross Fixed assets", "Gross Fixed assets",
+               None, None, None, None, None, None, None, None, None,
+               None, None, None])
+    wb.save(mini_prev)
+
+    extracts = {
+        **mini_extracts,
+        "BS": {
+            **mini_extracts["BS"],
+            ("Non-current assets", "Non-tangible fixed assets", "R&D"): 100,
+            # PP&E deliberately absent from the extract -> KPI must be None
+        },
+    }
+    mapping = {
+        "kpi_derivations": [
+            {
+                "formula": "sum",
+                "target": ["Gross Fixed assets", "Gross Fixed assets", "Gross Fixed assets"],
+                "statement_for_target": "CF",
+                "sources": [
+                    {"statement": "BS", "key": ["Non-current assets", "Non-tangible fixed assets", "R&D"]},
+                    {"statement": "BS", "key": ["Non-current assets", "Tangible fixed assets", "PP&E"]},
+                ],
+            },
+        ],
+    }
+    out = tmp_path / "out.xlsx"
+    with caplog.at_level(logging.WARNING):
+        populate_taxonomi(mini_prev, extracts, 2026, 3, out, mapping=mapping)
+    assert any("PP&E" in r.getMessage() for r in caplog.records)
+    cf_out = load_workbook(out)["CF Indirect (Actual)"]
+    for r in range(2, cf_out.max_row + 1):
+        if cf_out.cell(r, 1).value == "Gross Fixed assets":
+            assert cf_out.cell(r, 6).value in (None, "")
+            return
+    pytest.fail("Gross Fixed assets row not found in output")
+
+
 def test_unknown_formula_type_raises(mini_prev, mini_extracts, tmp_path):
     mapping = {
         "kpi_derivations": [
