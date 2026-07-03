@@ -289,6 +289,47 @@ class TestReferenceLineAggregate:
         assert y == pytest.approx(999.0)
 
 
+class TestStackedBarSegmentIntegrity:
+    """Every non-null segment must be drawn so the visible column heights sum
+    to the true series totals; the size threshold only suppresses labels, it
+    must never drop a segment from the stack (Fix 1)."""
+
+    def _drawn_height_sum(self, series_values: list[list[float]]) -> float:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        import pandas as pd
+        from core.charts import tokens as tokens_mod
+        from core.charts.render import _draw_stacked_bar
+        from core.charts.spec import ChartSpec, DataSeries
+
+        dates = [dt.date(2025, 1, 1)]
+        spec = ChartSpec(
+            chart_id="x", client="x", title="x",
+            chart_type="stacked_bar", source="custom",
+            period={"kind": "range", "start": "2025-01-01", "end": "2025-01-31"},
+            value_format="eur",
+            data=[DataSeries(label=f"S{i}", query={"kind": "trend", "data": "X"})
+                  for i in range(len(series_values))],
+        )
+        resolved = [
+            {"label": f"S{i}", "raw": pd.Series(v, index=dates), "display_sign": 1}
+            for i, v in enumerate(series_values)
+        ]
+        fig, ax = plt.subplots()
+        try:
+            _draw_stacked_bar(ax, spec, resolved, ["#111", "#222"], tokens_mod.DEFAULT)
+            return sum(p.get_height() for p in ax.patches)
+        finally:
+            plt.close(fig)
+
+    def test_small_segment_is_not_dropped(self) -> None:
+        # A big segment plus a ~1% segment that sits below the old 10k skip
+        # threshold. Drawn heights must still sum to the full total.
+        total = self._drawn_height_sum([[100000.0], [1000.0]])
+        assert total == pytest.approx(101000.0)
+
+
 class TestStackedBarWithLine:
     """Last data entry renders as an overlay line; the rest stack as
     diverging bars on the same axes. Used for P&L decompositions where

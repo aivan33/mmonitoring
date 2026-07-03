@@ -773,21 +773,6 @@ def _draw_stacked_bar(
     x = list(range(len(all_dates)))
     n_dates = len(x)
 
-    # Estimate a visual-significance threshold: any segment smaller than
-    # this is dropped entirely (no draw, no stack advance) so it doesn't
-    # appear as a thin "ghost" sliver splitting the visible segments.
-    # Use the largest single absolute value across all series as the
-    # reference span — gives a stable threshold even when one column has
-    # an outlier.
-    max_abs = 0.0
-    for series in resolved:
-        s = series["raw"]
-        if isinstance(s, pd.Series):
-            for v in s.dropna().values:
-                if abs(float(v)) > max_abs:
-                    max_abs = abs(float(v))
-    skip_threshold = max(max_abs * 0.06, 10000.0)
-
     # In matplotlib, ax.bar(height, bottom) draws from y=bottom to
     # y=bottom+height. For NEGATIVE height the bar extends downward, so
     # `bottom` is the UPPER edge of the visible rectangle. For each
@@ -809,7 +794,10 @@ def _draw_stacked_bar(
         bottoms = []
         for j, d in enumerate(all_dates):
             v = s.get(d) if d in s.index else None
-            if v is None or pd.isna(v) or abs(float(v)) < skip_threshold:
+            # Draw every non-null segment so visible heights sum to the true
+            # totals. Small slices are still drawn; the `threshold` below only
+            # suppresses their labels.
+            if v is None or pd.isna(v):
                 values.append(0.0)
                 bottoms.append(0.0)
                 continue
