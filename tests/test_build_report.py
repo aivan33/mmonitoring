@@ -6,6 +6,8 @@ files and verifies it produces the expected outputs.
 
 from __future__ import annotations
 
+import datetime as dt
+import logging
 import sys
 from pathlib import Path
 
@@ -69,3 +71,27 @@ def test_variance_phase_writes_outputs(monkeypatch, capsys, tmp_path):
     assert (out_dir / "variance.csv").exists()
 
 
+def test_find_prev_taxonomi_picks_latest_before_period(tmp_path):
+    """Sources listed out of chronological order still resolve to the true
+    latest taxonomi-actual strictly before the period (Fix 4)."""
+    config = {"financial_sources": [
+        {"file": "raw/taxonomi_act_2026-02.xlsx"},   # latest before period
+        {"file": "raw/taxonomi_act_2026-01.xlsx"},   # last in config order
+        {"file": "raw/taxonomi_act_2026-03.xlsx"},   # == period, must be skipped
+    ]}
+    got = br._find_prev_taxonomi(tmp_path, config, dt.date(2026, 3, 1))
+    assert got.name == "taxonomi_act_2026-02.xlsx"
+
+
+def test_find_prev_taxonomi_fallback_without_suffix(tmp_path, caplog):
+    """Sources with no parseable month suffix fall back to config order and
+    warn that ordering is being trusted (Fix 4)."""
+    config = {"financial_sources": [
+        {"file": "raw/taxonomi_actual_first.xlsx"},
+        {"file": "raw/taxonomi_actual_second.xlsx"},
+    ]}
+    with caplog.at_level(logging.WARNING):
+        got = br._find_prev_taxonomi(tmp_path, config, dt.date(2026, 3, 1))
+    assert got.name == "taxonomi_actual_second.xlsx"
+    assert any("fall" in r.getMessage().lower() or "order" in r.getMessage().lower()
+               for r in caplog.records)

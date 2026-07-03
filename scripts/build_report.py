@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import logging
+import re
 import sys
 from pathlib import Path
 
@@ -28,6 +30,7 @@ from core.report.variance import (
     compute_variance, write_variance_csv, write_variance_md,
 )
 
+logger = logging.getLogger(__name__)
 
 _REPO = Path(__file__).resolve().parent.parent
 
@@ -81,9 +84,16 @@ def _phase_extract(
 
 def _find_prev_taxonomi(client_dir: Path, config: dict,
                         period: dt.date) -> Path:
-    """The latest taxonomi-actual file for the same year, strictly before
-    ``period``. Falls back to the first source if no month-stamped file is
-    found (handles the case where only a year-level taxonomi exists)."""
+    """Return the taxonomi-actual source with the latest ``_YYYY-MM`` suffix
+    strictly before ``period``.
+
+    A candidate is any financial_source whose stem contains "act" (and does not
+    end with the target period, i.e. the file about to be written). The month
+    suffix is parsed from each stem; among candidates parsing to a month
+    strictly before ``period`` the maximum is returned, so the config list may
+    be in any order. If no candidate has a parseable ``_YYYY-MM`` suffix, falls
+    back to the last candidate in config order and logs a warning that file
+    ordering is being trusted."""
     sources = config.get("financial_sources", []) or []
     candidates = []
     for src in sources:
@@ -91,7 +101,6 @@ def _find_prev_taxonomi(client_dir: Path, config: dict,
         name = path.stem
         if "act" not in name.lower():
             continue
-        # Prefer files whose name ends in _YYYY-MM.
         if name.endswith(period.strftime("%Y-%m")):
             continue  # don't pick the file we're about to write
         candidates.append(path)
@@ -99,6 +108,20 @@ def _find_prev_taxonomi(client_dir: Path, config: dict,
         raise FileNotFoundError(
             f"no prior taxonomi-actual file in financial_sources for {period}"
         )
+    dated: list[tuple[dt.date, Path]] = []
+    for path in candidates:
+        m = re.search(r"_(\d{4})-(\d{2})$", path.stem)
+        if m:
+            month = dt.date(int(m.group(1)), int(m.group(2)), 1)
+            if month < period:
+                dated.append((month, path))
+    if dated:
+        return max(dated, key=lambda t: t[0])[1]
+    logger.warning(
+        "_find_prev_taxonomi: no taxonomi-actual source has a parseable "
+        "_YYYY-MM suffix before %s; falling back to config order (%s)",
+        period.strftime("%Y-%m"), candidates[-1].name,
+    )
     return candidates[-1]
 
 
