@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import datetime as dt
 import sqlite3
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -36,7 +37,11 @@ def _db_path(client: str) -> Path:
     return _client_dir(client) / "data" / f"{client}.db"
 
 
+@lru_cache(maxsize=None)
 def _config(client: str) -> dict:
+    # Cached per client: config.yaml is read once per process. Tests that
+    # redirect ``_ROOT`` at a tmp_path clear this cache between runs (see the
+    # autouse fixture in tests/conftest.py).
     return yaml.safe_load((_client_dir(client) / "config.yaml").read_text())
 
 

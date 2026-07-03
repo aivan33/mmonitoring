@@ -18,6 +18,8 @@ class Assertion:
     name: str
     check: Callable[[], float | None]
     expected: float
+    # Per-assertion absolute tolerance; None falls back to the run-level default.
+    tolerance: float | None = None
 
 
 @dataclass(frozen=True)
@@ -53,8 +55,9 @@ def run_assertions(
             continue
 
         delta = abs(observed - a.expected)
+        tol = a.tolerance if a.tolerance is not None else tolerance
         out.append(Result(
             name=a.name, expected=a.expected, observed=observed,
-            delta=delta, passed=delta <= tolerance, error=None,
+            delta=delta, passed=delta <= tol, error=None,
         ))
     return out

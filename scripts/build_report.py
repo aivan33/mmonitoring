@@ -26,7 +26,7 @@ import yaml
 # Make the repo root importable when run as a script.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from core.report.mr import extract_month
+from core.report.mr import extract_all
 from core.report.mr_to_taxonomi import populate_taxonomi
 from core.report.variance import (
     compute_variance, write_variance_csv, write_variance_md,
@@ -71,10 +71,7 @@ def _phase_extract(
     mapping_path = client_dir / reporting["mapping"]
     mapping = yaml.safe_load(mapping_path.read_text())
 
-    extracts = {
-        stmt: extract_month(mr_path, mapping, period.year, period.month, stmt)
-        for stmt in ("IS", "CF", "BS")
-    }
+    extracts = extract_all(mr_path, mapping, period.year, period.month)
 
     prev_taxonomi = _find_prev_taxonomi(client_dir, config, period)
     out_taxonomi = client_dir / "raw" / f"taxonomi_act_{period.strftime('%Y-%m')}.xlsx"

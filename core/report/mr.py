@@ -87,6 +87,39 @@ def extract_month(
           be found anywhere, the entry's value is ``None`` and a warning
           is emitted.
     """
+    wb = load_workbook(mr_path, data_only=True)
+    try:
+        return _extract_statement(wb, mapping, year, month, statement)
+    finally:
+        wb.close()
+
+
+def extract_all(
+    mr_path: str | Path,
+    mapping: dict,
+    year: int,
+    month: int,
+) -> dict[str, dict[tuple[str, str, str], float | None]]:
+    """Extract IS, CF and BS from one MR workbook in a single load.
+
+    Equivalent to calling :func:`extract_month` for each statement, but opens
+    the workbook once instead of three times. Returns
+    ``{statement: {(data, grp, subgroup): value}}``.
+    """
+    wb = load_workbook(mr_path, data_only=True)
+    try:
+        return {
+            stmt: _extract_statement(wb, mapping, year, month, stmt)
+            for stmt in ("IS", "CF", "BS")
+        }
+    finally:
+        wb.close()
+
+
+def _extract_statement(
+    wb, mapping: dict, year: int, month: int, statement: str,
+) -> dict[tuple[str, str, str], float | None]:
+    """Extract one statement from an already-open MR workbook."""
     if statement not in _DEFAULT_LAYOUT:
         raise ValueError(
             f"statement={statement!r}; expected one of {list(_DEFAULT_LAYOUT)}"
@@ -95,19 +128,15 @@ def extract_month(
     layout = _resolve_layout(mapping, statement)
     entries = mapping[_MAPPING_KEY[statement]]
 
-    wb = load_workbook(mr_path, data_only=True)
-    try:
-        ws = wb[layout["sheet"]]
-        target_col = _find_period_column(ws, year, month, layout, statement)
-        return _extract(
-            ws, entries,
-            label_col=layout["label_col"],
-            header_row=layout["header_row"],
-            target_col=target_col,
-            statement=statement,
-        )
-    finally:
-        wb.close()
+    ws = wb[layout["sheet"]]
+    target_col = _find_period_column(ws, year, month, layout, statement)
+    return _extract(
+        ws, entries,
+        label_col=layout["label_col"],
+        header_row=layout["header_row"],
+        target_col=target_col,
+        statement=statement,
+    )
 
 
 def _resolve_layout(mapping: dict, statement: str) -> dict:

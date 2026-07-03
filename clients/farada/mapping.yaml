@@ -21,8 +21,6 @@
 # Verified MR row numbers from clients/farada/MR_LAYOUT.md by inspection
 # on 2026-04-30. The downstream prompt's row numbers are off-by-one for
 # the P&L sheet — labels here are authoritative.
-#
-# **Sign-off pending from user before locking.**
 
 # ---------------------------------------------------------------------------
 # IS — taxonomi 'IS (Actual)' rows 2-56 ↔ MR sheet 'P&L' rows 4-82

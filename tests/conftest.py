@@ -13,6 +13,17 @@ HEADER = ["Data", "Group", "Subgroup", "Jan", "Feb", "Mar", "Apr", "May",
           "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 
+@pytest.fixture(autouse=True)
+def _clear_query_config_cache():
+    """``core.data.query._config`` is lru_cached per client. Tests redirect
+    ``_ROOT`` at a tmp_path, so clear the cache around every test to avoid a
+    stale config leaking across tmp_paths that reuse a client name."""
+    from core.data import query as query_module
+    query_module._config.cache_clear()
+    yield
+    query_module._config.cache_clear()
+
+
 def _write_xlsx(path: Path, sheets: dict[str, list[list]]) -> None:
     wb = Workbook()
     wb.remove(wb.active)
