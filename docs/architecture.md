@@ -81,6 +81,14 @@ CREATE TABLE financials (
   subsidiary). Single-entity clients use one entity name throughout.
 - **Last-loaded-wins**. If two sources cover the same key, the file
   later in `config.yaml`'s `financial_sources` overrides the earlier.
+  - **Sharp edge.** Override only happens on cells the later source
+    actually writes. Because null cells are skipped by default (see the
+    schema notes above), a later source that *blanks* a previously
+    populated cell does not clear it — the stale value from the earlier
+    source survives. This matters for revision files that intentionally
+    zero out or remove a line. To make a source's blanks authoritative,
+    set `emit_null_cells: true` on that entry in `financial_sources`; it
+    then emits explicit NULLs that overwrite the earlier value.
 
 ### Query layer
 
