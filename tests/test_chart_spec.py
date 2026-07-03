@@ -90,6 +90,22 @@ class TestLoadSpec:
         spec = load_spec(path)
         assert spec.data[0].query["kind"] == "aggregation"
 
+    def test_value_query_requires_grp_and_subgroup(self, tmp_path: Path) -> None:
+        # kind=value without grp/subgroup would resolve to SQL NULL and render
+        # empty — the schema must reject it up front (Fix 3).
+        bad = dict(VALID_MIN)
+        bad["data"] = [{"label": "X", "query": {"kind": "value", "data": "Cash"}}]
+        path = _write(tmp_path / "bad.json", bad)
+        with pytest.raises(SpecValidationError, match="grp"):
+            load_spec(path)
+
+    def test_value_query_with_grp_and_subgroup_validates(self, tmp_path: Path) -> None:
+        good = dict(VALID_MIN)
+        good["data"] = [{"label": "X", "query": {
+            "kind": "value", "data": "Cash", "grp": "Cash", "subgroup": "Cash"}}]
+        path = _write(tmp_path / "good.json", good)
+        load_spec(path)  # should not raise
+
     def test_unknown_query_kind_raises(self, tmp_path: Path) -> None:
         bad = dict(VALID_MIN)
         bad["data"] = [{"label": "X", "query": {"kind": "magic"}}]

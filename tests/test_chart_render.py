@@ -129,6 +129,17 @@ class TestResolveQuery:
         )
         assert set(result.index) == {"Distributors", "Direct Sales"}
 
+    def test_value_query_none_grp_raises(self, cupffee_test_db: Path) -> None:
+        # A None grp/subgroup becomes SQL NULL and matches nothing; resolve_query
+        # must raise rather than render an empty chart (Fix 3, defence in depth).
+        with pytest.raises(ValueError, match="grp"):
+            resolve_query(
+                {"kind": "value", "data": "Sales", "grp": None,
+                 "subgroup": "220 ml", "scenario": "actual"},
+                client="cupffee", entity="cupffee",
+                start=dt.date(2025, 1, 1), end=dt.date(2025, 1, 1),
+            )
+
     def test_signs_length_mismatch_raises(self, cupffee_test_db: Path) -> None:
         with pytest.raises(ValueError, match="signs"):
             resolve_query(

@@ -108,7 +108,9 @@
               {"if": {"properties": {"kind": {"const": "kpi_ratio"}}, "required": ["kind"]},
                "then": {"required": ["numerator", "denominator"]}},
               {"if": {"properties": {"kind": {"const": "kpi_diff"}}, "required": ["kind"]},
-               "then": {"required": ["minuend", "subtrahend"]}}
+               "then": {"required": ["minuend", "subtrahend"]}},
+              {"if": {"properties": {"kind": {"const": "value"}}, "required": ["kind"]},
+               "then": {"required": ["grp", "subgroup"]}}
             ]
           }
         }

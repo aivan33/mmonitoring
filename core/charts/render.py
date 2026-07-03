@@ -148,8 +148,18 @@ def resolve_query(
         return total if total is not None else pd.Series(dtype=float)
 
     if kind == "value":
+        grp = query.get("grp")
+        subgroup = query.get("subgroup")
+        # A None grp/subgroup becomes `grp = NULL` in SQL and matches no row,
+        # so the chart would render empty without any error. Fail loud instead
+        # (defence in depth; the schema also requires both for kind=value).
+        if grp is None or subgroup is None:
+            raise ValueError(
+                f"value query for {query.get('data')!r} requires non-null 'grp' "
+                f"and 'subgroup' (got grp={grp!r}, subgroup={subgroup!r})"
+            )
         return get_value(
-            query["data"], query.get("grp"), query.get("subgroup"),
+            query["data"], grp, subgroup,
             start, scenario=scenario,
             client=client, entity=entity,
         )
