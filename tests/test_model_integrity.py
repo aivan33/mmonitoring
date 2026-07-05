@@ -73,3 +73,13 @@ def test_subtotal_that_does_not_foot_is_flagged() -> None:
     wb["CF"].cell(20, 4).value = 999.0
     v = run_all(wb, GATES)
     assert any(x.check == "subtotals_foot" for x in v)
+
+
+def test_error_scan_skips_configured_rows() -> None:
+    # A documented skip (e.g. an unbuilt section) suppresses only those rows.
+    wb = _wb()
+    wb["CF"].cell(24, 3).value = "#REF!"
+    gates = {**GATES, "ties": [],
+             "error_scan": {"sheets": "all", "skip": {"CF": [[24, 24]]}}}
+    v = run_all(wb, gates)
+    assert not any(x.check == "error_cell" for x in v)

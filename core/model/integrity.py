@@ -38,16 +38,24 @@ def _cols(spec: dict) -> range:
     return range(c["start"], c["end"] + 1)
 
 
-def error_cells(wb, sheets) -> list[Violation]:
-    """Any cell that recomputed to an Excel error is a hard failure."""
+def error_cells(wb, sheets, skip: dict | None = None) -> list[Violation]:
+    """Any cell that recomputed to an Excel error is a hard failure.
+
+    ``skip`` maps a sheet name to a list of ``[lo, hi]`` row ranges to ignore —
+    used to scope out an explicitly-unbuilt section (documented in the gates yaml).
+    """
+    skip = skip or {}
     out: list[Violation] = []
     for sh in sheets:
         if sh not in wb.sheetnames:
             continue
         ws = wb[sh]
+        ranges = skip.get(sh) or []
         for row in ws.iter_rows():
             for cell in row:
                 if isinstance(cell.value, str) and cell.value in _ERROR_STRINGS:
+                    if any(lo <= cell.row <= hi for lo, hi in ranges):
+                        continue
                     out.append(Violation("error_cell", sh, cell.coordinate, cell.value))
     return out
 
@@ -102,10 +110,11 @@ def subtotals_foot(wb, subtotals) -> list[Violation]:
 
 def run_all(wb, gates: dict) -> list[Violation]:
     """Run every configured gate and return the combined violations."""
-    scan = (gates.get("error_scan") or {}).get("sheets")
+    error_scan = gates.get("error_scan") or {}
+    scan = error_scan.get("sheets")
     sheets = wb.sheetnames if scan in (None, "all") else scan
     return (
-        error_cells(wb, sheets)
+        error_cells(wb, sheets, error_scan.get("skip"))
         + bs_balances(wb, gates.get("balance_checks") or [])
         + statements_tie(wb, gates.get("ties") or [])
         + subtotals_foot(wb, gates.get("subtotals") or [])
