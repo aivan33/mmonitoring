@@ -61,9 +61,32 @@ worklist.
 2. **Lay the three pillars** in the standard order, harvesting styles from a reference workbook
    (`copy.copy` — never baked RGB). No naked rows.
 3. **Wire the statements thin** — ProForma computes the lines; IS/CF/BS pull and present; build the
-   taxonomi review tab; BS must tie (`check = 0`) — verify with an oracle (no recalc engine).
-4. **Emit `<client>_model_logic.md`** from the schema and **act on the health scan** — clean
+   taxonomi review tab; BS must tie (`check = 0`). Wire formulas per
+   `references/formula-conventions.md` (cash = accrual − Δ(WC balance row), direct-method CF, …).
+4. **Pass the gate** — `scripts/check_model.py <client> <wb> --full` recomputes with LibreOffice
+   and asserts no error cells, subtotals foot, BS `check = 0`, statements tie.
+5. **Emit `<client>_model_logic.md`** from the schema and **act on the health scan** — clean
    orphaned inputs, dead/duplicate/empty rows, and broken refs it surfaces.
+
+## Workflow & gates
+
+The build is a pipeline with a committed gate: **spec → build → recalc → integrity →
+format/lint → model-logic → version/review**.
+
+- **Build** — one idempotent builder per client rebuilds the xlsx from source; set
+  `wb.calculation.fullCalcOnLoad = True` so the recalc gate recomputes on open.
+- **Recalc gate (authoritative)** — `core/model/recalc.py` recomputes the workbook with
+  LibreOffice headless. openpyxl can't evaluate formulas and OFFSET defeats pure-Python
+  engines, so this is the source of truth for values.
+- **Integrity gate (hard)** — `core/model/integrity.py`: no error cells (`#REF!`/`#NAME?`/…),
+  BS `check = 0` per month, statements tie (CF ending cash = BS cash), subtotals foot. Targets
+  come from `clients/<client>/model_gates.yaml` (ship one per client; scope out explicitly-
+  unbuilt sections there, don't silently pass).
+- **Format + health (warn-only for now)** — `core/model/format_lint.py` (Century Gothic, the
+  OFFSET selector grammar) + the `core/schema` health scan (orphans / dead lines / broken refs),
+  via `--format` / `--health` / `--full`. Warn-only until the client models are brought to canon.
+
+Run it: `scripts/check_model.py <client> <workbook> --full` — exit 1 on any integrity violation.
 
 ## Cardinal rules
 
@@ -71,17 +94,22 @@ worklist.
   sign-off (`core/model/README.md`). Overhauls are the *approved* exception.
 - **Harvest styles, don't approximate** — baked RGB reads as "you broke the format."
 - **Calculations follow the client config; structure + formatting follow the design system.**
-- **Edit one builder in place** per client (don't proliferate versioned scripts); never `rm`
-  uncommitted/gitignored work.
-- **No recalc engine** for these xlsx → correctness is safe-by-construction + a Python oracle
-  (sub-rows foot, BS `check = 0`, lineage) + emitted eyeball values.
+- **Edit one builder in place** per client (don't proliferate versioned *scripts*); versioned
+  *output* workbooks (`_v1`, `_v2` milestones) are fine — the gate runs the current output. Never
+  `rm` uncommitted/gitignored work.
+- **The recalc gate is the authority** — verify with LibreOffice headless recompute
+  (`scripts/check_model.py <client> <wb> --full`): no error cells, subtotals foot, BS `check = 0`,
+  statements tie. A Python oracle over cached accruals is a useful *fast pre-check*, not the gate.
 
 ## Tooling
 
-- `core/model` — parse an existing workbook (cells · contract · flow · formula refs).
+- `core/model` — parse an existing workbook (cells · contract · flow · formula refs);
+  `recalc` (LibreOffice) · `integrity` (gate checks) · `format_lint` (design-system conformance).
 - `core/schema` — load a model into a normalized SQLite schema (structure + lineage); `report` emits
   the model-logic overview; `validate` is the health scan.
-- Per-client builders live in `clients/<client>/one_offs/`; design system in `references/`.
+- `scripts/check_model.py` — the gate runner; `clients/<client>/model_gates.yaml` — gate targets.
+- Per-client builders live in `clients/<client>/one_offs/`; design system + formula patterns in
+  `references/` (`design-system.md`, `formula-conventions.md`).
 
 For the client-specific config, drivers, quirks, and worked example, read `references/<client>.md`
 (the reference implementation is Farada — `clients/farada/one_offs/build_model_v4*.py`,
