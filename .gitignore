@@ -20,6 +20,7 @@ clients/*/*
 !clients/*/config.yaml
 !clients/*/mapping.yaml
 !clients/*/model_rules.yaml
+!clients/*/model_gates.yaml
 !clients/*/*.md
 !clients/*/chart_specs/
 clients/*/chart_specs/*

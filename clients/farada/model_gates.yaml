@@ -1,0 +1,53 @@
+# Verification-gate targets for the Farada 5Y model (scripts/check_model.py).
+# Reflects what is BUILT today: the CF/WC sections. The Balance Sheet is not yet
+# wired, so BS / BS_Y are excluded from the error scan and the ProForma BS-section
+# rows (128-162) are skipped. When the BS is built, add BS/BS_Y to `sheets`, drop
+# the ProForma skip, and add balance_checks (BS check row) + ties (CF ending cash
+# vs BS cash).
+
+error_scan:
+  sheets:
+    - " Inputs"        # note the leading space
+    - Revenue_Inputs
+    - Expansion
+    - ProForma
+    - IS
+    - IS_Y
+    - CF
+    - CF_Y
+    - HR
+  skip:
+    ProForma: [[128, 162]]   # unbuilt Balance Sheet section (stray leftovers)
+
+# Parent == Σ children, every month column (ProForma/CF run C..BJ = cols 3..62).
+subtotals:
+  - name: ProForma cash-in from clients
+    sheet: ProForma
+    parent: 186
+    children: [187, 191, 196]
+    cols: {start: 3, end: 62}
+  - name: ProForma SaaS #3 cash-in
+    sheet: ProForma
+    parent: 196
+    children: [197, 201, 205]
+    cols: {start: 3, end: 62}
+  - name: CF operating activities
+    sheet: CF
+    parent: 10
+    children: [3, 4, 5, 6, 7, 8, 9]
+    cols: {start: 3, end: 62}
+  - name: CF financing activities
+    sheet: CF
+    parent: 20
+    children: [15, 16, 17, 18, 19]
+    cols: {start: 3, end: 62}
+  - name: CF excess for the period
+    sheet: CF
+    parent: 22
+    children: [10, 14, 20]
+    cols: {start: 3, end: 62}
+  - name: CF ending-cash chain
+    sheet: CF
+    parent: 24
+    children: [23, 22]
+    cols: {start: 3, end: 62}
